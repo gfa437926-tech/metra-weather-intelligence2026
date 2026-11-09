@@ -64,3 +64,21 @@ A successful CI run is source/build evidence only. It does not establish a live 
 4. Validate Android and iOS builds on test devices.
 5. Integrate official alerts and additional map layers only after obtaining provider approval and credentials.
 6. Reassess production readiness after all preceding gates pass.
+
+
+## Follow-up review — CI and reconstructed SQL (2026-11-10)
+
+### CI confirmation
+- Workflow runs `42703391423` and `42703421107` were rechecked after the previous audit note; both completed successfully.
+- Both runs passed Deno type checks, registration approval and permission/payload tests, Flutter dependency resolution, analysis, tests, web release build, and artifact upload.
+- This remains CI evidence only; it does not replace authenticated staging acceptance or Android/iOS device testing.
+
+### Reconstructed SQL review
+- The current tree contains 51 migration SQL files.
+- The six source-recovery candidates listed above are still absent from `main`; path-specific Git commit history returned no commits for any of the six exact filenames. Do not fabricate replacement historical migrations.
+- Reviewed the reconstructed station-catalogue review function, the station-bound registration decision wrapper, and the associated role allow-list entries.
+- Positive controls observed in source: fixed `search_path` on privileged functions; execution of server-side decision RPCs restricted to `service_role`; explicit revokes from `PUBLIC`, `anon`, and `authenticated`; active-account and time-valid individual permission checks; station assignment checks in the underlying registration transaction; distinct station/system reviewers; and audit-event insertion in the registration transaction.
+- The initial reconstructed station-review function version uses a nullable comparison for the expected state; the later migration `20261104024652_harden_station_catalogue_review_null_validation.sql` replaces this with `IS DISTINCT FROM` and explicit null validation. Review the ordered migration chain, not the earlier file in isolation.
+- The Edge Functions reviewed derive actor IDs from a verified Supabase Auth JWT before calling service-role RPCs. The service-role key is read from server environment and is not returned to Flutter. This is source inspection, not a live deployed-secret audit.
+- Remaining review caveats: reconstructed files are not proven byte-for-byte originals; the station-review RPC accepts an `occurred_at` parameter but records the database clock instead (appropriate for authoritative audit time, but the unused parameter should be documented or removed only through an approved forward migration); wildcard CORS origins remain in the reviewed Edge Functions and should be narrowed to approved application origins before production.
+- No SQL was applied, no migration was replayed, and no hosted project or legacy database was queried or modified in this follow-up.
