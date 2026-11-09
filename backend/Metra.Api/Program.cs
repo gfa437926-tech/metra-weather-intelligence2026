@@ -126,8 +126,8 @@ app.Use(async (context, next) =>
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors("metra-web");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }))
@@ -152,4 +152,6 @@ app.Run();
 
 public sealed record CurrentUserResponse(Guid UserId);
 
-public partial class Program;
+public partial class Program
+{
+}
