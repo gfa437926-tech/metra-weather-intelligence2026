@@ -35,10 +35,18 @@ A successful CI run is source/build evidence only. It does not establish a live 
 2. **Station approval and activation:** the last recorded operational snapshot (2026-11-04) showed 62 non-demo stations pending catalogue approval and operational verification. This is historical evidence, not a current count. Reconfirm through an approved read-only review before activation; do not bulk-approve.
 3. **Real identity journey:** the 2026-11-04 snapshot recorded zero Auth users and zero registration requests. This is historical evidence; real account onboarding, reviewer separation, and permission checks still need controlled end-to-end acceptance.
 4. **Historical archive reconciliation:** 1,251 archive envelopes had no `station_id` in the 2026-11-04 snapshot; names alone are not sufficient to map them. Keep unresolved rows unlinked until source-backed review.
-5. **Migration reproducibility:** the 2026-11-04 reconciliation recorded 57 applied migrations but only 24 matching source files in the repository. Recover exact missing sources or create a clearly labelled, reviewed reconstructed baseline; never reset or replay old migrations to fill the gap.
+5. **Migration reproducibility:** the current `main` branch contains 51 migration SQL files with unique 14-digit version prefixes and valid timestamped filenames. Git history for `supabase/migrations` shows 36 commits, including explicit restoration commits for previously missing applied sources. This supersedes the older 24-file source count from the 2026-11-04 snapshot. That snapshot recorded 57 applied migration versions; the six-version numerical difference is not proof that six files are missing because the hosted migration ledger has not been re-read and filename/version renames may affect matching. Exact reconciliation remains open until an approved read-only export of the new project's migration ledger is compared version-by-version with the repository. Do not reset, replay, or modify any migration or database to close this gap.
 6. **Mobile release validation:** CI builds the web target. Android/iOS builds, device-specific auth, map, accessibility, offline/network recovery, and store packaging still require separate device/build validation.
 7. **Design parity:** this source audit does not prove pixel-level parity with the original METRA screens. Complete a screen-by-screen comparison against the approved reference screenshots before calling the UI finished.
 8. **Security acceptance:** verify production origin policy, secrets configuration, edge-function abuse/rate controls, session lifecycle, device storage policy, and audit visibility in an approved staging environment.
+
+## Migration source inventory review (2026-11-10)
+
+- Read the `main` branch `supabase/migrations` directory through GitHub's repository contents API.
+- Counted 51 SQL migration files; all filenames match `14-digit-version_description.sql` and all version prefixes are unique.
+- Read the Git commit history for that directory: 36 commits were returned, including commits explicitly restoring batches of applied station, identity, registration, observation, and audit migration sources.
+- This is repository-only evidence. The hosted migration ledger was not queried in this continuation, so no claim is made that all 57 historically applied versions now match the source tree.
+- No migration was executed, edited, deleted, replayed, or applied.
 
 ## Protected boundaries
 
