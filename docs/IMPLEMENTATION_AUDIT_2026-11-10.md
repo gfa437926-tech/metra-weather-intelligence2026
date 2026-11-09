@@ -3,8 +3,9 @@
 **Audit date:** 2026-11-10  
 **Repository:** `gfa437926-tech/metra-weather-intelligence2026`  
 **Branch:** `main`  
-**Audited head:** `37f8689e521be13a457d513037ae30dd530fe52a`  
-**Latest verified CI run:** `41774118934` — Flutter CI — success  
+**Audited source head:** `37f8689e521be13a457d513037ae30dd530fe52a`  
+**Audit report commit:** `61ff6c4972a7fb4122992d24f4ebc56838a28d5f`  
+**Latest verified CI run:** `42702476174` — Flutter CI — success  
 **Scope:** read-only source and CI review; no hosted database operations.
 
 ## Verified implementation
@@ -22,16 +23,18 @@
 
 ## CI evidence
 
-Run `41774118934` on audited head `37f8689e521be13a457d513037ae30dd530fe52a` completed successfully. The workflow passed Deno type checks and Edge Function validation/permission tests, `flutter pub get`, `flutter analyze`, `flutter test`, `flutter build web --release`, and uploaded the `metra-web-release` artifact.
+Run `41774118934` on source head `37f8689e521be13a457d513037ae30dd530fe52a` completed successfully.
 
-A successful CI run is source/build evidence only. It does not establish a live authenticated user journey, live database correctness, store deployment, or production readiness.
+The newer run `42702476174`, triggered by audit report commit `61ff6c4972a7fb4122992d24f4ebc56838a28d5f`, also completed successfully. All 20 workflow steps passed, including Deno type checks, registration/approval/permission/payload/catalogue tests, Flutter dependency resolution, analysis, tests, web release build, and artifact upload.
+
+A successful CI run is source/build evidence only. It does not establish a live authenticated user journey, live database correctness, Android/iOS device validation, store deployment, or production readiness.
 
 ## Gaps and release blockers
 
 1. **Official alerts and operational weather layers:** no verified official alert provider, radar, precipitation, temperature, or wind layer is connected. The UI must continue to disclose this rather than display fabricated alerts.
-2. **Station approval and activation:** the last recorded operational snapshot (2026-11-04) showed 62 non-demo stations pending catalogue approval and operational verification. Reconfirm through an approved read-only review before activation; do not bulk-approve.
-3. **Real identity journey:** the same snapshot recorded zero Auth users and zero registration requests. Real account onboarding, reviewer separation, and permission checks still need controlled end-to-end acceptance.
-4. **Historical archive reconciliation:** 1,251 archive envelopes had no `station_id`; names alone are not sufficient to map them. Keep unresolved rows unlinked until source-backed review.
+2. **Station approval and activation:** the last recorded operational snapshot (2026-11-04) showed 62 non-demo stations pending catalogue approval and operational verification. This is historical evidence, not a current count. Reconfirm through an approved read-only review before activation; do not bulk-approve.
+3. **Real identity journey:** the 2026-11-04 snapshot recorded zero Auth users and zero registration requests. This is historical evidence; real account onboarding, reviewer separation, and permission checks still need controlled end-to-end acceptance.
+4. **Historical archive reconciliation:** 1,251 archive envelopes had no `station_id` in the 2026-11-04 snapshot; names alone are not sufficient to map them. Keep unresolved rows unlinked until source-backed review.
 5. **Migration reproducibility:** the 2026-11-04 reconciliation recorded 57 applied migrations but only 24 matching source files in the repository. Recover exact missing sources or create a clearly labelled, reviewed reconstructed baseline; never reset or replay old migrations to fill the gap.
 6. **Mobile release validation:** CI builds the web target. Android/iOS builds, device-specific auth, map, accessibility, offline/network recovery, and store packaging still require separate device/build validation.
 7. **Design parity:** this source audit does not prove pixel-level parity with the original METRA screens. Complete a screen-by-screen comparison against the approved reference screenshots before calling the UI finished.
