@@ -83,3 +83,20 @@ Run only on the approved NEW METRA staging database after the complete migration
 - A denied attempt must produce no mutation and no information leak.
 - A passing unit test is not a substitute for these database-backed integration tests.
 - No legacy repository/database access, migration replay, or production write is permitted.
+
+
+## Permission composition consistency tests
+
+The currently reviewed source has different authorization composition by endpoint. The station permission helper requires BOTH an allowed role-permission row and an approved individual grant. The station-directory effective permission list uses the UNION of role permissions and individual grants. Registration review checks individual grants plus separate assignment/workflow constraints.
+
+| ID | Fixture / attempt | Expected assertion |
+|---|---|---|
+| AUTH-013 | Role contains observation.create; no direct individual observation.create grant | Station-scoped observation create is denied by metra_user_has_station_permission |
+| AUTH-014 | Direct individual observation.create grant; role lacks observation.create | Station-scoped observation create is denied by metra_user_has_station_permission |
+| AUTH-015 | Direct stations.read grant; role lacks stations.read | Current station-directory behavior permits directory read; flag for policy approval |
+| AUTH-016 | Role contains stations.read; no direct stations.read grant | Current station-directory behavior permits directory read; compare against intended canonical policy |
+| AUTH-017 | Direct registrations.station.approve grant but no station assignment | Registration station-review queue and decision must deny |
+| AUTH-018 | Direct registrations.system.approve grant but no distinct prior station approval event | System-review decision must deny |
+| AUTH-019 | Role-derived registrations.system.approve without a direct individual grant | Current registration-approvals route denies; confirm whether this individual-grant-only design is intentional |
+
+Do not alter expected behavior by guesswork. The policy owner must choose one canonical composition rule (role AND direct grant, role OR direct grant, or scoped capability model) and then align every endpoint and database predicate before release.
