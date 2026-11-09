@@ -127,3 +127,17 @@ A successful CI run is source/build evidence only. It does not establish a live 
 - Passing steps include Deno type checks for Edge Functions, registration/approval/permission/payload/catalogue tests, Flutter dependency resolution, static analysis, Flutter tests, web release build, and artifact upload.
 - This confirms that run's CI pipeline is green. The GitHub Actions connector did not expose the run's `head_sha` in the returned job summary, so do not use this run alone to claim verification of a later commit unless its source SHA is independently matched.
 - No staging deployment or hosted database operation was performed. The migration source-chain blockers, wildcard CORS configuration, native Android/iOS validation, and authenticated staging acceptance remain open.
+
+
+## Migration-source recovery pass — 2026-11-10
+
+- Rechecked the current `main` branch and the available searchable commit history for the two role-permission migration names and the `metra_role_permissions` symbol. No exact source file or matching source-recovery commit was found in the searchable results.
+- The only visible branch returned by the repository branch search was `main`. This does not prove that no unreachable Git object, local developer copy, deployment artifact, or external backup exists; it means this repository-only pass did not recover a verifiable original.
+- The six outstanding candidates remain unchanged. In particular, do not infer a table definition from Edge Function query usage or from seed references, and do not create a replacement migration pretending to be the historical source.
+- The migration inventory was 51 files at the prior 2026-11-10 inventory checkpoint; the new scheduled-revocation forward migration adds one source file after that checkpoint. This is a repository file count, not a live migration-ledger count.
+- The CI run `42704651926` completed with its `analyze-test-build` job and all reported steps successful. Its returned job summary did not expose the tested `head_sha`; the later audit-document commit `e358850c5cbb50e9128316e4a25afd5dd53d1f39` is therefore not claimed to have been covered by that run.
+- No database was queried or modified, no SQL was applied, and no legacy repository or database was accessed in this pass.
+
+### Recovery decision
+
+Keep the migration-chain blocker open until an exact trusted source is recovered. If that cannot be recovered, handle a future schema baseline as a separately named, explicitly reconstructed migration set after approval and catalog-level comparison on a disposable NEW METRA staging database. Do not silently substitute reconstructed SQL into historical migration versions.
