@@ -21,7 +21,7 @@ Deno.serve(async(req:Request)=>{
  const now=new Date().toISOString();
  const {data:grants,error:grantError}=await admin.from("permission_grants").select("id")
   .eq("user_id",actorId).eq("permission_code","stations.catalogue.review").eq("approval_status","approved")
-  .is("revoked_at",null).lte("valid_from",now).or("valid_to.is.null,valid_to.gt."+now).limit(1);
+  .or("revoked_at.is.null,revoked_at.gt."+now).lte("valid_from",now).or("valid_to.is.null,valid_to.gt."+now).limit(1);
  if(grantError)return json({error:"permission_check_failed"},500);
  if(!grants?.length)return json({error:"permission_denied",required_permission:"stations.catalogue.review"},403);
  const payload=await req.json().catch(()=>({}));
