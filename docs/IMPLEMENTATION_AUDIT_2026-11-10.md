@@ -218,3 +218,12 @@ No SQL was applied, no hosted database was queried, and no legacy repository or 
 - These are prepared test cases, not executed test results. They require a disposable NEW METRA staging project, synthetic identities, and explicit staging authorization.
 - No SQL, migration, or live grant was applied; no legacy repository or database was accessed.
 
+
+
+### Authorization composition inconsistency — confirmed from source
+- The restored source migration 20261103025556_003_add_station_permission_check.sql defines metra_user_has_station_permission as a conjunction: an active account, approved/time-valid authority membership, approved/time-valid station assignment, active role, matching row in metra_role_permissions, and a matching approved/time-valid individual permission_grants row are all required.
+- Therefore, for station-scoped operations, a role permission alone is insufficient and an individual grant alone is also insufficient. Both are required.
+- In contrast, station-directory computes effective permissions as the UNION of role-derived permissions and individual grants. A direct grant alone can therefore satisfy the station-directory read check, even though it cannot satisfy metra_user_has_station_permission for station-scoped observation/assignment checks.
+- registration-approvals currently authorizes station/system review from individual permission_grants and applies separate station-assignment and workflow checks; it does not use the same role-permission conjunction as metra_user_has_station_permission.
+- This is a material policy inconsistency, not automatically a vulnerability: each endpoint has different semantics. The canonical intended model must be decided and documented before role seeds or direct grants are approved. The negative-test plan now explicitly tests direct-grant-only and role-only cases against each endpoint.
+- The station permission helper is SECURITY DEFINER, fixed search_path pg_catalog, public, schema-qualified table references, and explicit EXECUTE revoke from PUBLIC/anon/authenticated with EXECUTE granted to service_role. Its exact runtime ACL and owner still require catalog verification in approved staging.
