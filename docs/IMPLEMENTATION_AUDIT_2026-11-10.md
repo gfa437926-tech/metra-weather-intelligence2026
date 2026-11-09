@@ -88,3 +88,34 @@ A successful CI run is source/build evidence only. It does not establish a live 
 - The repository tree currently contains only the Flutter `web/` platform scaffold; no `android/` or `ios/` platform directories are present. Therefore native Android/iOS builds cannot yet be treated as available or validated.
 - No original reference screenshots or image assets are present in the repository tree. Pixel-level parity cannot be assessed from repository contents alone; approved reference screenshots must be supplied or located in the project artifacts.
 - The committed CI workflow builds only `flutter build web --release`; it does not run Android or iOS builds.
+
+
+## Full migration and Edge Function follow-up (2026-11-10)
+
+### Scope inspected
+- Inspected all 51 SQL migration files present in `supabase/migrations` and the 15 TypeScript files under `supabase/functions` (entry points, validation, permission helpers, and tests).
+- This is a source review of the current `main` tree only. No database connection was opened and no SQL was applied.
+
+### Confirmed defect: scheduled permission revocation was inconsistent
+- The registration decision transaction already treats a future `permission_grants.revoked_at` as effective until that timestamp.
+- The shared `metra_user_has_station_permission` SQL predicate instead required `revoked_at IS NULL`, which made a future-dated revocation take effect immediately for station operations, including observation create/review and assignment management.
+- The station-catalogue review transaction had the same immediate-revocation predicate.
+- The station-directory, registration-approvals, and station-review Edge Functions also filtered with `revoked_at IS NULL`, disagreeing with the documented scheduled-revocation semantics.
+- Source fixes committed:
+  - `supabase/migrations/20261110120000_honor_scheduled_permission_revocation.sql` updates the shared station permission predicate and station-review transaction, with exact-occurrence guards that abort rather than silently altering an unexpected function definition.
+  - `supabase/functions/station-directory/index.ts`
+  - `supabase/functions/registration-approvals/index.ts`
+  - `supabase/functions/station-review/index.ts`
+- The corrected rule is: a grant with `revoked_at IS NULL` or `revoked_at > now` remains valid; it ceases to be valid at or after its revocation timestamp.
+- This is a source change only. The new migration has not been applied to any hosted database.
+
+### Migration source-chain blocker
+- The current tree references `public.metra_role_permissions` from station authorization and role-seed migrations. The historically reported source migration `20261103162707_enforce_explicit_role_permission_allowlist.sql` remains absent, as does the following seed migration `20261103162738_seed_conservative_observation_role_permissions.sql`.
+- The missing allow-list migration is a dependency-critical source-recovery gap: the checked-in migration chain does not provide a verifiable creation/definition of that table and its constraints/policies in the current repository. Do not fabricate the historical source. Recover it from a trusted backup or original artifact before staging schema reconstruction.
+- The other four absent historical files also remain unrecovered. No substitutes were generated.
+
+### Remaining security/release gates
+- Wildcard CORS origins remain in the reviewed Edge Function entry points. Restrict them to the approved production/staging application origins once those exact origins are known; do not guess them.
+- Reconstructed SQL files remain unverified against byte-identical applied originals.
+- No deployed-secret inspection, authenticated staging test, or live permission test was performed.
+- CI must pass on the latest source commits before this review can be considered code-verified.
