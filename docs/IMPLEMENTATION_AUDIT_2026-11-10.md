@@ -82,3 +82,9 @@ A successful CI run is source/build evidence only. It does not establish a live 
 - The Edge Functions reviewed derive actor IDs from a verified Supabase Auth JWT before calling service-role RPCs. The service-role key is read from server environment and is not returned to Flutter. This is source inspection, not a live deployed-secret audit.
 - Remaining review caveats: reconstructed files are not proven byte-for-byte originals; the station-review RPC accepts an `occurred_at` parameter but records the database clock instead (appropriate for authoritative audit time, but the unused parameter should be documented or removed only through an approved forward migration); wildcard CORS origins remain in the reviewed Edge Functions and should be narrowed to approved application origins before production.
 - No SQL was applied, no migration was replayed, and no hosted project or legacy database was queried or modified in this follow-up.
+
+
+### Native platform and screenshot inventory
+- The repository tree currently contains only the Flutter `web/` platform scaffold; no `android/` or `ios/` platform directories are present. Therefore native Android/iOS builds cannot yet be treated as available or validated.
+- No original reference screenshots or image assets are present in the repository tree. Pixel-level parity cannot be assessed from repository contents alone; approved reference screenshots must be supplied or located in the project artifacts.
+- The committed CI workflow builds only `flutter build web --release`; it does not run Android or iOS builds.
