@@ -42,7 +42,7 @@ Deno.serve(async (request: Request) => {
   const { data: grants, error: grantsError } = await admin
     .from("permission_grants").select("permission_code")
     .eq("user_id", actorId).eq("approval_status", "approved")
-    .is("revoked_at", null).lte("valid_from", now)
+    .or("revoked_at.is.null,revoked_at.gt." + now).lte("valid_from", now)
     .or("valid_to.is.null,valid_to.gt." + now);
   if (grantsError) return json({ error: "permission_check_failed" }, 500);
   const permissions = new Set((grants ?? []).map((item) => String(item.permission_code)));
