@@ -43,9 +43,9 @@ A successful CI run is source/build evidence only. It does not establish a live 
 ## Migration source inventory review (2026-11-10)
 
 - Read the `main` branch `supabase/migrations` directory through GitHub's repository contents API.
-- Counted 51 SQL migration files; all filenames match `14-digit-version_description.sql` and all version prefixes are unique.
+- Counted 51 SQL migration files; all filenames begin with a unique 14-digit version prefix. Two filenames also contain a second 14-digit token in the descriptive portion, so those embedded values must not be mistaken for additional migration versions.
 - Read the Git commit history for that directory: 36 commits were returned, including commits explicitly restoring batches of applied station, identity, registration, observation, and audit migration sources.
-- This is repository-only evidence. The hosted migration ledger was not queried in this continuation, so no claim is made that all 57 historically applied versions now match the source tree.
+- This is repository-only evidence. The hosted migration ledger was not queried in this continuation, so no claim is made that all 57 historically applied versions now match the source tree. Exact SQL equivalence for reconstructed files, including any historical filename/version rename, remains unverified.
 - No migration was executed, edited, deleted, replayed, or applied.
 
 ## Protected boundaries
