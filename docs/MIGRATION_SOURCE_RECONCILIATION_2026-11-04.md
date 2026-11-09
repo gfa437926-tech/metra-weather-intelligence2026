@@ -22,34 +22,7 @@ None. The migration source filename was aligned with the database history in com
 
 The following six versions were listed as applied-but-missing in the 2026-11-04 database inventory and are still absent by filename from the current `main` branch:
 
-- `20261102154652_create_independent_station_catalogue.sql`
-- `20261102155101_index_station_catalogue_foreign_keys.sql`
-- `20261102155110_add_catalogue_integrity_triggers.sql`
-- `20261102155119_lock_station_catalogue_client_access.sql`
-- `20261102163034_enforce_station_temporal_integrity.sql`
-- `20261102165436_add_identity_membership_and_station_assignment.sql`
-- `20261102165505_lock_identity_tables_and_index_foreign_keys.sql`
-- `20261102165724_add_user_profile_and_align_account_lifecycle.sql`
-- `20261102165758_index_account_state_requester.sql`
-- `20261102171030_add_station_source_provenance_and_demo_flags.sql`
-- `20261102171037_support_unverified_station_operational_status.sql`
 - `20261102172226_create_provenance_preserving_observation_store.sql`
-- `20261102235913_create_registration_workflow_persistence.sql`
-- `20261102235937_add_atomic_registration_submission_rpc.sql`
-- `20261103000038_harden_registration_idempotency_checks.sql`
-- `20261103000332_provision_least_privilege_api_runtime_role.sql`
-- `20261103000835_add_atomic_two_stage_registration_approval.sql`
-- `20261103000914_grant_runtime_registration_queue_read.sql`
-- `20261103001045_harden_registration_approval_expected_state.sql`
-- `20261103001209_grant_runtime_registration_audit_read.sql`
-- `20261103001354_use_database_clock_for_registration_approval.sql`
-- `20261103001407_move_registration_submission_rpc_to_private_schema.sql`
-- `20261103001654_revoke_public_execute_from_approval_rpc.sql`
-- `20261103001743_drop_obsolete_registration_approval_rpc.sql`
-- `20261103001942_classify_existing_pending_registration_before_linked_account.sql`
-- `20261103002006_fix_pending_registration_replay_classification.sql`
-- `20261103010120_respect_scheduled_permission_revocation.sql`
-- `20261103010435_add_registration_foreign_key_indexes.sql`
 - `20261103122944_grant_runtime_station_coordinate_read.sql`
 - `20261103123005_link_membership_and_assignment_roles.sql`
 - `20261103123127_index_role_catalogue_foreign_keys.sql`
