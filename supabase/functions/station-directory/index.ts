@@ -83,7 +83,7 @@ Deno.serve(async (request: Request) => {
     .select("permission_code")
     .eq("user_id", userData.user.id)
     .eq("approval_status", "approved")
-    .is("revoked_at", null)
+    .or(`revoked_at.is.null,revoked_at.gt.${now}`)
     .lte("valid_from", now)
     .or(`valid_to.is.null,valid_to.gt.${now}`);
   if (grantError) return json({ error: "permission_grant_check_failed" }, 500);
