@@ -187,3 +187,34 @@ Keep the migration-chain blocker open until an exact trusted source is recovered
 - Verify function owner, proconfig/search_path, schema ACL/CREATE grants, and function ACLs from the final schema on the NEW METRA staging project after source recovery and approval.
 
 No SQL was applied, no hosted database was queried, and no legacy repository or database was accessed or modified during this review.
+
+
+## Permission-grant and authority-ceiling follow-up — 2026-11-10
+
+### Grant creation and approval path inventory
+- The restored identity foundation migration 20261102165436_add_identity_membership_and_station_assignment.sql creates permission_grants with target user, permission code, approval state, validity window, scheduled revocation, requester, approver, review timestamp, and reason.
+- The companion migration 20261102165505_lock_identity_tables_and_index_foreign_keys.sql enables deny policies for anon and authenticated, and the identity foundation grants table-level ALL to service_role.
+- The least-privilege runtime migration 20261103000332_provision_least_privilege_api_runtime_role.sql grants metra_api_runtime SELECT (not INSERT/UPDATE/DELETE) on permission_grants and adds a read policy. In the reviewed migration set, no permission-grant write/approval RPC or grantor-ceiling predicate was identified.
+- Checked-in Edge Functions reviewed in this pass include station-directory, observations, registration-approvals, and station-review. Their relevant permission-grant usage is read/evaluation; registration-approvals checks the actor's registrations.station.approve or registrations.system.approve grant. Guessed endpoints such as permission-grants, permission-management, user-management, and identity-admin were checked and do not exist at those paths.
+- Therefore, no complete permission-grant creation/approval route was located in the reviewed checked-in Edge Functions or migration sources. This is a repository-scope finding, not proof that no external ASP.NET service or unindexed artifact exists. The ASP.NET API source and deployment artifacts still need a separate inventory if they are part of this repository/deployment.
+- Because no grant-write transaction was located, no evidence currently proves that the grantor can only assign permissions within their own delegated ceiling. Direct table writes must remain unavailable to the runtime role until a reviewed transactional API is implemented. Do not grant broad write privileges as a workaround.
+
+### Role and authority findings
+- metra_role_catalogue is created by the registration workflow migration with is_requestable and is_active; the registration trigger and final system-stage decision check both flags before activating a requested role.
+- The two-stage registration decision uses explicit stage permissions, station assignment at the station stage, a different system reviewer, an approved active station/authority, and an active requestable role. It creates the station assignment atomically on final approval.
+- The station assignment RPC remains hard-limited to observer and station_auditor. It does not implement authority-level management-role assignment.
+- The source migration that creates metra_role_permissions, its integrity constraints/policies, and the conservative role-permission allow-list seed remains absent. The original source was not recovered in this pass. No role-permission table or seed was fabricated.
+- The six source-recovery candidates remain open; in particular 20261103162707_enforce_explicit_role_permission_allowlist.sql and 20261103162738_seed_conservative_observation_role_permissions.sql.
+
+### Security consequences and required controls
+1. Keep permission-grant writes closed to browser roles and to metra_api_runtime until an authenticated server-side transactional workflow is reviewed.
+2. The eventual grant transaction must validate the grantor's active account, approved and time-valid authority membership, exact resource/authority scope, and a permission-delegation ceiling. It must reject self-grant, self-approval, grantor/approver conflicts, unknown/inactive permission codes, and any grant above the actor's own explicitly delegable permissions.
+3. Role assignment must use an explicit role hierarchy/delegation matrix; do not infer authority from display labels, account activation, or a client-supplied role code.
+4. Direct permission grants and role-derived permissions must share the same canonical permission registry and must not allow arbitrary free-text permission codes to become effective.
+5. Preserve a separation-of-duties rule: requester, approver, and target must be compared in the database transaction, not trusted from the client.
+
+### Negative test implementation status
+- Added a separate staging acceptance matrix at docs/ROLE_AUTHORIZATION_NEGATIVE_TEST_PLAN.md.
+- These are prepared test cases, not executed test results. They require a disposable NEW METRA staging project, synthetic identities, and explicit staging authorization.
+- No SQL, migration, or live grant was applied; no legacy repository or database was accessed.
+
