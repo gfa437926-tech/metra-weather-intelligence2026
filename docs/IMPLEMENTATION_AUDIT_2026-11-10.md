@@ -141,3 +141,49 @@ A successful CI run is source/build evidence only. It does not establish a live 
 ### Recovery decision
 
 Keep the migration-chain blocker open until an exact trusted source is recovered. If that cannot be recovered, handle a future schema baseline as a separately named, explicitly reconstructed migration set after approval and catalog-level comparison on a disposable NEW METRA staging database. Do not silently substitute reconstructed SQL into historical migration versions.
+
+
+## Role authorization deep-dive — 2026-11-10
+
+### Evidence reviewed
+- Read the current station-directory, observations, registration-approvals, and station-review Edge Function sources and the station-directory permission helper.
+- Read the source migrations for observation review, station-catalogue review (including its later null-validation hardening), station-bound registration decisions, station assignment workflow, and station assignment revocation.
+- This is a source-only review of checked-in files and commit diffs. No hosted database, migration ledger, deployed Edge Function, or secret store was queried.
+
+### Permission provenance and effective permissions
+- station-directory derives the actor from auth.getUser(token) and requires an active metra_account_states row.
+- Role-derived permissions originate from approved, time-valid authority_memberships, are restricted to active metra_role_catalogue roles, and are then read from metra_role_permissions.
+- Individual permissions originate from approved permission_grants for the authenticated user, with valid_from <= now, valid_to IS NULL OR valid_to > now, and revoked_at IS NULL OR revoked_at > now.
+- The endpoint unions role permissions and individual grants. This is additive, not an intersection: an individual grant can add a permission not present in the user's role. The database-side grant-creation and approval workflow must therefore enforce the grantor's authority ceiling; that invariant is not proven by the files reviewed in this pass.
+- The two dependency-critical historical migrations that define/secure metra_role_permissions and seed its conservative allow-list remain absent from the checked-in migration chain. Consequently, the complete role-to-permission source of truth, constraints, RLS/ACL, and seed contents cannot yet be independently reconstructed or certified.
+
+### Station isolation and read/write/review boundaries
+- Observation entry is scoped to approved, active, non-demo station assignments. The Edge Function separately checks observation.create, observation.approve, and observation.return_for_correction for each station through metra_user_has_station_permission; submit and decision RPCs receive the authenticated actor ID and station ID, and the SQL decision function locks the observation by both observation ID and station ID.
+- Observation history returned by the Edge Function is split into the user's own records and reviewable submitted records for stations where the user has review permission. Self-review is excluded from the review queue.
+- Station-catalogue review requires the individual stations.catalogue.review grant in the Edge Function and again in the privileged SQL transaction. The transaction locks the target station and records an audit event.
+- Station assignment workflow is explicitly limited to assigning observer or station_auditor; it checks the actor's users.station.manage permission for the target station, requires an active station and authority, and requires the target user to hold an approved, time-valid membership in that authority. Approval is station-bound, rejects self-approval/requester approval, and records an audit event. This is a useful hard ceiling on this station-manager workflow.
+- The station directory endpoint, however, returns every non-demo station in the catalogue to a user with stations.read (or legacy alias station.read). That is a global catalogue-read permission, not station-scoped operational access. Confirm explicitly that all users assigned this permission are intended to see the full non-demo station directory; otherwise split global catalogue visibility from assigned-station visibility.
+- Registration approval queue logic scopes station-stage requests to the reviewer's approved station assignments. System-stage review is global for holders of registrations.system.approve and uses a separate prior station-approval audit event as a workflow gate. This is consistent with a deliberately global system-review role, but its assignment must be restricted to the intended authority tier.
+
+### SECURITY DEFINER, execution grants, and search_path
+- Reviewed privileged SQL functions use SECURITY DEFINER with explicit fixed search paths, typically pg_catalog, public, private (or pg_catalog, public); reviewed table references are schema-qualified.
+- Reviewed observation decision, station review, station-bound registration decision, and station assignment functions revoke execution from PUBLIC, anon, and authenticated, then grant execution to service_role. The private station-review implementation also revokes execution from service_role; only its public wrapper is executable by service_role.
+- Edge Functions validate the bearer token with Supabase Auth and derive actor IDs from the verified user object before making service-role RPC calls. The service-role key is read server-side. This supports the current trust boundary, but it is not a live deployed-secret or deployed-ACL verification.
+- A fixed search_path alone is not the complete SECURITY DEFINER sign-off. Still required: verify function owners, schema CREATE privileges, default privileges, exact EXECUTE ACLs after the full ordered migration chain, and that no untrusted role can create shadow objects in searched schemas. Those catalog-level checks cannot be performed from source files alone.
+
+### Findings and unresolved authorization gates
+1. HIGH-PRIORITY unresolved — grantor authority ceiling: role permissions and individual grants are combined additively. The reviewed source does not establish that a station manager, system administrator, or other grantor can only assign permissions at or below their own authority level. Locate and review the exact permission-grant/role-assignment write transactions before approving this workflow.
+2. HIGH-PRIORITY unresolved — role permission schema provenance: the missing metra_role_permissions creation/allow-list migration and seed migration prevent certification of role permission integrity and default-deny behavior.
+3. Policy confirmation required — global station directory: stations.read exposes the full non-demo catalogue; confirm this is intended for every role receiving it, distinct from station-bound operational data.
+4. Production hardening required — CORS: the reviewed Edge Function entry points still return Access-Control-Allow-Origin: *. Replace with exact approved application origins before production; do not guess the origin list.
+5. No end-to-end proof yet: no negative tests were run against staging for cross-station reads/writes, forged actor IDs, self-approval, expired/future-revoked grants, inactive roles, or grantor privilege escalation. CI unit tests do not substitute for these database-backed cases.
+
+### Required acceptance tests before approval
+- User assigned to station A cannot list, read, create, edit, submit, review, approve, return, or manage assignments for station B unless a separately approved global permission explicitly authorizes that action.
+- A grantor cannot grant a permission, role, authority membership, or station assignment exceeding their own delegated scope; test both direct-grant and role-derived paths.
+- A station manager cannot assign management, reviewer, system, or director roles through the station assignment RPC; cannot approve their own request; and cannot approve a request they submitted.
+- A role deactivation, membership expiry, grant expiry, and scheduled revocation each remove effective access at the correct instant.
+- PUBLIC, anon, and authenticated cannot execute privileged RPCs directly; only the intended server role can execute them.
+- Verify function owner, proconfig/search_path, schema ACL/CREATE grants, and function ACLs from the final schema on the NEW METRA staging project after source recovery and approval.
+
+No SQL was applied, no hosted database was queried, and no legacy repository or database was accessed or modified during this review.
