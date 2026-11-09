@@ -119,3 +119,11 @@ A successful CI run is source/build evidence only. It does not establish a live 
 - Reconstructed SQL files remain unverified against byte-identical applied originals.
 - No deployed-secret inspection, authenticated staging test, or live permission test was performed.
 - CI must pass on the latest source commits before this review can be considered code-verified.
+
+
+## CI follow-up — 2026-11-10
+
+- Rechecked workflow run `42704651926`: the single `analyze-test-build` job completed successfully and all 24 reported steps passed.
+- Passing steps include Deno type checks for Edge Functions, registration/approval/permission/payload/catalogue tests, Flutter dependency resolution, static analysis, Flutter tests, web release build, and artifact upload.
+- This confirms that run's CI pipeline is green. The GitHub Actions connector did not expose the run's `head_sha` in the returned job summary, so do not use this run alone to claim verification of a later commit unless its source SHA is independently matched.
+- No staging deployment or hosted database operation was performed. The migration source-chain blockers, wildcard CORS configuration, native Android/iOS validation, and authenticated staging acceptance remain open.
