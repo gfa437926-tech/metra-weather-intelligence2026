@@ -260,10 +260,10 @@ class _ObservationFormsCataloguePageState extends State<ObservationFormsCatalogu
           label: const Text('فحص اكتمال النموذج'),
         )),
         const SizedBox(height: 8),
-        const SizedBox(width: double.infinity, child: OutlinedButton.icon(
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(
           onPressed: null,
-          icon: Icon(Icons.save_outlined),
-          label: Text('حفظ / إرسال — ينتظر عقد API المعتمد'),
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('حفظ / إرسال — ينتظر عقد API المعتمد'),
         )),
         const SizedBox(height: 20),
       ]))),
