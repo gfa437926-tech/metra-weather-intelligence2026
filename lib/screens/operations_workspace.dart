@@ -259,7 +259,22 @@ class _ForecastOfficePageState extends State<ForecastOfficePage> {
   final formKey = GlobalKey<FormState>();
   String product = 'توقعات 24 ساعة', validity = '00–24 UTC';
   final area = TextEditingController(), synopsis = TextEditingController();
-  @override void dispose() { area.dispose(); synopsis.dispose(); super.dispose(); }
+  final issuedAt = TextEditingController(), validFrom = TextEditingController(), validTo = TextEditingController();
+  final minTemp = TextEditingController(), maxTemp = TextEditingController();
+  final rain = TextEditingController(), rainProbability = TextEditingController();
+  final windSpeed = TextEditingController(), windDirection = TextEditingController(), windGust = TextEditingController();
+  final visibility = TextEditingController(), cloudCover = TextEditingController(), phenomena = TextEditingController();
+  @override
+  void dispose() {
+    for (final controller in [
+      area, synopsis, issuedAt, validFrom, validTo, minTemp, maxTemp,
+      rain, rainProbability, windSpeed, windDirection, windGust, visibility,
+      cloudCover, phenomena,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) => _WorkspaceScaffold(title: 'مكتب المتنبئ', subtitle: 'إعداد منتجات التنبؤ ومراجعتها قبل الإصدار', child: Form(key: formKey, child: Column(children: [
     const _SourceStatus(title: 'مصادر التحليل', detail: 'لا توجد حالياً تغذية تشغيلية موثقة لخرائط التحليل أو النماذج العددية داخل هذه الشاشة.', connected: false),
