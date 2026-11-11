@@ -396,7 +396,7 @@ class ClimatolWorkspacePage extends StatefulWidget {
 }
 class _ClimatolWorkspacePageState extends State<ClimatolWorkspacePage> {
   String period = 'شهري', variable = 'درجة الحرارة';
-  int year = 2026;
+  String year = '';
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 4,
@@ -411,7 +411,7 @@ class _ClimatolWorkspacePageState extends State<ClimatolWorkspacePage> {
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(value: variable, decoration: const InputDecoration(labelText: 'العنصر المناخي', border: OutlineInputBorder()), items: const ['درجة الحرارة', 'الأمطار', 'الرطوبة', 'سرعة الرياح', 'الضغط الجوي', 'الرؤية', 'الغيوم'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => variable = v ?? variable)),
           const SizedBox(height: 10),
-          DropdownButtonFormField<int>(value: year, decoration: const InputDecoration(labelText: 'السنة', border: OutlineInputBorder()), items: [for (var y = 1900; y <= 2026; y++) y].map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(), onChanged: (v) => setState(() => year = v ?? year)),
+          TextFormField(keyboardType: TextInputType.number, maxLength: 4, onChanged: (v) => setState(() => year = v), decoration: const InputDecoration(labelText: 'السنة', hintText: 'YYYY', border: OutlineInputBorder())),
           const SizedBox(height: 10),
           const _InlineWarning(text: 'لا تُحسب مؤشرات أو قيم مناخية قبل اعتماد قاموس العناصر والوحدات والفترات الزمنية وقواعد القيم المفقودة من المسؤول العلمي.'),
         ])),
