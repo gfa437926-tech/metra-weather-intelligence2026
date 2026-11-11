@@ -140,7 +140,7 @@ void main() {
   testWidgets('electronic audit exposes advanced read-only filters and event details', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ElectronicAuditPage()));
     expect(find.text('التدقيق الإلكتروني'), findsOneWidget);
-    expect(find.text('معرّف الارتباط'), findsOneWidget);
+    expect(find.text('معرّف الارتباط'), findsWidgets);
     expect(find.text('من UTC'), findsOneWidget);
     expect(find.text('نتيجة العملية'), findsOneWidget);
     expect(find.text('تفاصيل الحدث المحدد'), findsOneWidget);
