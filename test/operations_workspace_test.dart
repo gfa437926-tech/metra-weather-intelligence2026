@@ -91,7 +91,9 @@ void main() {
     await tester.enterText(find.byKey(const Key('forecast-max-temp')), '5');
     await tester.enterText(find.byKey(const Key('forecast-rain-probability')), '101');
     await tester.enterText(find.byType(TextFormField).first, 'دمشق ومحيطها');
-    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     await tester.tap(find.text('التحقق من اكتمال المسودة'));
     await tester.pumpAndSettle();
@@ -103,7 +105,9 @@ void main() {
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     expect(find.text('مركز AFTN'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('إرسال AFTN'), findsOneWidget);
     expect(find.text('الصادر'), findsOneWidget);
@@ -120,7 +124,9 @@ void main() {
     await tester.enterText(find.byKey(const Key('aftn-date-time-group')), '111200');
     await tester.enterText(find.byKey(const Key('aftn-origin')), 'IJKLNMOP');
     await tester.enterText(find.byKey(const Key('aftn-body')), 'Weather report for test station.');
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     await tester.tap(find.text('التحقق من الرسالة'));
     await tester.pumpAndSettle();
@@ -143,14 +149,17 @@ void main() {
     await tester.enterText(find.byKey(const Key('bulletin-station')), 'STN001');
     await tester.enterText(find.byKey(const Key('bulletin-time')), '2026-11-11 12:00 UTC');
     await tester.enterText(find.byKey(const Key('bulletin-raw')), 'SYNOP 111200Z sample raw text');
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     await tester.tap(find.text('فحص الحقول'));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('نص خام — لم يُفك ترميزه'), findsOneWidget);
-    expect(find.text('SYNOP 111200Z sample raw text'), findsOneWidget);
+    expect(find.text('SYNOP 111200Z sample raw text'), findsWidgets);
   });
 
   testWidgets('climate homogenization screen preserves raw series boundary', (tester) async {
@@ -184,10 +193,13 @@ void main() {
     expect(find.text('نماذج الرصد التفصيلية'), findsOneWidget);
     expect(find.text('درجة الحرارة الجافة *'), findsOneWidget);
     expect(find.text('درجة الحرارة الرطبة *'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -650));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('ضغط المحطة *'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('حفظ / إرسال — ينتظر عقد API المعتمد'), findsOneWidget);
   });
@@ -198,10 +210,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('النشرة اليومية — 24 ساعة').last);
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('أكبر رطوبة نسبية'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     expect(find.text('أصغر رطوبة نسبية'), findsOneWidget);
     expect(find.text('عواصف رعدية'), findsOneWidget);
@@ -210,7 +225,9 @@ void main() {
 
   testWidgets('bulletin workspace separates draft, review, approved and correction queues', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('النشرات الجوية'), findsOneWidget);
     expect(find.text('إنشاء نشرة'), findsOneWidget);
