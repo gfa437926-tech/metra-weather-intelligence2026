@@ -51,7 +51,6 @@ void main() {
     expect(find.text('إرسال AFTN'), findsOneWidget);
     expect(find.text('لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.'), findsOneWidget);
   });
-}
 
   testWidgets('paper and mechanical audit screen exposes three-source review', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaperAndRecorderAuditPage()));
@@ -106,3 +105,4 @@ void main() {
     expect(find.text('عواصف رعدية'), findsOneWidget);
     expect(find.text('وقت أكبر نفحة UTC'), findsOneWidget);
   });
+}
