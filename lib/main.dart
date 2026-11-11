@@ -596,6 +596,12 @@ class _SignInPageState extends State<SignInPage> {
             textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
           TextButton(
             onPressed: busy ? null : () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ForgotPasswordPage(client: metraSupabaseClient!)),
+            ),
+            child: const Text('نسيت كلمة المرور؟'),
+          ),
+          TextButton(
+            onPressed: busy ? null : () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SignUpPage()),
             ),
             child: const Text('إنشاء حساب جديد'),
