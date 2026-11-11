@@ -354,7 +354,7 @@ class _ObservationsPageState extends State<ObservationsPage> {
             actions: [IconButton(
               tooltip: 'النماذج التفصيلية',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ObservationFormsCataloguePage())),
-              icon: const Icon(Icons.dynamic_form_outlined),
+              icon: const Icon(Icons.dynamic_form),
             )],
           ),
           body: const Center(child: Padding(
