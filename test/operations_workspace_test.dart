@@ -113,6 +113,24 @@ void main() {
     expect(find.text('لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.'), findsOneWidget);
   });
 
+  testWidgets('AFTN local preview is generated only after field validation and never sent', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
+    await tester.enterText(find.byKey(const Key('aftn-transmission-id')), 'ABC123');
+    await tester.enterText(find.byKey(const Key('aftn-destination')), 'ABCDEFGH');
+    await tester.enterText(find.byKey(const Key('aftn-date-time-group')), '111200');
+    await tester.enterText(find.byKey(const Key('aftn-origin')), 'IJKLNMOP');
+    await tester.enterText(find.byKey(const Key('aftn-body')), 'Weather report for test station.');
+    await tester.ensureVisible(find.text('التحقق من الرسالة'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('التحقق من الرسالة'));
+    await tester.pumpAndSettle();
+    expect(find.text('معاينة تركيبية محلية'), findsOneWidget);
+    expect(find.textContaining('ZCZC ABC123'), findsOneWidget);
+    expect(find.textContaining('NNNN'), findsWidgets);
+    final sendButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'إرسال AFTN'));
+    expect(sendButton.onPressed, isNull);
+  });
+
   testWidgets('paper and mechanical audit screen exposes three-source review', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaperAndRecorderAuditPage()));
     expect(find.text('تدقيق السجلات الورقية والآلية'), findsOneWidget);
