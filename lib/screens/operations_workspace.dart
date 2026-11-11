@@ -36,7 +36,10 @@ const workspaceModules = <WorkspaceModuleInfo>[
   WorkspaceModuleInfo(WorkspaceModule.settings, 'إعدادات الحساب', 'حالة الحساب وتفضيلات التطبيق وتسجيل الخروج', Icons.settings_outlined, 'الإدارة والحوكمة', 'إعدادات التطبيق'),
 ];
 
-bool isValidAftnAddress(String value) => RegExp('^[A-Z]{8}' + r'
+bool isValidAftnAddress(String value) {
+  final normalized = value.trim().toUpperCase();
+  return normalized.length == 8 && RegExp(r'^[A-Z]{8}').hasMatch(normalized);
+}
 bool isValidAftnPriority(String value) => const {'SS', 'DD', 'FF', 'GG', 'KK'}.contains(value.trim().toUpperCase());
 
 bool isValidLatitude(String value) {
