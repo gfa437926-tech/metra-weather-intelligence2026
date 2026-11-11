@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metra_weather_intelligence/screens/operations_workspace.dart';
+import 'package:metra_weather_intelligence/screens/observation_forms_catalogue_page.dart';
 
 void main() {
   test('workspace catalogue exposes the core METRA operational modules', () {
     final modules = workspaceModules.map((item) => item.module).toSet();
+    expect(modules, contains(WorkspaceModule.observationForms));
     expect(modules, contains(WorkspaceModule.forecastCenter));
     expect(modules, contains(WorkspaceModule.forecastOffice));
     expect(modules, contains(WorkspaceModule.bulletins));
@@ -63,4 +65,44 @@ void main() {
     expect(find.text('تجانس السلاسل المناخية'), findsOneWidget);
     expect(find.textContaining('تبقى السلسلة الخام محفوظة'), findsOneWidget);
     expect(find.text('نقاط الانقطاع'), findsOneWidget);
+  });
+
+  test('detailed observation catalogue contains distinct hourly, daily and synoptic forms', () {
+    expect(observationFormDefinitions.length, 12);
+    final hourly = observationFormDefinitions.singleWhere((item) => item.id == 'hourly');
+    expect(hourly.fields.map((field) => field.key), containsAll([
+      'dryTemp', 'wetTemp', 'stationPressure', 'seaLevelPressure',
+      'windDirection', 'windSpeed', 'visibility', 'currentWeather',
+      'pastWeather', 'cloud1Amount', 'cloud4Amount',
+    ]));
+    final daily = observationFormDefinitions.singleWhere((item) => item.id == 'daily');
+    expect(daily.fields.map((field) => field.key), containsAll([
+      'minTemp', 'maxTemp', 'precipitation', 'snowThickness',
+      'maxHumidity', 'minHumidity', 'maxGustSpeed', 'sunshineDuration',
+    ]));
+    expect(observationFormDefinitions.singleWhere((item) => item.id == 'synoptic06').title, contains('06:00 UTC'));
+    expect(observationFormDefinitions.singleWhere((item) => item.id == 'synoptic18').title, contains('18:00 UTC'));
+    final soil = observationFormDefinitions.singleWhere((item) => item.id == 'soil');
+    expect(soil.notes, contains('23، 02، 05، 08'));
+  });
+
+  testWidgets('detailed observation form exposes source-required hourly fields', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ObservationFormsCataloguePage()));
+    expect(find.text('نماذج الرصد التفصيلية'), findsOneWidget);
+    expect(find.text('درجة الحرارة الجافة *'), findsOneWidget);
+    expect(find.text('درجة الحرارة الرطبة *'), findsOneWidget);
+    expect(find.text('ضغط المحطة *'), findsOneWidget);
+    expect(find.text('حفظ / إرسال — ينتظر عقد API المعتمد'), findsOneWidget);
+  });
+
+  testWidgets('daily form switch exposes 24-hour humidity and phenomenon controls', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ObservationFormsCataloguePage()));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('النشرة اليومية — 24 ساعة').last);
+    await tester.pumpAndSettle();
+    expect(find.text('أكبر رطوبة نسبية'), findsOneWidget);
+    expect(find.text('أصغر رطوبة نسبية'), findsOneWidget);
+    expect(find.text('عواصف رعدية'), findsOneWidget);
+    expect(find.text('وقت أكبر نفحة UTC'), findsOneWidget);
   });
