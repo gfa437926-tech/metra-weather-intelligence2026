@@ -182,8 +182,9 @@ class WorkspaceModulePage extends StatelessWidget {
 }
 
 class ForecastCenterPage extends StatefulWidget {
-  const ForecastCenterPage({super.key, this.client});
+  const ForecastCenterPage({super.key, this.client, this.stationRecordsOverride});
   final SupabaseClient? client;
+  final List<StationRecord>? stationRecordsOverride;
   @override
   State<ForecastCenterPage> createState() => _ForecastCenterPageState();
 }
@@ -199,7 +200,11 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
   void initState() {
     super.initState();
     final client = widget.client;
-    if (client != null) stationsFuture = StationDirectoryService(client).fetchStations();
+    if (widget.stationRecordsOverride != null) {
+      stationsFuture = Future.value(widget.stationRecordsOverride);
+    } else if (client != null) {
+      stationsFuture = StationDirectoryService(client).fetchStations();
+    }
   }
 
   void _refreshStations() {
