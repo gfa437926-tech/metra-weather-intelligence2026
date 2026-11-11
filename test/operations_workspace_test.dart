@@ -8,8 +8,11 @@ void main() {
     expect(modules, contains(WorkspaceModule.forecastOffice));
     expect(modules, contains(WorkspaceModule.bulletins));
     expect(modules, contains(WorkspaceModule.electronicAudit));
+    expect(modules, contains(WorkspaceModule.paperAudit));
+    expect(modules, contains(WorkspaceModule.aiModelManagement));
     expect(modules, contains(WorkspaceModule.aftn));
     expect(modules, contains(WorkspaceModule.climatol));
+    expect(modules, contains(WorkspaceModule.homogenization));
     expect(modules, contains(WorkspaceModule.reports));
     expect(modules, contains(WorkspaceModule.userAccess));
     expect(modules, contains(WorkspaceModule.stationReview));
@@ -46,3 +49,17 @@ void main() {
     expect(find.text('لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.'), findsOneWidget);
   });
 }
+
+  testWidgets('paper and mechanical audit screen exposes three-source review', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: PaperAndRecorderAuditPage()));
+    expect(find.text('تدقيق السجلات الورقية والآلية'), findsOneWidget);
+    expect(find.text('مقارنة المصادر'), findsOneWidget);
+    expect(find.text('لا يتم تعديل الصورة أو السجل الأصلي.'), findsNothing);
+  });
+
+  testWidgets('climate homogenization screen preserves raw series boundary', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ClimateHomogenizationPage()));
+    expect(find.text('تجانس السلاسل المناخية'), findsOneWidget);
+    expect(find.textContaining('تبقى السلسلة الخام محفوظة'), findsOneWidget);
+    expect(find.text('نقاط الانقطاع'), findsOneWidget);
+  });
