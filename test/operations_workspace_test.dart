@@ -37,17 +37,40 @@ void main() {
     expect(isValidAftnPriority('XX'), isFalse);
   });
 
-  testWidgets('forecast center displays coordinate and altitude comparison controls', (tester) async {
+  test('forecast-centre coordinate and elevation validators reject invalid bounds', () {
+    expect(isValidLatitude('90'), isTrue);
+    expect(isValidLatitude('-90'), isTrue);
+    expect(isValidLatitude('90.01'), isFalse);
+    expect(isValidLatitude('north'), isFalse);
+    expect(isValidLongitude('180'), isTrue);
+    expect(isValidLongitude('-180'), isTrue);
+    expect(isValidLongitude('180.1'), isFalse);
+    expect(isValidElevationRange('10', '100'), isTrue);
+    expect(isValidElevationRange('100', '10'), isFalse);
+    expect(isValidElevationRange('low', '100'), isFalse);
+  });
+
+  testWidgets('forecast centre displays coordinate and altitude comparison controls', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ForecastCenterPage()));
     expect(find.text('مراكز التنبؤ الجوي'), findsOneWidget);
     expect(find.text('نطاق الارتفاع'), findsOneWidget);
-    expect(find.text('اتجاه الرياح'), findsOneWidget);
     expect(find.text('خط العرض من'), findsOneWidget);
     expect(find.text('خط الطول إلى'), findsOneWidget);
     expect(find.text('نافذة المقارنة الزمنية'), findsOneWidget);
     expect(find.text('الارتفاع من (م)'), findsOneWidget);
     expect(find.text('التحقق من حدود المقارنة'), findsOneWidget);
     expect(find.text('لا توجد قراءات لحظية متاحة'), findsOneWidget);
+  });
+
+  testWidgets('forecaster workspace exposes UTC validity and core forecast elements', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ForecastOfficePage()));
+    expect(find.text('مكتب المتنبئ'), findsOneWidget);
+    expect(find.text('وقت إصدار التوقع UTC'), findsOneWidget);
+    expect(find.text('بداية الصلاحية UTC'), findsOneWidget);
+    expect(find.text('نهاية الصلاحية UTC'), findsOneWidget);
+    expect(find.text('الهطول المتوقع مم'), findsOneWidget);
+    expect(find.text('اتجاه الرياح'), findsOneWidget);
+    expect(find.text('الظواهر الجوية المتوقعة'), findsOneWidget);
   });
 
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
@@ -120,7 +143,6 @@ void main() {
     expect(find.text('عواصف رعدية'), findsOneWidget);
     expect(find.text('وقت أكبر نفحة UTC'), findsOneWidget);
   });
-}
 
   testWidgets('bulletin workspace separates draft, review, approved and correction queues', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
@@ -131,7 +153,6 @@ void main() {
     expect(find.text('معادة للتصحيح'), findsOneWidget);
     expect(find.text('معاينة فك الترميز'), findsOneWidget);
   });
-}
 
   testWidgets('CLIMATOL workspace exposes CLIMAT, CLIMAT TEMP and statistics', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ClimatolWorkspacePage()));
@@ -140,31 +161,5 @@ void main() {
     expect(find.text('CLIMAT TEMP'), findsOneWidget);
     expect(find.text('الإحصاءات والتقارير'), findsOneWidget);
     expect(find.text('السنة'), findsOneWidget);
-  });
-}
-
-  test('forecast-centre coordinate and elevation range validators reject invalid bounds', () {
-    expect(isValidLatitude('90'), isTrue);
-    expect(isValidLatitude('-90'), isTrue);
-    expect(isValidLatitude('90.01'), isFalse);
-    expect(isValidLatitude('north'), isFalse);
-    expect(isValidLongitude('180'), isTrue);
-    expect(isValidLongitude('-180'), isTrue);
-    expect(isValidLongitude('180.1'), isFalse);
-    expect(isValidElevationRange('10', '100'), isTrue);
-    expect(isValidElevationRange('100', '10'), isFalse);
-    expect(isValidElevationRange('low', '100'), isFalse);
-  });
-}
-
-  testWidgets('forecaster workspace exposes UTC validity and core forecast elements', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ForecastOfficePage()));
-    expect(find.text('مكتب المتنبئ'), findsOneWidget);
-    expect(find.text('وقت إصدار التوقع UTC'), findsOneWidget);
-    expect(find.text('بداية الصلاحية UTC'), findsOneWidget);
-    expect(find.text('نهاية الصلاحية UTC'), findsOneWidget);
-    expect(find.text('الهطول المتوقع مم'), findsOneWidget);
-    expect(find.text('اتجاه الرياح'), findsOneWidget);
-    expect(find.text('الظواهر الجوية المتوقعة'), findsOneWidget);
   });
 }
