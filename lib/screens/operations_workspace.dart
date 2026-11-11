@@ -20,12 +20,12 @@ const workspaceModules = <WorkspaceModuleInfo>[
   WorkspaceModuleInfo(WorkspaceModule.bulletins, 'النشرات الجوية', 'النشرات الساعية واليومية والملخصات والرسائل المشفرة', Icons.description_outlined, 'التنبؤ والعمليات', 'واجهة إدخال ومراجعة'),
   WorkspaceModuleInfo(WorkspaceModule.alerts, 'التنبيهات الجوية', 'متابعة التحذيرات الرسمية وحالات الطقس المؤثرة', Icons.warning_amber_rounded, 'التنبؤ والعمليات', 'مصدر رسمي غير مربوط'),
   WorkspaceModuleInfo(WorkspaceModule.electronicAudit, 'سجل التدقيق الإلكتروني', 'تتبع التغييرات والقرارات وسجل المراجعة والأخطاء', Icons.fact_check_outlined, 'الجودة والرقابة', 'بانتظار ربط سجل التدقيق'),
-  WorkspaceModuleInfo(WorkspaceModule.paperAudit, 'تدقيق السجلات الورقية والآلية', 'مقارنة الدفاتر الورقية ومسجلات الأجهزة والرصد الإلكتروني', Icons.document_scanner_outlined, 'الجودة والرقابة', 'مراجعة بشرية إلزامية'),
-  WorkspaceModuleInfo(WorkspaceModule.aiModelManagement, 'إدارة نماذج الذكاء الاصطناعي', 'مكتبة الأجهزة والتدريب وإصدارات النماذج ودرجات الثقة', Icons.model_training_outlined, 'الجودة والرقابة', 'بيئة التدريب غير مهيأة'),
+  WorkspaceModuleInfo(WorkspaceModule.paperAudit, 'تدقيق السجلات الورقية والآلية', 'مقارنة الدفاتر الورقية ومسجلات الأجهزة والرصد الإلكتروني', Icons.document_scanner, 'الجودة والرقابة', 'مراجعة بشرية إلزامية'),
+  WorkspaceModuleInfo(WorkspaceModule.aiModelManagement, 'إدارة نماذج الذكاء الاصطناعي', 'مكتبة الأجهزة والتدريب وإصدارات النماذج ودرجات الثقة', Icons.model_training, 'الجودة والرقابة', 'بيئة التدريب غير مهيأة'),
   WorkspaceModuleInfo(WorkspaceModule.qualityControl, 'ضبط جودة البيانات', 'قواعد التحقق والتنبيهات والقيم الشاذة ومتابعة التصحيحات', Icons.rule_folder_outlined, 'الجودة والرقابة', 'قواعد الاعتماد مطلوبة'),
   WorkspaceModuleInfo(WorkspaceModule.aftn, 'مركز AFTN', 'إنشاء الرسائل الجوية ومراجعتها وتتبع حالة الإرسال والاستلام', Icons.send_outlined, 'الاتصالات والتوزيع', 'بوابة الإرسال غير مربوطة'),
   WorkspaceModuleInfo(WorkspaceModule.climatol, 'المناخ وCLIMATOL', 'تجميع السلاسل المناخية والتحقق منها وإعداد منتجات CLIMAT', Icons.stacked_line_chart, 'المناخ والإحصاء', 'بانتظار اعتماد القواعد العلمية'),
-  WorkspaceModuleInfo(WorkspaceModule.homogenization, 'تجانس السلاسل المناخية', 'كشف الانقطاعات ومقارنة المحطات المرجعية وإدارة السلاسل المصححة', Icons.timeline_outlined, 'المناخ والإحصاء', 'البيانات الخام محفوظة دون تعديل'),
+  WorkspaceModuleInfo(WorkspaceModule.homogenization, 'تجانس السلاسل المناخية', 'كشف الانقطاعات ومقارنة المحطات المرجعية وإدارة السلاسل المصححة', Icons.timeline, 'المناخ والإحصاء', 'البيانات الخام محفوظة دون تعديل'),
   WorkspaceModuleInfo(WorkspaceModule.reports, 'التقارير والإحصاء', 'التقارير اليومية والشهرية والسنوية ومؤشرات المحطات', Icons.assessment_outlined, 'المناخ والإحصاء', 'مصدر التقارير غير مربوط'),
   WorkspaceModuleInfo(WorkspaceModule.archive, 'الأرشيف المناخي', 'البحث في السجلات التاريخية ومراجعة اكتمال البيانات ومصدرها', Icons.inventory_2_outlined, 'المناخ والإحصاء', 'قراءة الأرشيف غير مفعلة'),
   WorkspaceModuleInfo(WorkspaceModule.userAccess, 'المستخدمون والصلاحيات', 'إدارة الهوية والأدوار والعضويات وتفويض الصلاحيات', Icons.admin_panel_settings_outlined, 'الإدارة والحوكمة', 'إدارة الصلاحيات مقيدة'),
@@ -637,19 +637,18 @@ class _AuditSourceTab extends StatefulWidget {
   State<_AuditSourceTab> createState() => _AuditSourceTabState();
 }
 class _AuditSourceTabState extends State<_AuditSourceTab> {
-  String station = '';
-  String date = '';
-  String notes = '';
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
     _Panel(title: 'بيانات المصدر', child: Column(children: [
+      Text('نوع المصدر: ${widget.sourceType}', style: const TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 12)),
+      const SizedBox(height: 6),
       Text(widget.details, style: const TextStyle(color: Colors.blueGrey, fontSize: 12, height: 1.5)),
       const SizedBox(height: 12),
-      TextField(onChanged: (v) => station = v, decoration: const InputDecoration(labelText: 'رمز المحطة من الدليل المعتمد', border: OutlineInputBorder())),
+      TextField(decoration: const InputDecoration(labelText: 'رمز المحطة من الدليل المعتمد', border: OutlineInputBorder())),
       const SizedBox(height: 10),
-      TextField(onChanged: (v) => date = v, decoration: const InputDecoration(labelText: 'تاريخ السجل / بداية الفترة (UTC)', border: OutlineInputBorder())),
+      TextField(decoration: const InputDecoration(labelText: 'تاريخ السجل / بداية الفترة (UTC)', border: OutlineInputBorder())),
       const SizedBox(height: 10),
-      TextField(onChanged: (v) => notes = v, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات وبيانات وصفية', border: OutlineInputBorder())),
+      TextField(maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات وبيانات وصفية', border: OutlineInputBorder())),
       const SizedBox(height: 12),
       const _SourceStatus(title: 'خدمة رفع الملفات', detail: 'لم يتم ربط التخزين الآمن أو خدمة استخراج القيم بعد. لا يمكن رفع ملفات فعلية من هذه الشاشة حالياً.', connected: false),
       const SizedBox(height: 12),
