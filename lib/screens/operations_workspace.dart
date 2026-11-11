@@ -733,11 +733,11 @@ class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
           ListView(padding: const EdgeInsets.only(top: 14), children: [
             _Panel(title: 'نوع النشرة', child: Wrap(spacing: 8, runSpacing: 8, children: [
               for (final item in ['نشرة ساعية', 'نشرة يومية', 'SYNOP', 'METAR', 'TAF', 'ملخص جوي'])
-                ChoiceChip(label: Text(item), selected: type == item, onSelected: (_) => setState(() => type = item)),
+                ChoiceChip(label: Text(item), selected: type == item, onSelected: (_) => setState(() { type = item; rawPreview = null; })),
             ])),
             const SizedBox(height: 12),
             _Panel(title: 'بيانات النشرة', child: Column(children: [
-              TextField(key: const Key('bulletin-station'), onChanged: (v) { stationCode = v; rawPreview = null; }, decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
+              TextField(key: const Key('bulletin-station'), onChanged: (v) => setState(() { stationCode = v; rawPreview = null; }), decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
               const SizedBox(height: 10),
               TextField(key: const Key('bulletin-time'), controller: reportTime, onChanged: (_) => setState(() => rawPreview = null), decoration: const InputDecoration(labelText: 'تاريخ ووقت الرصد UTC', hintText: 'YYYY-MM-DD HH:MM UTC', border: OutlineInputBorder())),
               const SizedBox(height: 10),
