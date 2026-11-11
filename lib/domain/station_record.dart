@@ -8,10 +8,11 @@ class StationRecord {
     required this.approvalStatus,
     this.latitude,
     this.longitude,
+    this.elevationM,
   });
 
   final String id, code, name, type, operationalStatus, approvalStatus;
-  final double? latitude, longitude;
+  final double? latitude, longitude, elevationM;
 
   bool get hasCoordinates =>
       latitude != null &&
@@ -82,6 +83,7 @@ class StationRecord {
       approvalStatus: text(json['approval_status'], 'pending'),
       latitude: number(json['latitude']),
       longitude: number(json['longitude']),
+      elevationM: number(json['elevation_m']),
     );
   }
 }

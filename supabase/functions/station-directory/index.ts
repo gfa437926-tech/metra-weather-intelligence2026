@@ -105,7 +105,7 @@ Deno.serve(async (request: Request) => {
   for (let offset = 0; includeStations; offset += pageSize) {
     const { data: page, error: stationError } = await admin
       .from("station_catalogue")
-      .select("id,local_station_code,name_ar,name_en,station_type,operational_status,approval_status,is_demo")
+      .select("id,local_station_code,name_ar,name_en,station_type,operational_status,approval_status,elevation_m,is_demo")
       .eq("is_demo", false)
       .order("name_ar", { ascending: true }).order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);

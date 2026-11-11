@@ -26,7 +26,7 @@ The web build is generated in `build/web`. GitHub Actions uploads a CI artifact 
 - The registration RPC wrappers are executable only by `service_role`, not `anon` or `authenticated`. The submission transaction pins the accepted terms version, uses database time, rejects non-requestable roles and demo/invalid-authority stations, and delegates to the private idempotent registration transaction. The approval Edge Function verifies the reviewer JWT before invoking the server-only decision RPC; the private transaction rechecks active account, direct grants, station assignment, and independent two-stage review.
 - Station data is fetched through the `station-directory` Edge Function.
 - The function verifies the user's JWT and requires `metra_account_states.account_state = active`.
-- It returns non-demo station catalogue records and their current valid coordinates.
+- It returns non-demo station catalogue records, their current valid coordinates, and the catalogue elevation field `elevation_m`.
 - Direct client access to protected tables remains denied by RLS.
 - The function uses the server-side `SUPABASE_SERVICE_ROLE_KEY`; it is never sent to Flutter.
 - Station type, approval state and operational state are displayed distinctly.
@@ -85,3 +85,36 @@ A successful CI run verifies source checks and produces a web artifact. It does 
 The station review transaction is applied to the METRA Supabase database under migration `20261104110000_secure_station_catalogue_review`. The public RPC is executable only by `service_role`; the Edge Function verifies the caller JWT, active METRA account, and explicit time-bounded review grant. Decisions are `approved`, `rejected`, or `changes_requested`, each with a reason of at least five characters.
 
 Catalogue approval is intentionally separate from operational verification/activation. Do not grant `stations.catalogue.review` until an authorized real reviewer has been identified and provisioned through the controlled identity process.
+
+
+## Flutter operational workspace — UI implementation
+
+The Flutter application uses a compact mobile navigation bar (home, map, stations, observations, work center). The work centre groups the METRA operational interfaces so the primary navigation does not become overcrowded.
+
+The current Flutter UI branch adds:
+- Forecast-centre station directory loading from the protected Edge Function, coordinate-bound filters, documented elevation filters, station type/search filters, station detail sheets, and explicit placeholders for rainfall, wind, pressure, temperature, humidity, visibility and bulletin detail. **Automatic live telemetry and bulletin ingestion are not connected.**
+- Detailed source-catalogue observation forms for standard hourly, daily 24-hour, separate 06:00/18:00 UTC synoptic reports, agricultural, rainfall, phenomena, soil temperature, equipment faults, telecommunications faults, and IT incidents. Source-required fields and UTC-only labels are represented; unsupported submission remains disabled.
+- Forecaster product preparation with UTC issue/validity windows and structured temperature, rainfall/probability, wind speed/direction/gust, visibility, cloud and phenomenon fields; local UTC, non-negative, probability and cross-field checks only.
+- Bulletin workspace with draft composition, review queue, approved queue, correction queue, UTC observation time and **raw-message preview only**. No decoded observation fields are claimed until the approved parser is connected.
+- Electronic audit search/filter shell with station, actor, object, correlation and UTC filters plus a read-only event-detail layout; the server ledger read service is not connected.
+- Paper and mechanical recorder audit workspace for original paper logs and Thermograph/Hygrograph/Barograph/Pluviograph traces, three-source comparison (paper/mechanical/electronic), confidence/review placeholders, and human approval roles.
+- AI device library, training-set governance, model-version and audit-report workspaces.
+- Climate homogenization workspace for time series, breakpoints, reference-station comparison, separate corrected series, climate normals, trends and geographic reporting.
+- AFTN workspace with compose, outbox, inbox, delivery/ACK tracking views, address/date-time/priority checks and a **local composition preview**. Actual transmission and final protocol framing remain disabled pending specification review and a reviewed gateway.
+- CLIMATOL/climate analysis setup with a scientific-approval gate.
+- Daily/monthly/annual report tabs with station/period/element/aggregation/export filters; report generation/export remains disabled until approved aggregation and data contracts exist.
+- User account, role and permission-domain workspaces; descriptive role names are not grantable permission codes.
+- Dedicated alert lifecycle, quality-control queue and climate-archive search screens with explicit no-source states.
+- Account password-recovery UI and access to existing station-review and two-stage registration-approval screens.
+
+**Integration truth:** this is an interface implementation, not a claim that every module is operational. Live station telemetry, official alerts, AFTN transport, climate series/CLIMATOL execution, audit-log reads, report aggregation, and permission-grant management still require reviewed service contracts and authorized sources. Screens show explicit disconnected/approval states rather than invented operational values. No database, schema, migration, secret, or legacy resource was changed.
+
+### Native mobile packaging gate
+
+The current repository tree does not yet contain `android/` or `ios/` platform projects. The current CI validates Flutter analysis/tests and the web release; it does not produce an Android APK/AAB or an iOS archive. Native scaffolding, an approved reverse-domain application identifier, signing/provisioning and platform-specific builds remain release gates. No package identifier, certificate or signing secret was invented or committed.
+
+### Interface and integration documentation
+
+- [Flutter interface coverage matrix](docs/FLUTTER_INTERFACE_COVERAGE.md)
+- [Forecast-centre UI and proposed data contract](docs/FORECAST_CENTRE_UI_AND_DATA_CONTRACT.md)
+- [Flutter implementation tracker](docs/FLUTTER_UI_IMPLEMENTATION_TRACKER.md)

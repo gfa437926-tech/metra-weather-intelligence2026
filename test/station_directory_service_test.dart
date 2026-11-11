@@ -9,12 +9,14 @@ void main() {
     'station_type': 'automatic',
     'approval_status': 'approved',
     'operational_status': 'active',
+    'elevation_m': 545.5,
   };
 
   test('parses every valid station row without dropping records', () {
     final rows = parseStationRows([station(), station(id: 'station-2')]);
     expect(rows, hasLength(2));
     expect(rows.map((row) => row.id), ['station-1', 'station-2']);
+    expect(rows.first.elevationM, 545.5);
     expect(() => rows.add(rows.first), throwsUnsupportedError);
   });
 

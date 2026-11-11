@@ -9,8 +9,7 @@ void main() {
     expect(find.text('الخريطة'), findsWidgets);
     expect(find.text('المحطات'), findsWidgets);
     expect(find.text('الرصد'), findsWidgets);
-    expect(find.text('التنبيهات'), findsWidgets);
-    expect(find.text('الإعدادات'), findsWidgets);
+    expect(find.text('مركز العمل'), findsWidgets);
   });
 
   testWidgets('observations page explains missing Supabase configuration', (tester) async {
