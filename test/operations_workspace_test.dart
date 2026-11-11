@@ -45,9 +45,14 @@ void main() {
     expect(isValidLongitude('180'), isTrue);
     expect(isValidLongitude('-180'), isTrue);
     expect(isValidLongitude('180.1'), isFalse);
+    expect(isValidLatitudeRange('-30', '60'), isTrue);
+    expect(isValidLatitudeRange('60', '-30'), isFalse);
+    expect(isValidLongitudeRange('-180', '180'), isTrue);
+    expect(isValidLongitudeRange('10', '181'), isFalse);
     expect(isValidElevationRange('10', '100'), isTrue);
     expect(isValidElevationRange('100', '10'), isFalse);
     expect(isValidElevationRange('low', '100'), isFalse);
+    expect(isValidElevationRange('10', ''), isFalse);
   });
 
   testWidgets('forecast centre displays coordinate and altitude comparison controls', (tester) async {
