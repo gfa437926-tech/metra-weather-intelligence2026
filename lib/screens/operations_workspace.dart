@@ -398,27 +398,38 @@ class _ClimatolWorkspacePageState extends State<ClimatolWorkspacePage> {
   String period = 'شهري', variable = 'درجة الحرارة';
   int year = 2026;
   @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'المناخ وCLIMATOL', subtitle: 'ضبط السلاسل المناخية والتحقق وإعداد المنتجات', child: Column(children: [
-    const _SourceStatus(title: 'مصدر السلاسل المناخية', detail: 'لم يتم ربط مستودع البيانات المناخية أو محرك CLIMATOL بهذه الواجهة.', connected: false),
-    const SizedBox(height: 14),
-    _Panel(title: 'إعداد مجموعة التحليل', child: Column(children: [
-      DropdownButtonFormField<String>(value: period, decoration: const InputDecoration(labelText: 'الفترة', border: OutlineInputBorder()), items: const ['يومي', 'شهري', 'سنوي'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => period = v ?? period)),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(value: variable, decoration: const InputDecoration(labelText: 'العنصر المناخي', border: OutlineInputBorder()), items: const ['درجة الحرارة', 'الأمطار', 'الرطوبة', 'سرعة الرياح', 'الضغط الجوي', 'الرؤية', 'الغيوم'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => variable = v ?? variable)),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<int>(value: year, decoration: const InputDecoration(labelText: 'السنة', border: OutlineInputBorder()), items: [for (var y = 2020; y <= 2026; y++) y].map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(), onChanged: (v) => setState(() => year = v ?? year)),
-      const SizedBox(height: 12),
-      const _InlineWarning(text: 'لا تُحسب مؤشرات أو قيم مناخية قبل اعتماد قاموس العناصر والوحدات والفترات الزمنية وقواعد القيم المفقودة من المسؤول العلمي.'),
-      const SizedBox(height: 12),
-      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.play_arrow), label: const Text('تشغيل التحليل المناخي'))),
-    ])),
-    const SizedBox(height: 14),
-    _Panel(title: 'معاينة مهمة التحليل', child: Column(children: [
-      _KeyValue(label: 'الفترة', value: period), _KeyValue(label: 'العنصر', value: variable), _KeyValue(label: 'السنة', value: '$year'),
-      const Divider(),
-      const _EmptyState(icon: Icons.query_stats, title: 'لا توجد نتائج تحليل', message: 'بعد اعتماد التعاريف وربط البيانات ستظهر نسبة الاكتمال والفحوصات والسلاسل المقبولة والمرفوضة ومخرجات CLIMAT.'),
-    ])),
-  ]));
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'المناخ وCLIMATOL',
+      subtitle: 'السلاسل المناخية والمنتجات القياسية والإحصاءات',
+      child: Column(children: [
+        const _SourceStatus(title: 'مصدر السلاسل المناخية', detail: 'لم يتم ربط مستودع البيانات المناخية أو محرك CLIMATOL بهذه الواجهة.', connected: false),
+        const SizedBox(height: 12),
+        _Panel(title: 'إعداد مجموعة التحليل', child: Column(children: [
+          DropdownButtonFormField<String>(value: period, decoration: const InputDecoration(labelText: 'الفترة', border: OutlineInputBorder()), items: const ['يومي', 'شهري', 'فصلي', 'سنوي'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => period = v ?? period)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(value: variable, decoration: const InputDecoration(labelText: 'العنصر المناخي', border: OutlineInputBorder()), items: const ['درجة الحرارة', 'الأمطار', 'الرطوبة', 'سرعة الرياح', 'الضغط الجوي', 'الرؤية', 'الغيوم'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => variable = v ?? variable)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<int>(value: year, decoration: const InputDecoration(labelText: 'السنة', border: OutlineInputBorder()), items: [for (var y = 1900; y <= 2026; y++) y].map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(), onChanged: (v) => setState(() => year = v ?? year)),
+          const SizedBox(height: 10),
+          const _InlineWarning(text: 'لا تُحسب مؤشرات أو قيم مناخية قبل اعتماد قاموس العناصر والوحدات والفترات الزمنية وقواعد القيم المفقودة من المسؤول العلمي.'),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'السلاسل والتحقق'), Tab(text: 'CLIMAT'), Tab(text: 'CLIMAT TEMP'), Tab(text: 'الإحصاءات والتقارير'),
+        ]),
+        SizedBox(height: 610, child: TabBarView(children: [
+          _ClimatePanelTab(title: 'السلاسل المناخية والتحقق', message: 'عرض بيانات المحطة حسب الفترة والعنصر، نسبة الاكتمال، القيم المفقودة، أعلام الجودة، وسجل مصادر كل قيمة.', icon: Icons.table_chart_outlined),
+          _ClimatePanelTab(title: 'منتج CLIMAT', message: 'إعداد وفحص رسالة CLIMAT الشهرية مع قاموس الرموز والقيم والفترة المرجعية وفق مواصفة WMO المعتمدة.', icon: Icons.description_outlined),
+          _ClimatePanelTab(title: 'منتج CLIMAT TEMP', message: 'إعداد وفحص رسالة CLIMAT TEMP للسلاسل الحرارية مع توثيق المحطة والفترة والوحدات ومراجعة الجودة.', icon: Icons.thermostat_outlined),
+          _ClimatePanelTab(title: 'المعدلات والمؤشرات المناخية', message: 'تحليل يومي وشهري وفصلي وسنوي للأمطار والحرارة والرياح والرطوبة، والمعدلات والمجاميع والمؤشرات والاتجاهات والمقارنة الجغرافية والتقارير.', icon: Icons.assessment_outlined),
+        ])),
+        const SizedBox(height: 10),
+        Text('المعايير المحددة: $period • $variable • $year', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+      ]),
+    ),
+  );
 }
 
 class ReportsWorkspacePage extends StatelessWidget {
