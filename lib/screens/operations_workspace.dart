@@ -811,6 +811,7 @@ class ElectronicAuditPage extends StatefulWidget {
 
 class _ElectronicAuditPageState extends State<ElectronicAuditPage> {
   String status = 'الكل', outcome = 'الكل', entityType = 'الكل';
+  String? appliedSummary;
   final query = TextEditingController();
   final stationCode = TextEditingController();
   final actorId = TextEditingController();
@@ -895,11 +896,28 @@ class _ElectronicAuditPageState extends State<ElectronicAuditPage> {
         Row(children: [
           Expanded(child: TextButton.icon(onPressed: _clearFilters, icon: const Icon(Icons.filter_alt_off), label: const Text('مسح المرشحات'))),
           Expanded(child: OutlinedButton.icon(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تجهيز المرشحات محلياً؛ لا يوجد مصدر سجل متصل بعد.'))),
+            onPressed: () {
+              final criteria = <String>[
+                if (query.text.trim().isNotEmpty) 'بحث: ${query.text.trim()}',
+                if (stationCode.text.trim().isNotEmpty) 'محطة: ${stationCode.text.trim()}',
+                if (actorId.text.trim().isNotEmpty) 'منفذ: ${actorId.text.trim()}',
+                if (entityId.text.trim().isNotEmpty) 'سجل: ${entityId.text.trim()}',
+                if (correlationId.text.trim().isNotEmpty) 'ارتباط: ${correlationId.text.trim()}',
+                if (fromUtc.text.trim().isNotEmpty) 'من: ${fromUtc.text.trim()}',
+                if (toUtc.text.trim().isNotEmpty) 'إلى: ${toUtc.text.trim()}',
+                'إجراء: $status', 'نتيجة: $outcome', 'كائن: $entityType',
+              ];
+              setState(() => appliedSummary = criteria.join(' • '));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تجهيز المرشحات محلياً؛ لا يوجد مصدر سجل متصل بعد.')));
+            },
             icon: const Icon(Icons.search),
             label: const Text('تطبيق المرشحات'),
           )),
         ]),
+        if (appliedSummary != null) Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text('المعايير المحددة: ' + appliedSummary!, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+        ),
       ])),
       const SizedBox(height: 14),
       _Panel(title: 'سجل الأحداث', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1105,6 +1123,7 @@ class _ReportsWorkspacePageState extends State<ReportsWorkspacePage> {
   final fromUtc = TextEditingController();
   final toUtc = TextEditingController();
   String element = 'درجة الحرارة', aggregation = 'يومي', output = 'PDF';
+  String? criteriaPreview;
 
   @override
   void dispose() {
@@ -1158,6 +1177,22 @@ class _ReportsWorkspacePageState extends State<ReportsWorkspacePage> {
             )),
           ]),
           const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: () => setState(() => criteriaPreview = [
+              'المحطة: ' + (stationCode.text.trim().isEmpty ? 'الكل' : stationCode.text.trim()),
+              'الفترة: ' + fromUtc.text.trim() + ' — ' + toUtc.text.trim(),
+              'العنصر: ' + element,
+              'التجميع: ' + aggregation,
+              'الصيغة: ' + output,
+            ].join(' • ')),
+            icon: const Icon(Icons.preview_outlined),
+            label: const Text('معاينة معايير التقرير'),
+          )),
+          if (criteriaPreview != null) Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(criteriaPreview!, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+          ),
+          const SizedBox(height: 8),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: null,
             icon: const Icon(Icons.assessment_outlined),
@@ -1312,6 +1347,7 @@ class _AlertsWorkspacePageState extends State<AlertsWorkspacePage> {
   final fromUtc = TextEditingController();
   final toUtc = TextEditingController();
   String severity = 'كل الدرجات', type = 'كل الظواهر';
+  String? appliedSummary;
   @override
   void dispose() { search.dispose(); area.dispose(); fromUtc.dispose(); toUtc.dispose(); super.dispose(); }
 
@@ -1350,6 +1386,13 @@ class _AlertsWorkspacePageState extends State<AlertsWorkspacePage> {
             const SizedBox(width: 8),
             Expanded(child: TextField(controller: toUtc, decoration: const InputDecoration(labelText: 'الصلاحية إلى UTC', hintText: 'YYYY-MM-DD HH:MM', border: OutlineInputBorder()))),
           ]),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => appliedSummary = 'بحث: ' + search.text.trim() + ' • منطقة: ' + area.text.trim() + ' • الظاهرة: ' + type + ' • التأثير: ' + severity + ' • الصلاحية: ' + fromUtc.text.trim() + ' — ' + toUtc.text.trim()),
+            icon: const Icon(Icons.filter_alt),
+            label: const Text('تطبيق المرشحات'),
+          ),
+          if (appliedSummary != null) Text(appliedSummary!, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
         ])),
         const SizedBox(height: 12),
         const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
@@ -1385,6 +1428,7 @@ class _QualityControlWorkspacePageState extends State<QualityControlWorkspacePag
   final station = TextEditingController();
   final element = TextEditingController();
   String ruleGroup = 'كل القواعد', severity = 'كل الدرجات';
+  String? appliedSummary;
   @override
   void dispose() { station.dispose(); element.dispose(); super.dispose(); }
 
@@ -1417,6 +1461,13 @@ class _QualityControlWorkspacePageState extends State<QualityControlWorkspacePag
                 .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: (value) => setState(() => severity = value ?? severity),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => appliedSummary = 'محطة: ' + station.text.trim() + ' • العنصر: ' + element.text.trim() + ' • القواعد: ' + ruleGroup + ' • الدرجة: ' + severity),
+            icon: const Icon(Icons.filter_alt),
+            label: const Text('تطبيق المرشحات'),
+          ),
+          if (appliedSummary != null) Text(appliedSummary!, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
         ])),
         const SizedBox(height: 12),
         const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
@@ -1455,6 +1506,7 @@ class _ClimateArchivePageState extends State<ClimateArchivePage> {
   final fromUtc = TextEditingController();
   final toUtc = TextEditingController();
   String recordType = 'كل الأنواع', source = 'كل المصادر';
+  String? appliedSummary;
   @override
   void dispose() { station.dispose(); query.dispose(); fromUtc.dispose(); toUtc.dispose(); super.dispose(); }
 
@@ -1493,6 +1545,13 @@ class _ClimateArchivePageState extends State<ClimateArchivePage> {
                 .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
             onChanged: (value) => setState(() => source = value ?? source),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => appliedSummary = 'بحث: ' + query.text.trim() + ' • محطة: ' + station.text.trim() + ' • النوع: ' + recordType + ' • المصدر: ' + source + ' • الفترة: ' + fromUtc.text.trim() + ' — ' + toUtc.text.trim()),
+            icon: const Icon(Icons.filter_alt),
+            label: const Text('تطبيق المرشحات'),
+          ),
+          if (appliedSummary != null) Text(appliedSummary!, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
         ])),
         const SizedBox(height: 12),
         const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
