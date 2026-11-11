@@ -818,6 +818,25 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
   final origin = TextEditingController(), destination = TextEditingController(), body = TextEditingController();
   final transmissionId = TextEditingController(), additionalService = TextEditingController(), dateTimeGroup = TextEditingController(), optionalHeading = TextEditingController();
   String priority = 'GG';
+
+  String? localPreview;
+
+  void _invalidatePreview() {
+    if (localPreview != null) setState(() => localPreview = null);
+  }
+
+  String _composeLocalPreview() {
+    final header = <String>[
+      'ZCZC ' + transmissionId.text.trim().toUpperCase(),
+      if (additionalService.text.trim().isNotEmpty) additionalService.text.trim(),
+      priority,
+      destination.text.trim().toUpperCase(),
+      dateTimeGroup.text.trim(),
+      origin.text.trim().toUpperCase(),
+      if (optionalHeading.text.trim().isNotEmpty) optionalHeading.text.trim(),
+    ].join(' ');
+    return [header, body.text.trim(), 'NNNN'].join('\\n');
+  }
   @override
   void dispose() { origin.dispose(); destination.dispose(); body.dispose(); transmissionId.dispose(); additionalService.dispose(); dateTimeGroup.dispose(); optionalHeading.dispose(); super.dispose(); }
 
@@ -837,34 +856,43 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
           Form(key: formKey, child: ListView(padding: const EdgeInsets.only(top: 14), children: [
             _Panel(title: 'ترويسة الرسالة', child: Column(children: [
               const _KeyValue(label: 'بداية الرسالة', value: 'ZCZC'),
-              TextFormField(controller: transmissionId, textCapitalization: TextCapitalization.characters, maxLength: 6, decoration: const InputDecoration(labelText: 'معرّف الإرسال (3 أحرف + 3 أرقام)', border: OutlineInputBorder()), validator: (v) => isValidAftnTransmissionId(v ?? '') ? null : 'الصيغة المطلوبة 3 أحرف لاتينية ثم 3 أرقام'),
+              TextFormField(key: const Key('aftn-transmission-id'), controller: transmissionId, onChanged: (_) => _invalidatePreview(), textCapitalization: TextCapitalization.characters, maxLength: 6, decoration: const InputDecoration(labelText: 'معرّف الإرسال (3 أحرف + 3 أرقام)', border: OutlineInputBorder()), validator: (v) => isValidAftnTransmissionId(v ?? '') ? null : 'الصيغة المطلوبة 3 أحرف لاتينية ثم 3 أرقام'),
               const SizedBox(height: 8),
-              TextFormField(controller: additionalService, maxLength: 11, decoration: const InputDecoration(labelText: 'مؤشر الخدمة الإضافية (اختياري، حتى 11 محرفاً)', border: OutlineInputBorder())),
+              TextFormField(controller: additionalService, onChanged: (_) => _invalidatePreview(), maxLength: 11, decoration: const InputDecoration(labelText: 'مؤشر الخدمة الإضافية (اختياري، حتى 11 محرفاً)', border: OutlineInputBorder())),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'مؤشر الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
+              DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'مؤشر الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() { priority = v ?? 'GG'; localPreview = null; })),
               const SizedBox(height: 8),
-              TextFormField(controller: destination, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المستلم (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              TextFormField(key: const Key('aftn-destination'), controller: destination, onChanged: (_) => _invalidatePreview(), textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المستلم (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
               const SizedBox(height: 8),
-              TextFormField(controller: dateTimeGroup, maxLength: 6, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'مجموعة اليوم/الوقت DDHHMM (UTC)', border: OutlineInputBorder()), validator: (v) => isValidAftnDateTimeGroup(v ?? '') ? null : 'أدخل DDHHMM صالحاً بتوقيت UTC'),
+              TextFormField(key: const Key('aftn-date-time-group'), controller: dateTimeGroup, onChanged: (_) => _invalidatePreview(), maxLength: 6, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'مجموعة اليوم/الوقت DDHHMM (UTC)', border: OutlineInputBorder()), validator: (v) => isValidAftnDateTimeGroup(v ?? '') ? null : 'أدخل DDHHMM صالحاً بتوقيت UTC'),
               const SizedBox(height: 8),
-              TextFormField(controller: origin, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المنشئ (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              TextFormField(key: const Key('aftn-origin'), controller: origin, onChanged: (_) => _invalidatePreview(), textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المنشئ (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
               const SizedBox(height: 8),
-              TextFormField(controller: optionalHeading, decoration: const InputDecoration(labelText: 'معلومات ترويسة اختيارية', border: OutlineInputBorder())),
+              TextFormField(controller: optionalHeading, onChanged: (_) => _invalidatePreview(), decoration: const InputDecoration(labelText: 'معلومات ترويسة اختيارية', border: OutlineInputBorder())),
               const _KeyValue(label: 'نهاية الرسالة', value: 'NNNN'),
             ])),
             const SizedBox(height: 12),
             _Panel(title: 'محتوى الرسالة', child: Column(children: [
-              TextFormField(controller: body, minLines: 8, maxLines: 12, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
+              TextFormField(key: const Key('aftn-body'), controller: body, minLines: 8, maxLines: 12, onChanged: (_) => setState(() { localPreview = null; }), decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerLeft, child: Text(body.text.length.toString() + ' حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
               const SizedBox(height: 10),
               const _InlineWarning(text: 'التحقق هنا شكلي ومحلي فقط؛ لا يثبت صحة التوجيه أو قبول الرسالة من شبكة AFTN.'),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: OutlinedButton(onPressed: () { if (formKey.currentState!.validate()) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اجتازت الرسالة فحص الحقول المحلي فقط.'))); } }, child: const Text('التحقق من الرسالة'))),
+                Expanded(child: OutlinedButton(onPressed: () { if (formKey.currentState!.validate()) { setState(() => localPreview = _composeLocalPreview()); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء معاينة محلية فقط؛ لم يتم الإرسال.'))); } }, child: const Text('التحقق من الرسالة'))),
                 const SizedBox(width: 8),
                 Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.send), label: const Text('إرسال AFTN'))),
               ]),
+            ])),
+            const SizedBox(height: 12),
+            _Panel(title: 'معاينة تركيبية محلية', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (localPreview == null)
+                const _EmptyState(icon: Icons.preview_outlined, title: 'لا توجد معاينة بعد', message: 'أكمل الحقول ثم نفّذ التحقق المحلي. هذه المعاينة لا تعتمد الصيغة النهائية ولا تتصل ببوابة AFTN.' )
+              else
+                SelectableText(localPreview!, style: const TextStyle(color: _ink, fontFamily: 'monospace', height: 1.6)),
+              const SizedBox(height: 8),
+              const _InlineWarning(text: 'المعاينة لتجميع الحقول فقط. اعتماد بنية الرسالة النهائية والتوجيه والتسليم يتطلب مراجعة مواصفة AFTN وربط البوابة.'),
             ])),
           ])),
           const _AftnQueueTab(title: 'قائمة الرسائل الصادرة', detail: 'تظهر الرسائل التي أنشأها المستخدم وحالة الفحص والاعتماد والتوجيه، مع إمكانية فتح الترويسة والنص وسجل المحاولات.'),
