@@ -64,7 +64,8 @@ void main() {
     expect(find.text('نافذة المقارنة الزمنية'), findsOneWidget);
     expect(find.text('الارتفاع من (م)'), findsOneWidget);
     expect(find.text('التحقق من حدود المقارنة'), findsOneWidget);
-    expect(find.text('لا توجد قراءات لحظية متاحة'), findsOneWidget);
+    expect(find.text('دليل المحطات غير مهيأ'), findsOneWidget);
+    expect(find.text('تحديد المنطقة عبر نطاق الإحداثيات الجغرافية (درجات عشرية)'), findsOneWidget);
   });
 
   testWidgets('forecaster workspace exposes UTC validity and core forecast elements', (tester) async {
@@ -81,6 +82,8 @@ void main() {
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     expect(find.text('مركز AFTN'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('إرسال AFTN'), 350, scrollable: find.byType(ListView).first);
+    await tester.pumpAndSettle();
     expect(find.text('إرسال AFTN'), findsOneWidget);
     expect(find.text('الصادر'), findsOneWidget);
     expect(find.text('الوارد'), findsOneWidget);
@@ -127,9 +130,11 @@ void main() {
     expect(find.text('نماذج الرصد التفصيلية'), findsOneWidget);
     expect(find.text('درجة الحرارة الجافة *'), findsOneWidget);
     expect(find.text('درجة الحرارة الرطبة *'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -520));
+    await tester.scrollUntilVisible(find.text('ضغط المحطة *'), 350, scrollable: find.byType(ListView).first);
     await tester.pumpAndSettle();
     expect(find.text('ضغط المحطة *'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('حفظ / إرسال — ينتظر عقد API المعتمد'), 350, scrollable: find.byType(ListView).first);
+    await tester.pumpAndSettle();
     expect(find.text('حفظ / إرسال — ينتظر عقد API المعتمد'), findsOneWidget);
   });
 
@@ -139,10 +144,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('النشرة اليومية — 24 ساعة').last);
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -620));
+    await tester.scrollUntilVisible(find.text('أكبر رطوبة نسبية'), 350, scrollable: find.byType(ListView).first);
     await tester.pumpAndSettle();
     expect(find.text('أكبر رطوبة نسبية'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -250));
+    await tester.scrollUntilVisible(find.text('أصغر رطوبة نسبية'), 350, scrollable: find.byType(ListView).first);
     await tester.pumpAndSettle();
     expect(find.text('أصغر رطوبة نسبية'), findsOneWidget);
     expect(find.text('عواصف رعدية'), findsOneWidget);
@@ -151,6 +156,8 @@ void main() {
 
   testWidgets('bulletin workspace separates draft, review, approved and correction queues', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
+    await tester.scrollUntilVisible(find.text('معاينة فك الترميز'), 350, scrollable: find.byType(ListView).first);
+    await tester.pumpAndSettle();
     expect(find.text('النشرات الجوية'), findsOneWidget);
     expect(find.text('إنشاء نشرة'), findsOneWidget);
     expect(find.text('بانتظار المراجعة'), findsOneWidget);
