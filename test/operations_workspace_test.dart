@@ -157,9 +157,9 @@ void main() {
       destination: 'abcdefgh', dateTimeGroup: '111200', origin: 'ijklmnop',
       optionalHeading: 'TEST', body: 'Weather report body',
     );
-    expect(preview.split('\\n').first, contains('ZCZC ABC123'));
+    expect(preview.startsWith('ZCZC ABC123'), isTrue);
     expect(preview, contains('GG ABCDEFGH 111200 IJKLMNOP TEST'));
-    expect(preview.split('\\n').last, 'NNNN');
+    expect(preview.endsWith('NNNN'), isTrue);
   });
 
   testWidgets('electronic audit exposes advanced read-only filters and event details', (tester) async {
