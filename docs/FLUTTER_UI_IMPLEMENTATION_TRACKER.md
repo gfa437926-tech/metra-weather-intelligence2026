@@ -71,3 +71,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Corrected AFTN address shape validation to eight Latin letters (ICAO address indicator); tests use generic non-operational strings, not invented station addresses.
 - Added widget coverage for the new forecast coordinate/time filters and AFTN tabs.
 - UTC: 2026-11-11T12:57:19.420Z.
+
+
+## Follow-up round — bulletin review workflow (2026-11-11T12:58:30.486Z UTC)
+
+- Split the bulletin interface into create/draft, pending review, approved, and returned-for-correction tabs.
+- Added station, observation UTC date/time, message text, and decoded-message preview areas.
+- Local completeness check is limited to required UI fields; saving, transmitting, and approval remain server-only and disabled until the bulletin contract and audit trail are approved.
+- Added widget test for the four bulletin workflow states.
