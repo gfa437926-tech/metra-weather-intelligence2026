@@ -62,3 +62,12 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Rendered source-required fields, grouped field labels, units, boolean controls, known fixed choice lists, UTC date/time hints, and source-specific conditional notes.
 - The catalogue is a UI/domain field inventory only. It does not claim server validation, scientific limit approval, persistence or API support. Save/send remain disabled because the current observation Edge Function accepts only its narrow generic payload keys; sending these extended fields would be rejected or silently unsupported.
 - Added tests for catalogue coverage, key hourly/daily fields, UTC synoptic variants and screen rendering.
+
+
+## Follow-up round — forecast centre coordinates and AFTN workflow (2026-11-11T12:57:19.420Z UTC)
+
+- Expanded forecast-centre filters to include decimal latitude/longitude bounds, elevation band, region and time windows (10 minutes, 1/3/6/24 hours), with metric slots for rainfall accumulation, wind speed/direction/gust, temperature/dew point, pressure, humidity, visibility and clouds.
+- Expanded AFTN workspace to separate compose, outbox, inbox, and delivery/ACK tracking tabs. Transmission remains disabled without a reviewed gateway.
+- Corrected AFTN address shape validation to eight Latin letters (ICAO address indicator); tests use generic non-operational strings, not invented station addresses.
+- Added widget coverage for the new forecast coordinate/time filters and AFTN tabs.
+- UTC: 2026-11-11T12:57:19.420Z.
