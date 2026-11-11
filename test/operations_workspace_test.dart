@@ -138,6 +138,21 @@ void main() {
     expect(find.textContaining('لا يتم تعديل الصورة أو السجل الأصلي'), findsOneWidget);
   });
 
+  testWidgets('bulletin workspace previews raw text without claiming a decode', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
+    await tester.enterText(find.byKey(const Key('bulletin-station')), 'STN001');
+    await tester.enterText(find.byKey(const Key('bulletin-time')), '2026-11-11 12:00 UTC');
+    await tester.enterText(find.byKey(const Key('bulletin-raw')), 'SYNOP 111200Z sample raw text');
+    await tester.ensureVisible(find.text('فحص الحقول'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فحص الحقول'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('معاينة فك الترميز'));
+    await tester.pumpAndSettle();
+    expect(find.text('نص خام — لم يُفك ترميزه'), findsOneWidget);
+    expect(find.text('SYNOP 111200Z sample raw text'), findsOneWidget);
+  });
+
   testWidgets('climate homogenization screen preserves raw series boundary', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ClimateHomogenizationPage()));
     expect(find.text('تجانس السلاسل المناخية'), findsOneWidget);
