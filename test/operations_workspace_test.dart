@@ -82,6 +82,24 @@ void main() {
     expect(find.text('الظواهر الجوية المتوقعة'), findsOneWidget);
   });
 
+  testWidgets('forecaster rejects invalid UTC order and inconsistent forecast values', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ForecastOfficePage()));
+    await tester.enterText(find.byKey(const Key('forecast-issued-at')), '2026-11-11 10:00 UTC');
+    await tester.enterText(find.byKey(const Key('forecast-valid-from')), '2026-11-11 12:00 UTC');
+    await tester.enterText(find.byKey(const Key('forecast-valid-to')), '2026-11-11 11:00 UTC');
+    await tester.enterText(find.byKey(const Key('forecast-min-temp')), '12');
+    await tester.enterText(find.byKey(const Key('forecast-max-temp')), '5');
+    await tester.enterText(find.byKey(const Key('forecast-rain-probability')), '101');
+    await tester.enterText(find.byType(TextFormField).first, 'دمشق ومحيطها');
+    await tester.ensureVisible(find.text('التحقق من اكتمال المسودة'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('التحقق من اكتمال المسودة'));
+    await tester.pumpAndSettle();
+    expect(find.text('بداية الصلاحية يجب أن تسبق نهايتها.'), findsWidgets);
+    expect(find.text('الحرارة الصغرى يجب ألا تتجاوز العظمى.'), findsWidgets);
+    expect(find.text('احتمال الهطول يجب أن يكون بين 0 و100%.'), findsOneWidget);
+  });
+
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     expect(find.text('مركز AFTN'), findsOneWidget);
