@@ -52,11 +52,16 @@ bool isValidLongitude(String value) {
   final parsed = double.tryParse(value.trim());
   return parsed != null && parsed >= -180 && parsed <= 180;
 }
-bool isValidElevationRange(String minimum, String maximum) {
-  if (minimum.trim().isEmpty || maximum.trim().isEmpty) return true;
-  final low = double.tryParse(minimum.trim()), high = double.tryParse(maximum.trim());
-  return low != null && high != null && low <= high;
+bool _isValidOrderedRange(String minimum, String maximum, double lowerLimit, double upperLimit) {
+  final minText = minimum.trim(), maxText = maximum.trim();
+  if (minText.isEmpty && maxText.isEmpty) return true;
+  if (minText.isEmpty || maxText.isEmpty) return false;
+  final low = double.tryParse(minText), high = double.tryParse(maxText);
+  return low != null && high != null && low >= lowerLimit && high <= upperLimit && low <= high;
 }
+bool isValidLatitudeRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -90, 90);
+bool isValidLongitudeRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -180, 180);
+bool isValidElevationRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -1000, 9000);
 
 
 class OperationsHubPage extends StatelessWidget {
@@ -199,7 +204,7 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
       const SizedBox(height: 10),
       SizedBox(width: double.infinity, child: OutlinedButton.icon(
         onPressed: () {
-          final valid = isValidLatitude(latFrom) && isValidLatitude(latTo) && isValidLongitude(lonFrom) && isValidLongitude(lonTo) && isValidElevationRange(elevFrom, elevTo);
+          final valid = isValidLatitudeRange(latFrom, latTo) && isValidLongitudeRange(lonFrom, lonTo) && isValidElevationRange(elevFrom, elevTo);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(valid ? 'حدود الإحداثيات والارتفاع صالحة شكلياً.' : 'تحقق من حدود العرض والطول وترتيب الارتفاعات.')));
         },
         icon: const Icon(Icons.rule),
