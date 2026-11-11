@@ -94,3 +94,15 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Expanded the forecaster screen with UTC issue time and validity start/end, area, temperature min/max, precipitation/probability, wind speed/direction/gust, visibility, clouds/base and phenomena, plus narrative analysis.
 - Added a widget test for the UTC and core meteorological product fields.
 - The UI does not assert operational thresholds or issue a forecast; approval, model inputs and persistence remain disabled until approved contracts and scientific rules are connected.
+
+
+## Follow-up round — workspace source repair and forecaster form completeness (2026-11-11T13:09:49.870Z UTC)
+
+- Audited the current PR head and found `lib/screens/operations_workspace.dart` had accumulated repeated copies of its screen/class declarations (four declarations of the workspace module set). This caused Flutter analyzer `duplicate_definition` failures.
+- Replaced the file with the complete latest single copy, retaining the newer AFTN header fields (transmission ID, optional service indicator, priority, DDHHMM, origin/destination, optional heading) and ordered forecast-centre coordinate/elevation range validation.
+- Re-ran source inspection: 995 lines; each screen/class declaration appears once. No duplicate workspace module definitions remain.
+- The next CI run exposed a second compile issue: the forecaster UI referenced 13 field controllers that were not declared/disposed. Added explicit controllers for issue time, validity start/end, minimum/maximum temperature, precipitation/probability, wind speed/direction/gust, visibility, cloud/base and phenomena, and disposed all controllers with the screen.
+- The prior CI run for deduplication commit `a530b15656dfcea830b9000acb5cb447fdda210a` failed at `flutter analyze` only because of those missing forecaster controller declarations; Deno type checks and Deno tests all passed. The controller fix is commit `01abf6eecd1fa9896d195377dd5b662c71080774`.
+- No test/build result is claimed for the controller-fix commit until its exact-head Actions run completes.
+- No API, database, SQL, migration, secrets, deployment, Angular code or legacy repository/database changes.
+- Flutter remains first in scope; Angular work remains deferred until Flutter interface acceptance.
