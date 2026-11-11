@@ -1061,18 +1061,89 @@ class _ClimatolWorkspacePageState extends State<ClimatolWorkspacePage> {
   );
 }
 
-class ReportsWorkspacePage extends StatelessWidget {
+class ReportsWorkspacePage extends StatefulWidget {
   const ReportsWorkspacePage({super.key});
-  @override
-  Widget build(BuildContext context) => DefaultTabController(length: 3, child: _WorkspaceScaffold(title: 'التقارير والإحصاء', subtitle: 'استعراض التقارير التشغيلية والمناخية', child: Column(children: [
-    const TabBar(labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [Tab(text: 'يومي'), Tab(text: 'شهري'), Tab(text: 'سنوي')]),
-    SizedBox(height: 420, child: TabBarView(children: [
-      _ReportTab(title: 'التقرير اليومي', message: 'يعرض ملخص الرصد اليومي ونسب الاكتمال وملاحظات التدقيق بعد ربط بيانات الرصد.'),
-      _ReportTab(title: 'التقرير الشهري', message: 'يعرض ملخصات الشهر ومقارنات المحطات والمؤشرات المعتمدة بعد اعتماد طرق التجميع.'),
-      _ReportTab(title: 'التقرير السنوي', message: 'يعرض الإحصاءات السنوية والسلاسل المناخية والاتجاهات بعد اعتماد التعاريف العلمية.'),
-    ])),
-  ])));
+  @override State<ReportsWorkspacePage> createState() => _ReportsWorkspacePageState();
 }
+
+class _ReportsWorkspacePageState extends State<ReportsWorkspacePage> {
+  final stationCode = TextEditingController();
+  final fromUtc = TextEditingController();
+  final toUtc = TextEditingController();
+  String element = 'درجة الحرارة', aggregation = 'يومي', output = 'PDF';
+
+  @override
+  void dispose() {
+    stationCode.dispose();
+    fromUtc.dispose();
+    toUtc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 3,
+    child: _WorkspaceScaffold(
+      title: 'التقارير والإحصاء',
+      subtitle: 'التقارير اليومية والشهرية والسنوية والمؤشرات المعتمدة',
+      child: Column(children: [
+        const _SourceStatus(title: 'مصدر التقارير', detail: 'لا يوجد عقد قراءة أو تجميع تقارير متصل حالياً. لا يتم احتساب مؤشرات أو تصدير ملف فارغ على أنه تقرير مكتمل.', connected: false),
+        const SizedBox(height: 12),
+        _Panel(title: 'معايير إعداد التقرير', child: Column(children: [
+          TextField(controller: stationCode, decoration: const InputDecoration(labelText: 'رمز المحطة (اختياري)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: fromUtc, decoration: const InputDecoration(labelText: 'من UTC', hintText: 'YYYY-MM-DD', border: OutlineInputBorder()))),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(controller: toUtc, decoration: const InputDecoration(labelText: 'إلى UTC', hintText: 'YYYY-MM-DD', border: OutlineInputBorder()))),
+          ]),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: element,
+            decoration: const InputDecoration(labelText: 'العنصر المناخي / التشغيلي', border: OutlineInputBorder()),
+            items: const ['درجة الحرارة', 'الأمطار', 'الرطوبة', 'الرياح', 'الضغط', 'الرؤية', 'الغيوم', 'اكتمال الرصد', 'جودة البيانات']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => element = value ?? element),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: aggregation,
+              decoration: const InputDecoration(labelText: 'نوع التجميع', border: OutlineInputBorder()),
+              items: const ['ساعي', 'يومي', 'شهري', 'فصلي', 'سنوي']
+                  .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+              onChanged: (value) => setState(() => aggregation = value ?? aggregation),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: output,
+              decoration: const InputDecoration(labelText: 'صيغة التصدير', border: OutlineInputBorder()),
+              items: const ['PDF', 'Excel', 'CSV']
+                  .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+              onChanged: (value) => setState(() => output = value ?? output),
+            )),
+          ]),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.assessment_outlined),
+            label: const Text('إنشاء التقرير — بانتظار مصدر البيانات المعتمد'),
+          )),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'يومي'), Tab(text: 'شهري'), Tab(text: 'سنوي'),
+        ]),
+        SizedBox(height: 420, child: TabBarView(children: [
+          _ReportTab(title: 'التقرير اليومي', message: 'يعرض ملخص الرصد اليومي ونسب الاكتمال وملاحظات التدقيق بعد ربط بيانات الرصد.'),
+          _ReportTab(title: 'التقرير الشهري', message: 'يعرض ملخصات الشهر ومقارنات المحطات والمؤشرات المعتمدة بعد اعتماد طرق التجميع.'),
+          _ReportTab(title: 'التقرير السنوي', message: 'يعرض الإحصاءات السنوية والسلاسل المناخية والاتجاهات بعد اعتماد التعاريف العلمية.'),
+        ])),
+      ]),
+    ),
+  );
+}
+
 class _ReportTab extends StatelessWidget {
   const _ReportTab({required this.title, required this.message});
   final String title, message;
