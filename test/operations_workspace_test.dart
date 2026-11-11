@@ -22,11 +22,11 @@ void main() {
     expect(modules, contains(WorkspaceModule.registrationApprovals));
   });
 
-  test('AFTN address validation accepts only four Latin letters', () {
-    expect(isValidAftnAddress('OSDI'), isTrue);
-    expect(isValidAftnAddress('osdi'), isTrue);
-    expect(isValidAftnAddress('OSD'), isFalse);
-    expect(isValidAftnAddress('OSD1'), isFalse);
+  test('AFTN address validation accepts only eight Latin letters', () {
+    expect(isValidAftnAddress('ABCDWXYZ'), isTrue);
+    expect(isValidAftnAddress('abcdwxyz'), isTrue);
+    expect(isValidAftnAddress('ABCD'), isFalse);
+    expect(isValidAftnAddress('ABCD1234'), isFalse);
     expect(isValidAftnAddress(' دمشق'), isFalse);
   });
 
