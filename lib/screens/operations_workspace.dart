@@ -225,7 +225,7 @@ class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
       Row(children: [
         Expanded(child: OutlinedButton.icon(onPressed: () { if (stationCode.trim().isEmpty || raw.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل رمز المحطة ومحتوى النشرة أولاً.'))); return; } ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم فحص اكتمال الحقول محلياً فقط.'))); }, icon: const Icon(Icons.rule), label: const Text('فحص الحقول'))),
         const SizedBox(width: 8),
-        const Expanded(child: FilledButton.icon(onPressed: null, icon: Icon(Icons.save_outlined), label: Text('حفظ / إرسال'))),
+        Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.save_outlined), label: const Text('حفظ / إرسال'))),
       ]),
     ])),
     const SizedBox(height: 14),
@@ -292,12 +292,12 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
       Row(children: [
         Expanded(child: OutlinedButton(onPressed: () { if (formKey.currentState!.validate()) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اجتازت الرسالة فحص الحقول المحلي فقط.'))); } }, child: const Text('التحقق من الرسالة'))),
         const SizedBox(width: 8),
-        const Expanded(child: FilledButton.icon(onPressed: null, icon: Icon(Icons.send), label: Text('إرسال AFTN'))),
+        Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.send), label: const Text('إرسال AFTN'))),
       ]),
     ])),
     const SizedBox(height: 14),
     const _Panel(title: 'حالة الرسائل', child: _EmptyState(icon: Icons.outbox_outlined, title: 'لا توجد رسائل في قائمة الإرسال', message: 'ستعرض القائمة الرسائل المعلقة والمرسلة والمرفوضة وإشعارات التسليم بعد ربط البوابة.')),
-  ]))),
+  ])),
   );
 }
 
@@ -321,7 +321,7 @@ class _ClimatolWorkspacePageState extends State<ClimatolWorkspacePage> {
       const SizedBox(height: 12),
       const _InlineWarning(text: 'لا تُحسب مؤشرات أو قيم مناخية قبل اعتماد قاموس العناصر والوحدات والفترات الزمنية وقواعد القيم المفقودة من المسؤول العلمي.'),
       const SizedBox(height: 12),
-      const SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: Icon(Icons.play_arrow), label: Text('تشغيل التحليل المناخي'))),
+      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.play_arrow), label: const Text('تشغيل التحليل المناخي'))),
     ])),
     const SizedBox(height: 14),
     _Panel(title: 'معاينة مهمة التحليل', child: Column(children: [
