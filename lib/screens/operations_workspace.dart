@@ -274,34 +274,63 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
   final formKey = GlobalKey<FormState>();
   final origin = TextEditingController(), destination = TextEditingController(), body = TextEditingController();
   String priority = 'GG';
-  @override void dispose() { origin.dispose(); destination.dispose(); body.dispose(); super.dispose(); }
   @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'مركز AFTN', subtitle: 'إنشاء الرسائل الجوية ومراجعتها قبل التوزيع', child: Form(key: formKey, child: Column(children: [
-    const _SourceStatus(title: 'بوابة AFTN', detail: 'لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.', connected: false),
-    const SizedBox(height: 14),
-    _Panel(title: 'إنشاء رسالة', child: Column(children: [
-      TextFormField(controller: origin, textCapitalization: TextCapitalization.characters, maxLength: 4, decoration: const InputDecoration(labelText: 'عنوان المرسل (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
-      const SizedBox(height: 8),
-      TextFormField(controller: destination, textCapitalization: TextCapitalization.characters, maxLength: 4, decoration: const InputDecoration(labelText: 'عنوان المستلم (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنواناً من أربعة أحرف لاتينية كبيرة'),
-      const SizedBox(height: 8),
-      DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'درجة الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
-      const SizedBox(height: 12),
-      TextFormField(controller: body, minLines: 6, maxLines: 10, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
-      const SizedBox(height: 8),
-      Align(alignment: Alignment.centerLeft, child: Text(body.text.length.toString() + ' حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
-      const SizedBox(height: 10),
-      const _InlineWarning(text: 'التحقق هنا شكلي ومحلي فقط؛ لا يثبت صحة التوجيه أو صلاحية العنوان أو قبول الرسالة من شبكة AFTN.'),
-      const SizedBox(height: 12),
-      Row(children: [
-        Expanded(child: OutlinedButton(onPressed: () { if (formKey.currentState!.validate()) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اجتازت الرسالة فحص الحقول المحلي فقط.'))); } }, child: const Text('التحقق من الرسالة'))),
-        const SizedBox(width: 8),
-        Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.send), label: const Text('إرسال AFTN'))),
+  void dispose() { origin.dispose(); destination.dispose(); body.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'مركز AFTN',
+      subtitle: 'إنشاء الرسائل ومتابعة الوارد والصادر وإشعارات التسليم',
+      child: Column(children: [
+        const _SourceStatus(title: 'بوابة AFTN', detail: 'لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.', connected: false),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'إنشاء رسالة'), Tab(text: 'الصادر'), Tab(text: 'الوارد'), Tab(text: 'التسليم والتتبع'),
+        ]),
+        SizedBox(height: 650, child: TabBarView(children: [
+          Form(key: formKey, child: ListView(padding: const EdgeInsets.only(top: 14), children: [
+            _Panel(title: 'ترويسة الرسالة', child: Column(children: [
+              TextFormField(controller: origin, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المرسل (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              const SizedBox(height: 8),
+              TextFormField(controller: destination, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المستلم (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'درجة الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
+            ])),
+            const SizedBox(height: 12),
+            _Panel(title: 'محتوى الرسالة', child: Column(children: [
+              TextFormField(controller: body, minLines: 8, maxLines: 12, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
+              const SizedBox(height: 8),
+              Align(alignment: Alignment.centerLeft, child: Text(body.text.length.toString() + ' حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
+              const SizedBox(height: 10),
+              const _InlineWarning(text: 'التحقق هنا شكلي ومحلي فقط؛ لا يثبت صحة التوجيه أو قبول الرسالة من شبكة AFTN.'),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: OutlinedButton(onPressed: () { if (formKey.currentState!.validate()) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اجتازت الرسالة فحص الحقول المحلي فقط.'))); } }, child: const Text('التحقق من الرسالة'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.send), label: const Text('إرسال AFTN'))),
+              ]),
+            ])),
+          ])),
+          const _AftnQueueTab(title: 'قائمة الرسائل الصادرة', detail: 'تظهر الرسائل التي أنشأها المستخدم وحالة الفحص والاعتماد والتوجيه، مع إمكانية فتح الترويسة والنص وسجل المحاولات.'),
+          const _AftnQueueTab(title: 'قائمة الرسائل الواردة', detail: 'تظهر الرسائل المستلمة من البوابة مع المرسل ووقت الاستلام UTC والأولوية وحالة فك الترميز والتصنيف.'),
+          const _AftnQueueTab(title: 'إشعارات التسليم والتتبع', detail: 'تعرض ACK وNACK وإشعارات التأخير وإعادة المحاولة ومعرّف الرسالة وسجل التوجيه بين المحطات.'),
+        ])),
       ]),
-    ])),
-    const SizedBox(height: 14),
-    const _Panel(title: 'حالة الرسائل', child: _EmptyState(icon: Icons.outbox_outlined, title: 'لا توجد رسائل في قائمة الإرسال', message: 'ستعرض القائمة الرسائل المعلقة والمرسلة والمرفوضة وإشعارات التسليم بعد ربط البوابة.')),
-  ])),
+    ),
   );
+}
+
+class _AftnQueueTab extends StatelessWidget {
+  const _AftnQueueTab({required this.title, required this.detail});
+  final String title, detail;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    _Panel(title: title, child: _EmptyState(icon: Icons.mark_email_unread_outlined, title: 'لا توجد رسائل محملة', message: detail)),
+    const SizedBox(height: 12),
+    const _InlineWarning(text: 'هذه القائمة تنتظر عقد اتصال موثقاً مع بوابة AFTN. لا يتم إنشاء حالات إرسال أو تسليم تجريبية على أنها حقيقية.'),
+  ]);
 }
 
 class ClimatolWorkspacePage extends StatefulWidget {
