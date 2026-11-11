@@ -49,6 +49,10 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     expect(find.text('مركز AFTN'), findsOneWidget);
     expect(find.text('إرسال AFTN'), findsOneWidget);
+    expect(find.text('الصادر'), findsOneWidget);
+    expect(find.text('الوارد'), findsOneWidget);
+    expect(find.text('التسليم والتتبع'), findsOneWidget);
+    expect(find.text('عنوان المرسل (8 أحرف AFTN)'), findsOneWidget);
     expect(find.text('لا يوجد اتصال مع محطة الرسائل أو بوابة الإرسال. الإرسال معطل حتى اعتماد إعدادات الاتصال والمراقبة.'), findsOneWidget);
   });
 
