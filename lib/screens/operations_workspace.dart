@@ -279,7 +279,7 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
       const SizedBox(height: 12),
       TextFormField(controller: body, minLines: 6, maxLines: 10, decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
       const SizedBox(height: 8),
-      Align(alignment: Alignment.centerLeft, child: Text('\u0024{body.text.length} حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
+      Align(alignment: Alignment.centerLeft, child: Text(body.text.length.toString() + ' حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
       const SizedBox(height: 10),
       const _InlineWarning(text: 'التحقق هنا شكلي ومحلي فقط؛ لا يثبت صحة التوجيه أو صلاحية العنوان أو قبول الرسالة من شبكة AFTN.'),
       const SizedBox(height: 12),
