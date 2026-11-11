@@ -302,11 +302,14 @@ class _FieldGroupCard extends StatelessWidget {
   Widget _field(BuildContext context, ObservationInputField field) {
     switch (field.kind) {
       case ObservationInputKind.boolean:
-        return SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(field.label, style: const TextStyle(fontSize: 12)),
-          value: toggles[field.key] ?? false,
-          onChanged: (value) { toggles[field.key] = value; (context as Element).markNeedsBuild(); },
+        return Material(
+          color: Colors.white,
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(field.label, style: const TextStyle(fontSize: 12)),
+            value: toggles[field.key] ?? false,
+            onChanged: (value) { toggles[field.key] = value; (context as Element).markNeedsBuild(); },
+          ),
         );
       case ObservationInputKind.choice:
         if (field.choices.isNotEmpty) {
