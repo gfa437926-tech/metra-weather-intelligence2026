@@ -42,6 +42,19 @@ bool isValidAftnAddress(String value) {
 }
 bool isValidAftnPriority(String value) => const {'SS', 'DD', 'FF', 'GG', 'KK'}.contains(value.trim().toUpperCase());
 
+bool isValidAftnTransmissionId(String value) {
+  final normalized = value.trim().toUpperCase();
+  return normalized.length == 6 && RegExp(r'^[A-Z]{3}[0-9]{3}').hasMatch(normalized);
+}
+bool isValidAftnDateTimeGroup(String value) {
+  final normalized = value.trim();
+  if (normalized.length != 6 || !RegExp(r'^[0-9]{6}').hasMatch(normalized)) return false;
+  final day = int.tryParse(normalized.substring(0, 2));
+  final hour = int.tryParse(normalized.substring(2, 4));
+  final minute = int.tryParse(normalized.substring(4, 6));
+  return day != null && day >= 1 && day <= 31 && hour != null && hour <= 23 && minute != null && minute <= 59;
+}
+
 bool isValidLatitude(String value) {
   if (value.trim().isEmpty) return true;
   final parsed = double.tryParse(value.trim());
@@ -415,9 +428,10 @@ class AftnWorkspacePage extends StatefulWidget {
 class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
   final formKey = GlobalKey<FormState>();
   final origin = TextEditingController(), destination = TextEditingController(), body = TextEditingController();
+  final transmissionId = TextEditingController(), additionalService = TextEditingController(), dateTimeGroup = TextEditingController(), optionalHeading = TextEditingController();
   String priority = 'GG';
   @override
-  void dispose() { origin.dispose(); destination.dispose(); body.dispose(); super.dispose(); }
+  void dispose() { origin.dispose(); destination.dispose(); body.dispose(); transmissionId.dispose(); additionalService.dispose(); dateTimeGroup.dispose(); optionalHeading.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
@@ -434,11 +448,21 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
         SizedBox(height: 650, child: TabBarView(children: [
           Form(key: formKey, child: ListView(padding: const EdgeInsets.only(top: 14), children: [
             _Panel(title: 'ترويسة الرسالة', child: Column(children: [
-              TextFormField(controller: origin, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المرسل (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              const _KeyValue(label: 'بداية الرسالة', value: 'ZCZC'),
+              TextFormField(controller: transmissionId, textCapitalization: TextCapitalization.characters, maxLength: 6, decoration: const InputDecoration(labelText: 'معرّف الإرسال (3 أحرف + 3 أرقام)', border: OutlineInputBorder()), validator: (v) => isValidAftnTransmissionId(v ?? '') ? null : 'الصيغة المطلوبة 3 أحرف لاتينية ثم 3 أرقام'),
+              const SizedBox(height: 8),
+              TextFormField(controller: additionalService, maxLength: 11, decoration: const InputDecoration(labelText: 'مؤشر الخدمة الإضافية (اختياري، حتى 11 محرفاً)', border: OutlineInputBorder())),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'مؤشر الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
               const SizedBox(height: 8),
               TextFormField(controller: destination, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المستلم (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'درجة الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
+              TextFormField(controller: dateTimeGroup, maxLength: 6, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'مجموعة اليوم/الوقت DDHHMM (UTC)', border: OutlineInputBorder()), validator: (v) => isValidAftnDateTimeGroup(v ?? '') ? null : 'أدخل DDHHMM صالحاً بتوقيت UTC'),
+              const SizedBox(height: 8),
+              TextFormField(controller: origin, textCapitalization: TextCapitalization.characters, maxLength: 8, decoration: const InputDecoration(labelText: 'عنوان المنشئ (8 أحرف AFTN)', border: OutlineInputBorder()), validator: (v) => isValidAftnAddress(v ?? '') ? null : 'أدخل عنوان AFTN من ثمانية أحرف لاتينية'),
+              const SizedBox(height: 8),
+              TextFormField(controller: optionalHeading, decoration: const InputDecoration(labelText: 'معلومات ترويسة اختيارية', border: OutlineInputBorder())),
+              const _KeyValue(label: 'نهاية الرسالة', value: 'NNNN'),
             ])),
             const SizedBox(height: 12),
             _Panel(title: 'محتوى الرسالة', child: Column(children: [
