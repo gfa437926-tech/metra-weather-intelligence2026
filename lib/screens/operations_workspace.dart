@@ -736,7 +736,7 @@ class _ModelTrainingTab extends StatelessWidget {
 }
 class _ModelVersionsTab extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => const ListView(padding: EdgeInsets.only(top: 14), children: [
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: const [
     _EmptyState(icon: Icons.layers_outlined, title: 'لا توجد إصدارات منشورة', message: 'سيظهر لكل إصدار رقم النسخة وبصمة النموذج ومجموعة التدريب ومقاييس التحقق وتاريخ النشر وحالة التراجع.'),
   ]);
 }
