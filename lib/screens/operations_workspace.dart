@@ -39,6 +39,23 @@ const workspaceModules = <WorkspaceModuleInfo>[
 bool isValidAftnAddress(String value) => RegExp(r'^[A-Z]{8}.hasMatch(value.trim().toUpperCase());
 bool isValidAftnPriority(String value) => const {'SS', 'DD', 'FF', 'GG', 'KK'}.contains(value.trim().toUpperCase());
 
+bool isValidLatitude(String value) {
+  if (value.trim().isEmpty) return true;
+  final parsed = double.tryParse(value.trim());
+  return parsed != null && parsed >= -90 && parsed <= 90;
+}
+bool isValidLongitude(String value) {
+  if (value.trim().isEmpty) return true;
+  final parsed = double.tryParse(value.trim());
+  return parsed != null && parsed >= -180 && parsed <= 180;
+}
+bool isValidElevationRange(String minimum, String maximum) {
+  if (minimum.trim().isEmpty || maximum.trim().isEmpty) return true;
+  final low = double.tryParse(minimum.trim()), high = double.tryParse(maximum.trim());
+  return low != null && high != null && low <= high;
+}
+
+
 class OperationsHubPage extends StatelessWidget {
   const OperationsHubPage({super.key, this.client});
   final SupabaseClient? client;
@@ -142,6 +159,7 @@ class ForecastCenterPage extends StatefulWidget {
 class _ForecastCenterPageState extends State<ForecastCenterPage> {
   String region = 'كل المناطق', altitude = 'كل الارتفاعات', search = '';
   String latFrom = '', latTo = '', lonFrom = '', lonTo = '';
+  String elevFrom = '', elevTo = '';
   String window = 'آخر ساعة';
   final regions = const ['كل المناطق', 'الساحل', 'الداخل', 'المرتفعات', 'الجزيرة', 'الجنوب'];
   final altitudes = const ['كل الارتفاعات', 'أقل من 500 م', '500–1000 م', '1000–1500 م', 'أكثر من 1500 م'];
@@ -170,6 +188,21 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => lonTo = v), decoration: const InputDecoration(labelText: 'خط الطول إلى', border: OutlineInputBorder()))),
       ]),
       const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => elevFrom = v), decoration: const InputDecoration(labelText: 'الارتفاع من (م)', border: OutlineInputBorder()))),
+        const SizedBox(width: 8),
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => elevTo = v), decoration: const InputDecoration(labelText: 'الارتفاع إلى (م)', border: OutlineInputBorder()))),
+      ]),
+      const SizedBox(height: 10),
+      SizedBox(width: double.infinity, child: OutlinedButton.icon(
+        onPressed: () {
+          final valid = isValidLatitude(latFrom) && isValidLatitude(latTo) && isValidLongitude(lonFrom) && isValidLongitude(lonTo) && isValidElevationRange(elevFrom, elevTo);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(valid ? 'حدود الإحداثيات والارتفاع صالحة شكلياً.' : 'تحقق من حدود العرض والطول وترتيب الارتفاعات.')));
+        },
+        icon: const Icon(Icons.rule),
+        label: const Text('التحقق من حدود المقارنة'),
+      )),
+      const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: window, decoration: const InputDecoration(labelText: 'نافذة المقارنة الزمنية', border: OutlineInputBorder()), items: const ['آخر 10 دقائق', 'آخر ساعة', 'آخر 3 ساعات', 'آخر 6 ساعات', 'آخر 24 ساعة'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => window = v ?? window)),
       const SizedBox(height: 10),
       const Align(alignment: Alignment.centerRight, child: Text('تُحسب المنطقة والارتفاع والإحداثيات من دليل المحطات الموثق فقط؛ لا تُستنتج من اسم الموقع.', style: TextStyle(color: Colors.blueGrey, fontSize: 11))),
@@ -182,7 +215,7 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
     ]),
     const SizedBox(height: 14),
     _Panel(title: 'جدول المحطات المقارن', child: Column(children: [
-      Text('الفلاتر الحالية: $region • $altitude • $window • خط العرض: $latFrom إلى $latTo • خط الطول: $lonFrom إلى $lonTo • بحث: $search', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+      Text('الفلاتر الحالية: $region • $altitude • $window • خط العرض: $latFrom إلى $latTo • خط الطول: $lonFrom إلى $lonTo • الارتفاع: $elevFrom إلى $elevTo م • بحث: $search', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
       const SizedBox(height: 12),
       const _EmptyState(icon: Icons.sensors_off_outlined, title: 'لا توجد قراءات لحظية متاحة', message: 'ستظهر هنا المحطة والرمز والإحداثيات والارتفاع ووقت آخر قراءة، ثم المطر والرياح واتجاهها والهبات وبقية العناصر بعد ربط مصدر المحطات.'),
     ])),
