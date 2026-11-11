@@ -141,6 +141,8 @@ class ForecastCenterPage extends StatefulWidget {
 }
 class _ForecastCenterPageState extends State<ForecastCenterPage> {
   String region = 'كل المناطق', altitude = 'كل الارتفاعات', search = '';
+  String latFrom = '', latTo = '', lonFrom = '', lonTo = '';
+  String window = 'آخر ساعة';
   final regions = const ['كل المناطق', 'الساحل', 'الداخل', 'المرتفعات', 'الجزيرة', 'الجنوب'];
   final altitudes = const ['كل الارتفاعات', 'أقل من 500 م', '500–1000 م', '1000–1500 م', 'أكثر من 1500 م'];
   @override
@@ -153,18 +155,34 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
       DropdownButtonFormField<String>(value: region, decoration: const InputDecoration(labelText: 'المنطقة', border: OutlineInputBorder()), items: regions.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => region = v ?? regions.first)),
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: altitude, decoration: const InputDecoration(labelText: 'نطاق الارتفاع', border: OutlineInputBorder()), items: altitudes.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => altitude = v ?? altitudes.first)),
+      const SizedBox(height: 12),
+      const Align(alignment: Alignment.centerRight, child: Text('نطاق الإحداثيات الجغرافية (درجات عشرية)', style: TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12))),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => latFrom = v), decoration: const InputDecoration(labelText: 'خط العرض من', border: OutlineInputBorder()))),
+        const SizedBox(width: 8),
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => latTo = v), decoration: const InputDecoration(labelText: 'خط العرض إلى', border: OutlineInputBorder()))),
+      ]),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => lonFrom = v), decoration: const InputDecoration(labelText: 'خط الطول من', border: OutlineInputBorder()))),
+        const SizedBox(width: 8),
+        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => lonTo = v), decoration: const InputDecoration(labelText: 'خط الطول إلى', border: OutlineInputBorder()))),
+      ]),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<String>(value: window, decoration: const InputDecoration(labelText: 'نافذة المقارنة الزمنية', border: OutlineInputBorder()), items: const ['آخر 10 دقائق', 'آخر ساعة', 'آخر 3 ساعات', 'آخر 6 ساعات', 'آخر 24 ساعة'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => window = v ?? window)),
       const SizedBox(height: 10),
-      const Align(alignment: Alignment.centerRight, child: Text('تُحسب المنطقة والارتفاع من بيانات المحطة الموثقة فقط؛ لا تُستنتج من اسم الموقع.', style: TextStyle(color: Colors.blueGrey, fontSize: 11))),
+      const Align(alignment: Alignment.centerRight, child: Text('تُحسب المنطقة والارتفاع والإحداثيات من دليل المحطات الموثق فقط؛ لا تُستنتج من اسم الموقع.', style: TextStyle(color: Colors.blueGrey, fontSize: 11))),
     ])),
     const SizedBox(height: 14),
     const Text('مؤشرات المقارنة', style: TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 16)),
     const SizedBox(height: 10),
     const Wrap(spacing: 8, runSpacing: 8, children: [
-      _MetricPill(icon: Icons.water_drop, label: 'الأمطار'), _MetricPill(icon: Icons.air, label: 'سرعة الرياح'), _MetricPill(icon: Icons.explore, label: 'اتجاه الرياح'), _MetricPill(icon: Icons.speed, label: 'هبات الرياح'), _MetricPill(icon: Icons.thermostat, label: 'الحرارة'), _MetricPill(icon: Icons.compress, label: 'الضغط'),
+      _MetricPill(icon: Icons.water_drop, label: 'مطر 1/3/6/24 ساعة'), _MetricPill(icon: Icons.air, label: 'سرعة الرياح'), _MetricPill(icon: Icons.explore, label: 'اتجاه الرياح'), _MetricPill(icon: Icons.speed, label: 'الهبات واتجاهها'), _MetricPill(icon: Icons.thermostat, label: 'الحرارة والندى'), _MetricPill(icon: Icons.compress, label: 'الضغط'), _MetricPill(icon: Icons.water, label: 'الرطوبة'), _MetricPill(icon: Icons.visibility_outlined, label: 'الرؤية'), _MetricPill(icon: Icons.cloud_outlined, label: 'الغيوم والطقس'),
     ]),
     const SizedBox(height: 14),
     _Panel(title: 'جدول المحطات المقارن', child: Column(children: [
-      Text('الفلاتر الحالية: $region • $altitude • بحث: $search', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+      Text('الفلاتر الحالية: $region • $altitude • $window • خط العرض: $latFrom إلى $latTo • خط الطول: $lonFrom إلى $lonTo • بحث: $search', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
       const SizedBox(height: 12),
       const _EmptyState(icon: Icons.sensors_off_outlined, title: 'لا توجد قراءات لحظية متاحة', message: 'ستظهر هنا المحطة والرمز والإحداثيات والارتفاع ووقت آخر قراءة، ثم المطر والرياح واتجاهها والهبات وبقية العناصر بعد ربط مصدر المحطات.'),
     ])),
