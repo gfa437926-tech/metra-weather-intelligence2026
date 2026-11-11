@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metra_weather_intelligence/screens/operations_workspace.dart';
 import 'package:metra_weather_intelligence/screens/observation_forms_catalogue_page.dart';
+import 'package:metra_weather_intelligence/domain/station_record.dart';
 
 void useTallViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(900, 3600);
@@ -76,6 +77,40 @@ void main() {
     expect(find.text('التحقق من حدود المقارنة'), findsOneWidget);
     expect(find.text('دليل المحطات غير مهيأ'), findsOneWidget);
     expect(find.text('تحديد المنطقة عبر نطاق الإحداثيات الجغرافية (درجات عشرية)'), findsOneWidget);
+  });
+
+  testWidgets('forecast centre filters real station metadata and opens a detailed station card', (tester) async {
+    useTallViewport(tester);
+    final stations = [
+      const StationRecord(id: 'station-1', code: 'STN001', name: 'محطة دمشق', type: 'classic', operationalStatus: 'active', approvalStatus: 'approved', latitude: 33.5, longitude: 36.3, elevationM: 545.5),
+      const StationRecord(id: 'station-2', code: 'STN002', name: 'محطة جبلية', type: 'automatic', operationalStatus: 'active', approvalStatus: 'approved', latitude: 35.0, longitude: 38.0, elevationM: 1200),
+    ];
+    await tester.pumpWidget(MaterialApp(home: ForecastCenterPage(stationRecordsOverride: stations)));
+    await tester.pumpAndSettle();
+    expect(find.text('محطة دمشق'), findsOneWidget);
+    expect(find.text('محطة جبلية'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('forecast-lat-from')), '34');
+    await tester.enterText(find.byKey(const Key('forecast-lat-to')), '36');
+    await tester.enterText(find.byKey(const Key('forecast-lon-from')), '37');
+    await tester.enterText(find.byKey(const Key('forecast-lon-to')), '39');
+    await tester.pumpAndSettle();
+    expect(find.text('محطة جبلية'), findsOneWidget);
+    expect(find.text('محطة دمشق'), findsNothing);
+    for (final key in ['forecast-lat-from', 'forecast-lat-to', 'forecast-lon-from', 'forecast-lon-to']) {
+      await tester.enterText(find.byKey(Key(key)), '');
+    }
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('forecast-altitude-band')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('500 إلى أقل من 1000 م').last);
+    await tester.pumpAndSettle();
+    expect(find.text('محطة دمشق'), findsOneWidget);
+    expect(find.text('محطة جبلية'), findsNothing);
+    await tester.tap(find.text('محطة دمشق'));
+    await tester.pumpAndSettle();
+    expect(find.text('545.5 م'), findsOneWidget);
+    expect(find.text('33.50000, 36.30000'), findsOneWidget);
+    expect(find.text('لا توجد قراءة محملة'), findsWidgets);
   });
 
   testWidgets('forecaster workspace exposes UTC validity and core forecast elements', (tester) async {
