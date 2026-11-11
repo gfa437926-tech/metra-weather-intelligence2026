@@ -94,7 +94,7 @@ The Flutter application uses a compact mobile navigation bar (home, map, station
 The current UI branch adds:
 - Forecast-centre station comparison filters for region and documented elevation, with explicit slots for coordinates, rainfall, wind speed/direction/gusts, observation time, and incoming bulletin details.
 - Detailed source-catalogue observation forms for standard hourly, daily 24-hour, separate 06:00/18:00 UTC synoptic reports, agricultural, rainfall, phenomena, soil temperature, equipment faults, telecommunications faults, and IT incidents. Source-required fields and UTC-only labels are represented; unsupported submission remains disabled.
-- Forecaster product preparation and local completeness validation.
+- Forecaster product preparation with UTC issue/validity windows and structured temperature, rainfall/probability, wind speed/direction/gust, visibility, cloud and phenomenon fields; local completeness validation only.
 - Bulletin workspace with draft composition, review queue, approved queue, correction queue, UTC observation time and decoded-message preview for hourly/daily bulletins and SYNOP, METAR, TAF, and summary products.
 - Electronic audit search/filter shell with a read-only server-ledger boundary.
 - Paper and mechanical recorder audit workspace for original paper logs and Thermograph/Hygrograph/Barograph/Pluviograph traces, three-source comparison (paper/mechanical/electronic), confidence/review placeholders, and human approval roles.
