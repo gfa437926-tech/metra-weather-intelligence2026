@@ -794,30 +794,123 @@ class ElectronicAuditPage extends StatefulWidget {
   const ElectronicAuditPage({super.key});
   @override State<ElectronicAuditPage> createState() => _ElectronicAuditPageState();
 }
+
 class _ElectronicAuditPageState extends State<ElectronicAuditPage> {
-  String status = 'الكل';
+  String status = 'الكل', outcome = 'الكل', entityType = 'الكل';
   final query = TextEditingController();
-  @override void dispose() { query.dispose(); super.dispose(); }
+  final stationCode = TextEditingController();
+  final actorId = TextEditingController();
+  final entityId = TextEditingController();
+  final correlationId = TextEditingController();
+  final fromUtc = TextEditingController();
+  final toUtc = TextEditingController();
+
   @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'التدقيق الإلكتروني', subtitle: 'سجل غير قابل للتعديل لعمليات الإدخال والمراجعة والاعتماد', child: Column(children: [
-    const _SourceStatus(title: 'سجل التدقيق', detail: 'مصدر السجل غير مربوط في واجهة Flutter. لن تُنشأ أحداث تدقيق محلية بديلة عن سجل الخادم.', connected: false),
-    const SizedBox(height: 14),
-    _Panel(title: 'البحث والتصفية', child: Column(children: [
-      TextField(controller: query, decoration: const InputDecoration(labelText: 'بحث برقم العملية أو المستخدم أو المحطة', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
-      const SizedBox(height: 10),
-      Wrap(spacing: 7, children: [
-        for (final item in ['الكل', 'إدخال', 'تعديل', 'إرسال', 'اعتماد', 'إرجاع']) ChoiceChip(label: Text(item), selected: status == item, onSelected: (_) => setState(() => status = item)),
-      ]),
-    ])),
-    const SizedBox(height: 14),
-    _Panel(title: 'سجل الأحداث', child: Column(children: [
-      Text('عامل التصفية: $status', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+  void dispose() {
+    for (final controller in [query, stationCode, actorId, entityId, correlationId, fromUtc, toUtc]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _clearFilters() {
+    for (final controller in [query, stationCode, actorId, entityId, correlationId, fromUtc, toUtc]) {
+      controller.clear();
+    }
+    setState(() { status = 'الكل'; outcome = 'الكل'; entityType = 'الكل'; });
+  }
+
+  @override
+  Widget build(BuildContext context) => _WorkspaceScaffold(
+    title: 'التدقيق الإلكتروني',
+    subtitle: 'سجل غير قابل للتعديل لعمليات الإدخال والمراجعة والاعتماد',
+    child: Column(children: [
+      const _SourceStatus(
+        title: 'سجل التدقيق',
+        detail: 'مصدر السجل غير مربوط في واجهة Flutter. لن تُنشأ أحداث تدقيق محلية بديلة عن سجل الخادم.',
+        connected: false,
+      ),
+      const SizedBox(height: 14),
+      _Panel(title: 'البحث والتصفية المتقدمة', child: Column(children: [
+        TextField(
+          controller: query,
+          decoration: const InputDecoration(labelText: 'بحث عام برقم العملية أو النص', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: TextField(controller: stationCode, decoration: const InputDecoration(labelText: 'رمز المحطة', border: OutlineInputBorder()))),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(controller: actorId, decoration: const InputDecoration(labelText: 'معرّف المنفذ', border: OutlineInputBorder()))),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: TextField(controller: entityId, decoration: const InputDecoration(labelText: 'معرّف السجل المتأثر', border: OutlineInputBorder()))),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(controller: correlationId, decoration: const InputDecoration(labelText: 'معرّف الارتباط', border: OutlineInputBorder()))),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: TextField(controller: fromUtc, decoration: const InputDecoration(labelText: 'من UTC', hintText: 'YYYY-MM-DD HH:MM', border: OutlineInputBorder()))),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(controller: toUtc, decoration: const InputDecoration(labelText: 'إلى UTC', hintText: 'YYYY-MM-DD HH:MM', border: OutlineInputBorder()))),
+        ]),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: entityType,
+          decoration: const InputDecoration(labelText: 'نوع الكائن', border: OutlineInputBorder()),
+          items: const ['الكل', 'رصد', 'نشرة', 'محطة', 'صلاحيات', 'مستخدم']
+              .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+          onChanged: (value) => setState(() => entityType = value ?? entityType),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: outcome,
+          decoration: const InputDecoration(labelText: 'نتيجة العملية', border: OutlineInputBorder()),
+          items: const ['الكل', 'ناجحة', 'مرفوضة', 'فاشلة']
+              .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+          onChanged: (value) => setState(() => outcome = value ?? outcome),
+        ),
+        const SizedBox(height: 10),
+        const Align(alignment: Alignment.centerRight, child: Text('نوع الإجراء', style: TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12))),
+        const SizedBox(height: 6),
+        Wrap(spacing: 7, runSpacing: 7, children: [
+          for (final item in ['الكل', 'إدخال', 'تعديل', 'إرسال', 'اعتماد', 'إرجاع', 'تسجيل دخول'])
+            ChoiceChip(label: Text(item), selected: status == item, onSelected: (_) => setState(() => status = item)),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: TextButton.icon(onPressed: _clearFilters, icon: const Icon(Icons.filter_alt_off), label: const Text('مسح المرشحات'))),
+          Expanded(child: OutlinedButton.icon(
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تجهيز المرشحات محلياً؛ لا يوجد مصدر سجل متصل بعد.'))),
+            icon: const Icon(Icons.search),
+            label: const Text('تطبيق المرشحات'),
+          )),
+        ]),
+      ])),
+      const SizedBox(height: 14),
+      _Panel(title: 'سجل الأحداث', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('الإجراء: ' + status + ' • النتيجة: ' + outcome + ' • الكائن: ' + entityType,
+          style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+        const SizedBox(height: 10),
+        const _EmptyState(
+          icon: Icons.verified_user_outlined,
+          title: 'لا توجد أحداث محملة',
+          message: 'عند ربط السجل ستظهر هوية المنفذ المستخرجة من الجلسة، نوع العملية، الكائن المتأثر، التوقيت UTC، النتيجة ومعرّف الارتباط.',
+        ),
+      ])),
+      const SizedBox(height: 14),
+      const _Panel(title: 'تفاصيل الحدث المحدد', child: Column(children: [
+        _KeyValue(label: 'هوية المنفذ', value: 'لا توجد بيانات'),
+        _KeyValue(label: 'وقت الحدث UTC', value: 'لا توجد بيانات'),
+        _KeyValue(label: 'الكائن المتأثر', value: 'لا توجد بيانات'),
+        _KeyValue(label: 'نتيجة العملية', value: 'لا توجد بيانات'),
+        _KeyValue(label: 'بصمة قبل / بعد', value: 'تظهر بعد ربط سجل التدقيق'),
+        _KeyValue(label: 'معرّف الارتباط', value: 'لا توجد بيانات'),
+      ])),
       const SizedBox(height: 12),
-      const _EmptyState(icon: Icons.verified_user_outlined, title: 'لا توجد أحداث محملة', message: 'عند ربط السجل ستظهر هوية المنفذ المستخرجة من الجلسة، نوع العملية، الكائن المتأثر، التوقيت UTC، والنتيجة ومعرّف الارتباط.'),
-    ])),
-    const SizedBox(height: 12),
-    const _InlineWarning(text: 'يجب أن تبقى سجلات التدقيق للقراءة فقط، وأن تأتي من مصدر خادمي موثوق مع ضوابط منع التعديل والحذف.'),
-  ]));
+      const _InlineWarning(text: 'يجب أن تبقى سجلات التدقيق للقراءة فقط، وأن تأتي من مصدر خادمي موثوق مع ضوابط منع التعديل والحذف. لا تمنح الواجهة صلاحية تعديل السجل.'),
+    ]),
+  );
 }
 
 class AftnWorkspacePage extends StatefulWidget {
