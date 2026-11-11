@@ -171,11 +171,11 @@ class WorkspaceModulePage extends StatelessWidget {
       case WorkspaceModule.homogenization: return const ClimateHomogenizationPage();
       case WorkspaceModule.reports: return const ReportsWorkspacePage();
       case WorkspaceModule.userAccess: return const UserAccessWorkspacePage();
-      case WorkspaceModule.qualityControl: return const _ModuleStatusPage(title: 'ضبط جودة البيانات', subtitle: 'قواعد التحقق ومتابعة الحالات غير الطبيعية', message: 'تظهر هنا نتائج قواعد التحقق المعتمدة، وسجل القيم المرفوضة، وطلبات التصحيح. لم يتم تحميل قواعد النطاقات العلمية أو ربط محرك الجودة بعد.', icon: Icons.rule_folder_outlined);
-      case WorkspaceModule.archive: return const _ModuleStatusPage(title: 'الأرشيف المناخي', subtitle: 'استعراض السجلات التاريخية ومصدرها', message: 'واجهة الأرشيف جاهزة للتكامل. لا تُعرض السجلات التاريخية قبل تثبيت عقد القراءة وربط كل سجل بمحطته ومصدره دون تخمين.', icon: Icons.inventory_2_outlined);
+      case WorkspaceModule.qualityControl: return const QualityControlWorkspacePage();
+      case WorkspaceModule.archive: return const ClimateArchivePage();
       case WorkspaceModule.stationReview: return StationReviewPage(client: client);
       case WorkspaceModule.registrationApprovals: return client == null ? const _ModuleStatusPage(title: 'طلبات الانتساب', subtitle: 'مراجعة ثنائية المرحلة', message: 'تتطلب هذه الشاشة جلسة مصادقاً عليها وصلاحية المراجعة المناسبة.', icon: Icons.how_to_reg_outlined) : const RegistrationApprovalsPage();
-      case WorkspaceModule.alerts: return const _ModuleStatusPage(title: 'التنبيهات الجوية', subtitle: 'التحذيرات الرسمية وحالات الطقس المؤثرة', message: 'لا يوجد مصدر رسمي موثّق متصل حالياً. لن يتم إنشاء تنبيه أو عرضه على أنه صادر عن جهة الأرصاد دون تغذية موثوقة.', icon: Icons.warning_amber_rounded);
+      case WorkspaceModule.alerts: return const AlertsWorkspacePage();
       case WorkspaceModule.settings: return SettingsWorkspacePage(client: client);
     }
   }
@@ -1267,6 +1267,224 @@ class _RoleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(color: Colors.transparent, child: ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(backgroundColor: Color(0xFFEAF2FF), child: Icon(Icons.badge_outlined, color: _blue)), title: Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13)), subtitle: Text(description, style: const TextStyle(color: Colors.blueGrey, fontSize: 11))));
 }
+class AlertsWorkspacePage extends StatefulWidget {
+  const AlertsWorkspacePage({super.key});
+  @override State<AlertsWorkspacePage> createState() => _AlertsWorkspacePageState();
+}
+
+class _AlertsWorkspacePageState extends State<AlertsWorkspacePage> {
+  final search = TextEditingController();
+  final area = TextEditingController();
+  final fromUtc = TextEditingController();
+  final toUtc = TextEditingController();
+  String severity = 'كل الدرجات', type = 'كل الظواهر';
+  @override
+  void dispose() { search.dispose(); area.dispose(); fromUtc.dispose(); toUtc.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 3,
+    child: _WorkspaceScaffold(
+      title: 'التنبيهات الجوية',
+      subtitle: 'متابعة التحذيرات الرسمية ومجالات التأثير وفترات الصلاحية',
+      child: Column(children: [
+        const _SourceStatus(title: 'مصدر التحذيرات الرسمية', detail: 'لم يتم ربط مصدر رسمي معتمد للتنبيهات. لا تُنشأ تحذيرات تجريبية ولا تُعرض على أنها صادرة عن جهة الأرصاد.', connected: false),
+        const SizedBox(height: 12),
+        _Panel(title: 'البحث والتصفية', child: Column(children: [
+          TextField(controller: search, decoration: const InputDecoration(labelText: 'بحث في نص التنبيه أو رقمه', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: area, decoration: const InputDecoration(labelText: 'المنطقة المتأثرة', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: type,
+            decoration: const InputDecoration(labelText: 'نوع الظاهرة', border: OutlineInputBorder()),
+            items: const ['كل الظواهر', 'أمطار', 'رياح', 'عواصف رعدية', 'ضباب', 'حرارة', 'ثلوج', 'غبار']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => type = value ?? type),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: severity,
+            decoration: const InputDecoration(labelText: 'درجة التأثير', border: OutlineInputBorder()),
+            items: const ['كل الدرجات', 'حرج', 'عالٍ', 'متوسط', 'معلوماتي']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => severity = value ?? severity),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: fromUtc, decoration: const InputDecoration(labelText: 'الصلاحية من UTC', hintText: 'YYYY-MM-DD HH:MM', border: OutlineInputBorder()))),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(controller: toUtc, decoration: const InputDecoration(labelText: 'الصلاحية إلى UTC', hintText: 'YYYY-MM-DD HH:MM', border: OutlineInputBorder()))),
+          ]),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'سارية'), Tab(text: 'منتهية'), Tab(text: 'الأرشيف'),
+        ]),
+        SizedBox(height: 390, child: TabBarView(children: [
+          _AlertQueueTab(title: 'التنبيهات السارية', detail: 'تظهر الرسائل الرسمية مع الجهة المصدرة ورقم التنبيه والظاهرة والمنطقة ووقت الإصدار والصلاحية والتحديثات.'),
+          _AlertQueueTab(title: 'التنبيهات المنتهية', detail: 'تظهر التنبيهات التي انتهت صلاحيتها مع سجل التمديد أو الإلغاء ومصدر القرار.'),
+          _AlertQueueTab(title: 'أرشيف التنبيهات', detail: 'يحفظ النص الأصلي وإصدارات التعديل والجهة المصدرة ومجال التأثير وبصمة الرسالة.'),
+        ])),
+      ]),
+    ),
+  );
+}
+
+class _AlertQueueTab extends StatelessWidget {
+  const _AlertQueueTab({required this.title, required this.detail});
+  final String title, detail;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 12), children: [
+    _Panel(title: title, child: _EmptyState(icon: Icons.warning_amber_rounded, title: 'لا توجد تنبيهات محملة', message: detail)),
+    const SizedBox(height: 10),
+    const _InlineWarning(text: 'لا يجوز توليد درجة خطورة أو تمديد صلاحية أو إلغاء تنبيه من الواجهة دون مصدر رسمي وهوية مخولة وسجل قرار.'),
+  ]);
+}
+
+class QualityControlWorkspacePage extends StatefulWidget {
+  const QualityControlWorkspacePage({super.key});
+  @override State<QualityControlWorkspacePage> createState() => _QualityControlWorkspacePageState();
+}
+
+class _QualityControlWorkspacePageState extends State<QualityControlWorkspacePage> {
+  final station = TextEditingController();
+  final element = TextEditingController();
+  String ruleGroup = 'كل القواعد', severity = 'كل الدرجات';
+  @override
+  void dispose() { station.dispose(); element.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'ضبط جودة البيانات',
+      subtitle: 'قواعد التحقق والقيم الشاذة والتعارضات وطلبات التصحيح',
+      child: Column(children: [
+        const _SourceStatus(title: 'محرك ضبط الجودة', detail: 'قواعد التحقق العلمية والتشغيلية لم تُحمّل من كتالوج معتمد بعد. لا تُرفض أو تُصحح أي قيمة اعتماداً على حدود غير معتمدة.', connected: false),
+        const SizedBox(height: 12),
+        _Panel(title: 'معايير البحث', child: Column(children: [
+          TextField(controller: station, decoration: const InputDecoration(labelText: 'رمز المحطة', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: element, decoration: const InputDecoration(labelText: 'العنصر أو الحقل', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: ruleGroup,
+            decoration: const InputDecoration(labelText: 'مجموعة القواعد', border: OutlineInputBorder()),
+            items: const ['كل القواعد', 'نطاقات القيم', 'اتساق الحقول', 'التسلسل الزمني', 'اكتمال البيانات', 'بيانات المحطة', 'التكرار']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => ruleGroup = value ?? ruleGroup),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: severity,
+            decoration: const InputDecoration(labelText: 'درجة الملاحظة', border: OutlineInputBorder()),
+            items: const ['كل الدرجات', 'مانع', 'تحذير', 'معلومة']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => severity = value ?? severity),
+          ),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'مرفوضة'), Tab(text: 'تحذيرات'), Tab(text: 'بانتظار التصحيح'), Tab(text: 'معالجة'),
+        ]),
+        SizedBox(height: 390, child: TabBarView(children: [
+          _QualityQueueTab(title: 'القيم المرفوضة', detail: 'تعرض القاعدة التي منعت الحفظ والقيمة الواردة والمرجع والوقت ومعرّف العملية.'),
+          _QualityQueueTab(title: 'التحذيرات', detail: 'تعرض الحالات التي تحتاج مراجعة بشرية دون تعديل القيمة الأصلية.'),
+          _QualityQueueTab(title: 'طلبات التصحيح', detail: 'تعرض طلبات التصحيح والجهة المسؤولة والسبب والمهلة وسجل المحاولات.'),
+          _QualityQueueTab(title: 'الحالات المعالجة', detail: 'تعرض نتيجة المعالجة وهوية المراجع والقيمة المشتقة مع إبقاء الأصل محفوظاً.'),
+        ])),
+      ]),
+    ),
+  );
+}
+
+class _QualityQueueTab extends StatelessWidget {
+  const _QualityQueueTab({required this.title, required this.detail});
+  final String title, detail;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 12), children: [
+    _Panel(title: title, child: _EmptyState(icon: Icons.rule_folder_outlined, title: 'لا توجد حالات محملة', message: detail)),
+    const SizedBox(height: 10),
+    const _InlineWarning(text: 'يجب حفظ القيمة الخام ونتيجة كل قاعدة وإصدارها وقرار المراجع بصورة منفصلة. لا تعدل قواعد الجودة من هذه الشاشة.'),
+  ]);
+}
+
+class ClimateArchivePage extends StatefulWidget {
+  const ClimateArchivePage({super.key});
+  @override State<ClimateArchivePage> createState() => _ClimateArchivePageState();
+}
+
+class _ClimateArchivePageState extends State<ClimateArchivePage> {
+  final station = TextEditingController();
+  final query = TextEditingController();
+  final fromUtc = TextEditingController();
+  final toUtc = TextEditingController();
+  String recordType = 'كل الأنواع', source = 'كل المصادر';
+  @override
+  void dispose() { station.dispose(); query.dispose(); fromUtc.dispose(); toUtc.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 3,
+    child: _WorkspaceScaffold(
+      title: 'الأرشيف المناخي',
+      subtitle: 'البحث في السجلات التاريخية وتتبع المصدر والإصدارات',
+      child: Column(children: [
+        const _SourceStatus(title: 'مصدر الأرشيف', detail: 'عقد قراءة الأرشيف التاريخي غير مربوط. لا يتم نسخ أو تعديل بيانات القاعدة القديمة من تطبيق Flutter.', connected: false),
+        const SizedBox(height: 12),
+        _Panel(title: 'البحث في الأرشيف', child: Column(children: [
+          TextField(controller: query, decoration: const InputDecoration(labelText: 'بحث في الوصف أو معرّف السجل', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: station, decoration: const InputDecoration(labelText: 'رمز المحطة', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: fromUtc, decoration: const InputDecoration(labelText: 'من UTC', hintText: 'YYYY-MM-DD', border: OutlineInputBorder()))),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(controller: toUtc, decoration: const InputDecoration(labelText: 'إلى UTC', hintText: 'YYYY-MM-DD', border: OutlineInputBorder()))),
+          ]),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: recordType,
+            decoration: const InputDecoration(labelText: 'نوع السجل', border: OutlineInputBorder()),
+            items: const ['كل الأنواع', 'رصد ساعي', 'رصد يومي', 'نشرة مشفرة', 'سلسلة مناخية', 'تقرير']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => recordType = value ?? recordType),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: source,
+            decoration: const InputDecoration(labelText: 'مصدر السجل', border: OutlineInputBorder()),
+            items: const ['كل المصادر', 'رصد إلكتروني', 'دفتر ورقي', 'مسجل آلي', 'سلسلة مشتقة']
+                .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => source = value ?? source),
+          ),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'السجلات الخام'), Tab(text: 'المنتجات المشتقة'), Tab(text: 'السلاسل المصححة'),
+        ]),
+        SizedBox(height: 390, child: TabBarView(children: [
+          _ArchiveQueueTab(title: 'السجلات الخام', detail: 'تُعرض النسخة الأصلية مع المحطة ووقت الرصد ومصدر الإدخال وبصمة المحتوى. القراءة فقط.'),
+          _ArchiveQueueTab(title: 'المنتجات المشتقة', detail: 'تُعرض التقارير والمؤشرات مع إصدار قاعدة الحساب ومصدر المدخلات وفترة التجميع.'),
+          _ArchiveQueueTab(title: 'السلاسل المصححة', detail: 'تُعرض نسخة التجانس منفصلة عن الخام مع سجل التعديلات والموافقة وإصدار الخوارزمية.'),
+        ])),
+      ]),
+    ),
+  );
+}
+
+class _ArchiveQueueTab extends StatelessWidget {
+  const _ArchiveQueueTab({required this.title, required this.detail});
+  final String title, detail;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 12), children: [
+    _Panel(title: title, child: _EmptyState(icon: Icons.inventory_2_outlined, title: 'لا توجد سجلات محملة', message: detail)),
+    const SizedBox(height: 10),
+    const _InlineWarning(text: 'تظل السجلات الخام غير قابلة للتعديل. أي سلسلة مصححة أو منتج مشتق يحتفظ بمصدره وبصمته وإصدار طريقة الحساب.'),
+  ]);
+}
+
 class _ModuleStatusPage extends StatelessWidget {
   const _ModuleStatusPage({required this.title, required this.subtitle, required this.message, required this.icon});
   final String title, subtitle, message;
