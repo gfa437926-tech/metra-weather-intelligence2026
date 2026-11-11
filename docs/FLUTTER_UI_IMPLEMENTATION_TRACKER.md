@@ -128,7 +128,7 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - `docs/FLUTTER_UI_IMPLEMENTATION_TRACKER.md`: this update.
 
 ### Verification
-- GitHub Actions run [#43030198962](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030198962), exact head `9e886cb9c06c4abfcbf52f45519dd0ecea625fb9`: Flutter analysis **success**; Flutter tests **success**; web release build was still in progress at the time of this tracker update.
+- GitHub Actions run [#43030198962](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030198962), exact head `9e886cb9c06c4abfcbf52f45519dd0ecea625fb9`: Flutter analysis **success**; Flutter tests **success**; web release build **success**; web artifact upload **success**. The complete workflow finished successfully.
 - Latest documentation head `75d9652e06b4d0a2aa9ff4203b16ac40a088c0f4` has Actions run [#43030385828](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030385828) in progress; do not infer success until completed.
 - Earlier intermediate runs failed due to the old flaky scroll-based widget tests and the prior controller/declaration defects; those were corrected and the later exact-head Flutter test step succeeded. Historical failed runs are not represented as successes.
 
@@ -138,3 +138,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Repository has no `android/` or `ios/` platform directories; no APK/AAB/IPA or native signing build is claimed. Native scaffolding requires approved reverse-domain application ID and signing/provisioning decisions.
 - Flutter remains the active scope; Angular work has not started.
 - No database/SQL/migration execution, schema/data/secrets change, legacy repository/database access, merge, deployment, or owner-branch modification.
+
+
+## Verification follow-up (2026-11-11T13:36:03.600Z UTC)
+
+- Confirmed GitHub Actions run [#43030198962](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030198962) completed with overall conclusion **success** on exact code head `9e886cb9c06c4abfcbf52f45519dd0ecea625fb9`.
+- All workflow steps succeeded: Supabase Edge Function type checks; registration approval validation and batching tests; observation permission/payload tests; station review validation; Flutter dependency resolution, `flutter analyze`, `flutter test`, `flutter build web --release`, and `metra-web-release` artifact upload.
+- Latest branch head is `2dc7ca6c788ef7b3977a64927311f797b76e5def` (documentation-only changes after the tested code head). Exact-head workflow [#43030499169](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030499169) is pending/in progress; do not mark that head verified until completion.
+- PR #2 remains open Draft and unmerged. No native Android/iOS build is included; platform scaffolding and approved application identifier/signing remain explicit release gates.
