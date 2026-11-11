@@ -16,7 +16,7 @@ class WorkspaceModuleInfo {
 }
 
 const workspaceModules = <WorkspaceModuleInfo>[
-  WorkspaceModuleInfo(WorkspaceModule.observationForms, 'نماذج الرصد التفصيلية', 'النشرات الساعية واليومية والزراعية والمطرية والظواهر والأعطال', Icons.dynamic_form_outlined, 'التنبؤ والعمليات', 'حقول مفصلة — الإرسال مقيد'),
+  WorkspaceModuleInfo(WorkspaceModule.observationForms, 'نماذج الرصد التفصيلية', 'النشرات الساعية واليومية والزراعية والمطرية والظواهر والأعطال', Icons.dynamic_form, 'التنبؤ والعمليات', 'حقول مفصلة — الإرسال مقيد'),
   WorkspaceModuleInfo(WorkspaceModule.forecastCenter, 'مراكز التنبؤ الجوي', 'مقارنة المحطات والمناطق حسب الإحداثيات والارتفاع ومتابعة الرصد اللحظي', Icons.query_stats, 'التنبؤ والعمليات', 'بانتظار ربط القياسات'),
   WorkspaceModuleInfo(WorkspaceModule.forecastOffice, 'مكتب المتنبئ', 'إعداد وتحليل النشرات والتوقعات الجوية ومراجعة صلاحيتها', Icons.cloud_sync_outlined, 'التنبؤ والعمليات', 'واجهة تشغيلية قيد الربط'),
   WorkspaceModuleInfo(WorkspaceModule.bulletins, 'النشرات الجوية', 'النشرات الساعية واليومية والملخصات والرسائل المشفرة', Icons.description_outlined, 'التنبؤ والعمليات', 'واجهة إدخال ومراجعة'),
@@ -596,7 +596,7 @@ class PaperAndRecorderAuditPage extends StatelessWidget {
           ),
           _AuditSourceTab(
             title: 'المسجلات الميكانيكية',
-            icon: Icons.settings_input_component_outlined,
+            icon: Icons.settings_input_component,
             sourceType: 'نوع الجهاز',
             details: 'يدعم سجل الأجهزة Thermograph وHygrograph وBarograph وPluviograph، مع صورة المخطط والفترة الزمنية ومعايرة الجهاز.',
           ),
