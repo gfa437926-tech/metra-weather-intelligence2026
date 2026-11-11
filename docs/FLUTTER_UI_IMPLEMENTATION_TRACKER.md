@@ -79,3 +79,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Added station, observation UTC date/time, message text, and decoded-message preview areas.
 - Local completeness check is limited to required UI fields; saving, transmitting, and approval remain server-only and disabled until the bulletin contract and audit trail are approved.
 - Added widget test for the four bulletin workflow states.
+
+
+## Follow-up round — CLIMATOL product workspaces (2026-11-11T12:59:50.060Z UTC)
+
+- Split climate processing into series/quality, CLIMAT, CLIMAT TEMP and statistics/report tabs.
+- Added day/month/season/year period selection, element selection and an unopinionated year input rather than imposing a guessed climatological normal period.
+- Exposed placeholders for missing-data/QC flags, station provenance, coded message review, monthly/seasonal/annual rainfall/temperature/wind/humidity statistics, climate indicators, trends, geographic comparisons and reports.
+- Execution and report generation remain disabled until the scientific variable dictionary, units, normal periods, missing-value rules and R/CLIMATOL service contract are approved.
