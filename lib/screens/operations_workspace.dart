@@ -377,7 +377,7 @@ class _RoleRow extends StatelessWidget {
   const _RoleRow(this.title, this.description);
   final String title, description;
   @override
-  Widget build(BuildContext context) => ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(backgroundColor: Color(0xFFEAF2FF), child: Icon(Icons.badge_outlined, color: _blue)), title: Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13)), subtitle: Text(description, style: const TextStyle(color: Colors.blueGrey, fontSize: 11)));
+  Widget build(BuildContext context) => Material(color: Colors.transparent, child: ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(backgroundColor: Color(0xFFEAF2FF), child: Icon(Icons.badge_outlined, color: _blue)), title: Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13)), subtitle: Text(description, style: const TextStyle(color: Colors.blueGrey, fontSize: 11))));
 }
 class _ModuleStatusPage extends StatelessWidget {
   const _ModuleStatusPage({required this.title, required this.subtitle, required this.message, required this.icon});
@@ -609,27 +609,24 @@ class PaperAndRecorderAuditPage extends StatelessWidget {
 
 class _AuditDashboardTab extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 14),
-    child: Column(children: [
-      const Wrap(spacing: 8, runSpacing: 8, children: [
-        _MetricPill(icon: Icons.upload_file, label: 'الوارد'),
-        _MetricPill(icon: Icons.compare_arrows, label: 'بانتظار المطابقة'),
-        _MetricPill(icon: Icons.rate_review_outlined, label: 'بانتظار التدقيق'),
-        _MetricPill(icon: Icons.verified_outlined, label: 'المعتمد'),
-      ]),
-      const SizedBox(height: 14),
-      const _EmptyState(icon: Icons.fact_check_outlined, title: 'لا توجد ملفات تدقيق محملة', message: 'ستظهر هنا قوائم المهام حسب المحطة والتاريخ ونوع المصدر وحالة الاستخراج ودرجة الثقة واسم المدقق.'),
-      const SizedBox(height: 12),
-      const _Panel(title: 'الأدوار ومسار الاعتماد', child: Column(children: [
-        _RoleRow('رافع السجلات', 'رفع الأصل وإدخال بياناته الوصفية دون اعتماد النتائج'),
-        _RoleRow('المدقق', 'مراجعة الاستخراج ومقارنة المصادر واقتراح التصحيح'),
-        _RoleRow('المعتمد', 'اعتماد النتيجة أو إعادتها مع السبب'),
-        _RoleRow('مدير النماذج', 'إدارة نسخ النموذج ومجموعات التدريب'),
-        _RoleRow('مدير النظام', 'إدارة الإعدادات والصلاحيات ضمن التفويض'),
-      ])),
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: const [
+    Wrap(spacing: 8, runSpacing: 8, children: [
+      _MetricPill(icon: Icons.upload_file, label: 'الوارد'),
+      _MetricPill(icon: Icons.compare_arrows, label: 'بانتظار المطابقة'),
+      _MetricPill(icon: Icons.rate_review_outlined, label: 'بانتظار التدقيق'),
+      _MetricPill(icon: Icons.verified_outlined, label: 'المعتمد'),
     ]),
-  );
+    SizedBox(height: 14),
+    _EmptyState(icon: Icons.fact_check_outlined, title: 'لا توجد ملفات تدقيق محملة', message: 'ستظهر هنا قوائم المهام حسب المحطة والتاريخ ونوع المصدر وحالة الاستخراج ودرجة الثقة واسم المدقق.'),
+    SizedBox(height: 12),
+    _Panel(title: 'الأدوار ومسار الاعتماد', child: Column(children: [
+      _RoleRow('رافع السجلات', 'رفع الأصل وإدخال بياناته الوصفية دون اعتماد النتائج'),
+      _RoleRow('المدقق', 'مراجعة الاستخراج ومقارنة المصادر واقتراح التصحيح'),
+      _RoleRow('المعتمد', 'اعتماد النتيجة أو إعادتها مع السبب'),
+      _RoleRow('مدير النماذج', 'إدارة نسخ النموذج ومجموعات التدريب'),
+      _RoleRow('مدير النظام', 'إدارة الإعدادات والصلاحيات ضمن التفويض'),
+    ])),
+  ]);
 }
 
 class _AuditSourceTab extends StatefulWidget {
