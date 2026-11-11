@@ -156,3 +156,15 @@ void main() {
     expect(isValidElevationRange('low', '100'), isFalse);
   });
 }
+
+  testWidgets('forecaster workspace exposes UTC validity and core forecast elements', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ForecastOfficePage()));
+    expect(find.text('مكتب المتنبئ'), findsOneWidget);
+    expect(find.text('وقت إصدار التوقع UTC'), findsOneWidget);
+    expect(find.text('بداية الصلاحية UTC'), findsOneWidget);
+    expect(find.text('نهاية الصلاحية UTC'), findsOneWidget);
+    expect(find.text('الهطول المتوقع مم'), findsOneWidget);
+    expect(find.text('اتجاه الرياح'), findsOneWidget);
+    expect(find.text('الظواهر الجوية المتوقعة'), findsOneWidget);
+  });
+}
