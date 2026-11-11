@@ -6,6 +6,7 @@ void main() {
     String type = 'automatic',
     Object? latitude = 24.7136,
     Object? longitude = 46.6753,
+    Object? elevation = 545.5,
   }) => StationRecord.fromJson({
     'id': 'station-1',
     'local_station_code': 'RYD-001',
@@ -15,6 +16,7 @@ void main() {
     'approval_status': 'approved',
     'latitude': latitude,
     'longitude': longitude,
+    'elevation_m': elevation,
   });
 
   test('parses numeric and string coordinates without losing valid locations', () {
@@ -101,3 +103,10 @@ void main() {
     expect(station.operationalLabel, 'غير متحقق منها');
   });
 }
+
+
+test('parses optional station elevation without inventing missing values', () {
+  expect(parse(elevation: '545.50').elevationM, 545.5);
+  expect(parse(elevation: null).elevationM, isNull);
+  expect(parse(elevation: 'unknown').elevationM, isNull);
+});
