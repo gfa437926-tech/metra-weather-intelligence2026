@@ -11,6 +11,7 @@ import 'domain/weather_snapshot.dart';
 import 'screens/registration_flow.dart';
 import 'screens/observations_page.dart';
 import 'screens/station_review_page.dart';
+import 'screens/operations_workspace.dart';
 
 SupabaseClient? metraSupabaseClient;
 Future<void> main() async {
@@ -30,20 +31,28 @@ class MetraWeatherApp extends StatelessWidget {
  const MetraWeatherApp({super.key});
  @override Widget build(BuildContext context) => MaterialApp(debugShowCheckedModeBanner:false,title:'METRA Weather Intelligence',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:canvas,colorScheme:ColorScheme.fromSeed(seedColor:blue),fontFamily:'Roboto'),home: metraSupabaseClient == null ? const Shell() : const AuthGate());
 }
-class Shell extends StatefulWidget { const Shell({super.key}); @override State<Shell> createState()=>_ShellState(); }
+class Shell extends StatefulWidget {
+  const Shell({super.key});
+  @override State<Shell> createState() => _ShellState();
+}
 class _ShellState extends State<Shell> {
- int page=0;
- final titles=['الرئيسية','الخريطة','المحطات','الرصد','اعتماد المحطات','التنبيهات','الإعدادات'];
- @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
- body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),const AlertsPage(),const SettingsPage()]),
- bottomNavigationBar:NavigationBar(height:72,selectedIndex:page,onDestinationSelected:(i)=>setState(()=>page=i),destinations:const [
- NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'الرئيسية'),
- NavigationDestination(icon:Icon(Icons.map_outlined),selectedIcon:Icon(Icons.map),label:'الخريطة'),
- NavigationDestination(icon:Icon(Icons.sensors_outlined),selectedIcon:Icon(Icons.sensors),label:'المحطات'),
- NavigationDestination(icon:Icon(Icons.fact_check_outlined),selectedIcon:Icon(Icons.fact_check),label:'الرصد'),
- NavigationDestination(icon:Icon(Icons.fact_check_outlined),selectedIcon:Icon(Icons.fact_check),label:'اعتماد'),
- NavigationDestination(icon:Icon(Icons.notifications_none),selectedIcon:Icon(Icons.notifications),label:'التنبيهات'),
- NavigationDestination(icon:Icon(Icons.settings_outlined),selectedIcon:Icon(Icons.settings),label:'الإعدادات')]))); }
+  int page = 0;
+  @override
+  Widget build(BuildContext context) => Directionality(textDirection: TextDirection.rtl, child: Scaffold(
+    body: IndexedStack(index: page, children: [
+      const HomePage(), const MapPage(), const StationsPage(),
+      ObservationsPage(client: metraSupabaseClient),
+      OperationsHubPage(client: metraSupabaseClient),
+    ]),
+    bottomNavigationBar: NavigationBar(height: 72, selectedIndex: page, onDestinationSelected: (index) => setState(() => page = index), destinations: const [
+      NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'الرئيسية'),
+      NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'الخريطة'),
+      NavigationDestination(icon: Icon(Icons.sensors_outlined), selectedIcon: Icon(Icons.sensors), label: 'المحطات'),
+      NavigationDestination(icon: Icon(Icons.fact_check_outlined), selectedIcon: Icon(Icons.fact_check), label: 'الرصد'),
+      NavigationDestination(icon: Icon(Icons.apps_outlined), selectedIcon: Icon(Icons.apps), label: 'مركز العمل'),
+    ]),
+  ));
+}
 
 class HomePage extends StatelessWidget { const HomePage({super.key});
  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.fromLTRB(18,18,18,28),children:[
