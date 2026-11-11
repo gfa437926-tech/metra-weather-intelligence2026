@@ -106,3 +106,35 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - No test/build result is claimed for the controller-fix commit until its exact-head Actions run completes.
 - No API, database, SQL, migration, secrets, deployment, Angular code or legacy repository/database changes.
 - Flutter remains first in scope; Angular work remains deferred until Flutter interface acceptance.
+
+
+## Interface completion round — forecast centre, AFTN, audit, reports and operational workspaces (2026-11-11T13:35:18.015Z UTC)
+
+### Implemented in Flutter source
+- Removed duplicated workspace declarations from `lib/screens/operations_workspace.dart`; the final workspace module declarations are unique.
+- Completed forecaster field-controller lifecycle and local checks for UTC issue/validity formats, validity ordering, temperature min/max ordering, non-negative precipitation/wind/gust/visibility, probability 0–100, and numeric wind-direction bounds. These are form-level checks only; no scientific operational thresholds were introduced.
+- Extended `StationRecord` with optional `elevationM`; the protected station-directory Edge Function now includes the existing catalogue column `elevation_m` in its response. No table or migration changed.
+- Rebuilt the forecast-centre screen around the authenticated station directory: search, station type, elevation bands and exact elevation bounds, latitude/longitude bounds, station cards, detail sheet and explicit no-telemetry/no-bulletin states. The coordinate bounding box is the geographic-area filter; the catalogue has no region taxonomy field, so no region names are inferred.
+- Added a deterministic station-record override for UI tests; tests cover coordinate filtering, elevation filtering, detail-sheet coordinates/elevation and the absence of fabricated readings.
+- Added local AFTN composition preview through a pure builder function; it remains labelled non-final and does not transmit. AFTN sending remains disabled.
+- Added raw bulletin text preview only; no parser or decoded fields are claimed.
+- Expanded electronic audit with read-only filters and event-detail layout; expanded reports with station/date/element/aggregation/export controls; expanded user access into account/role/permission-domain workspaces; added dedicated alert lifecycle, quality-control queues and climate archive search screens.
+- Kept all service-missing states explicit; no dummy event, alert, climate reading, user or report is presented as real.
+
+### Documentation updated
+- `docs/FORECAST_CENTRE_UI_AND_DATA_CONTRACT.md`: exact connected station-directory fields and proposed telemetry contract (not approved).
+- `docs/FLUTTER_INTERFACE_COVERAGE.md`: screen-by-screen interface vs integration matrix and native packaging gate.
+- `README.md`: corrected the forecast-centre and bulletin claims; documented live-source boundaries and Android/iOS gap.
+- `docs/FLUTTER_UI_IMPLEMENTATION_TRACKER.md`: this update.
+
+### Verification
+- GitHub Actions run [#43030198962](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030198962), exact head `9e886cb9c06c4abfcbf52f45519dd0ecea625fb9`: Flutter analysis **success**; Flutter tests **success**; web release build was still in progress at the time of this tracker update.
+- Latest documentation head `75d9652e06b4d0a2aa9ff4203b16ac40a088c0f4` has Actions run [#43030385828](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030385828) in progress; do not infer success until completed.
+- Earlier intermediate runs failed due to the old flaky scroll-based widget tests and the prior controller/declaration defects; those were corrected and the later exact-head Flutter test step succeeded. Historical failed runs are not represented as successes.
+
+### Remaining hard gates
+- The station directory is connected, but automatic station telemetry, precipitation accumulations, wind/pressure/humidity/visibility measurements and incoming bulletin feed/parser are not implemented because no approved API exists in this repo.
+- AFTN gateway and final message framing, official alert feed, electronic audit ledger, report aggregation/export, CLIMATOL/R runtime, homogenization engine, paper/recorder ingestion, user delegation API and AI model service remain service integration gates.
+- Repository has no `android/` or `ios/` platform directories; no APK/AAB/IPA or native signing build is claimed. Native scaffolding requires approved reverse-domain application ID and signing/provisioning decisions.
+- Flutter remains the active scope; Angular work has not started.
+- No database/SQL/migration execution, schema/data/secrets change, legacy repository/database access, merge, deployment, or owner-branch modification.
