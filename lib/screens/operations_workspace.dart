@@ -835,7 +835,7 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
       origin.text.trim().toUpperCase(),
       if (optionalHeading.text.trim().isNotEmpty) optionalHeading.text.trim(),
     ].join(' ');
-    return [header, body.text.trim(), 'NNNN'].join('\\n');
+    return [header, body.text.trim(), 'NNNN'].join('\n');
   }
   @override
   void dispose() { origin.dispose(); destination.dispose(); body.dispose(); transmissionId.dispose(); additionalService.dispose(); dateTimeGroup.dispose(); optionalHeading.dispose(); super.dispose(); }
