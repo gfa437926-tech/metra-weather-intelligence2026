@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_flow.dart';
 import 'station_review_page.dart';
 import 'observation_forms_catalogue_page.dart';
+import '../data/station_directory_service.dart';
+import '../domain/station_record.dart';
 
 const _ink = Color(0xFF102448), _navy = Color(0xFF071A43), _blue = Color(0xFF1769D2), _canvas = Color(0xFFF3F6FC);
 
@@ -158,7 +160,7 @@ class WorkspaceModulePage extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (module) {
       case WorkspaceModule.observationForms: return const ObservationFormsCataloguePage();
-      case WorkspaceModule.forecastCenter: return const ForecastCenterPage();
+      case WorkspaceModule.forecastCenter: return ForecastCenterPage(client: client);
       case WorkspaceModule.forecastOffice: return const ForecastOfficePage();
       case WorkspaceModule.bulletins: return const BulletinWorkspacePage();
       case WorkspaceModule.electronicAudit: return const ElectronicAuditPage();
@@ -180,75 +182,386 @@ class WorkspaceModulePage extends StatelessWidget {
 }
 
 class ForecastCenterPage extends StatefulWidget {
-  const ForecastCenterPage({super.key});
-  @override State<ForecastCenterPage> createState() => _ForecastCenterPageState();
+  const ForecastCenterPage({super.key, this.client});
+  final SupabaseClient? client;
+  @override
+  State<ForecastCenterPage> createState() => _ForecastCenterPageState();
 }
+
 class _ForecastCenterPageState extends State<ForecastCenterPage> {
-  String region = 'كل المناطق', altitude = 'كل الارتفاعات', search = '';
+  Future<List<StationRecord>>? stationsFuture;
+  String stationType = 'كل الأنواع', altitude = 'كل الارتفاعات', search = '';
   String latFrom = '', latTo = '', lonFrom = '', lonTo = '';
   String elevFrom = '', elevTo = '';
   String window = 'آخر ساعة';
-  final regions = const ['كل المناطق', 'الساحل', 'الداخل', 'المرتفعات', 'الجزيرة', 'الجنوب'];
-  final altitudes = const ['كل الارتفاعات', 'أقل من 500 م', '500–1000 م', '1000–1500 م', 'أكثر من 1500 م'];
+
   @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'مراكز التنبؤ الجوي', subtitle: 'مقارنة المحطات والمناطق ومتابعة القراءات اللحظية', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    const _SourceStatus(title: 'تغذية المحطات اللحظية', detail: 'لم يتم ربط بوابة القياسات الآلية أو تدفق الرصد المباشر بعد.', connected: false),
-    const SizedBox(height: 14),
-    _Panel(title: 'معايير المقارنة', child: Column(children: [
-      TextField(onChanged: (v) => setState(() => search = v), decoration: const InputDecoration(labelText: 'بحث باسم المحطة أو رمزها', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(value: region, decoration: const InputDecoration(labelText: 'المنطقة', border: OutlineInputBorder()), items: regions.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => region = v ?? regions.first)),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(value: altitude, decoration: const InputDecoration(labelText: 'نطاق الارتفاع', border: OutlineInputBorder()), items: altitudes.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => altitude = v ?? altitudes.first)),
-      const SizedBox(height: 12),
-      const Align(alignment: Alignment.centerRight, child: Text('نطاق الإحداثيات الجغرافية (درجات عشرية)', style: TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12))),
-      const SizedBox(height: 8),
-      Row(children: [
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => latFrom = v), decoration: const InputDecoration(labelText: 'خط العرض من', border: OutlineInputBorder()))),
-        const SizedBox(width: 8),
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => latTo = v), decoration: const InputDecoration(labelText: 'خط العرض إلى', border: OutlineInputBorder()))),
-      ]),
-      const SizedBox(height: 8),
-      Row(children: [
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => lonFrom = v), decoration: const InputDecoration(labelText: 'خط الطول من', border: OutlineInputBorder()))),
-        const SizedBox(width: 8),
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => lonTo = v), decoration: const InputDecoration(labelText: 'خط الطول إلى', border: OutlineInputBorder()))),
-      ]),
-      const SizedBox(height: 12),
-      Row(children: [
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => elevFrom = v), decoration: const InputDecoration(labelText: 'الارتفاع من (م)', border: OutlineInputBorder()))),
-        const SizedBox(width: 8),
-        Expanded(child: TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (v) => setState(() => elevTo = v), decoration: const InputDecoration(labelText: 'الارتفاع إلى (م)', border: OutlineInputBorder()))),
-      ]),
+  void initState() {
+    super.initState();
+    final client = widget.client;
+    if (client != null) stationsFuture = StationDirectoryService(client).fetchStations();
+  }
+
+  void _refreshStations() {
+    final client = widget.client;
+    if (client != null) {
+      setState(() => stationsFuture = StationDirectoryService(client).fetchStations());
+    }
+  }
+
+  bool _matchesAltitudeBand(StationRecord station) {
+    if (altitude == 'كل الارتفاعات') return true;
+    final elevation = station.elevationM;
+    if (elevation == null) return false;
+    return switch (altitude) {
+      'أقل من 500 م' => elevation < 500,
+      '500 إلى أقل من 1000 م' => elevation >= 500 && elevation < 1000,
+      '1000 إلى 1500 م' => elevation >= 1000 && elevation <= 1500,
+      'أكثر من 1500 م' => elevation > 1500,
+      _ => true,
+    };
+  }
+
+  List<StationRecord> _filterStations(List<StationRecord> all) {
+    final latLow = double.tryParse(latFrom.trim());
+    final latHigh = double.tryParse(latTo.trim());
+    final lonLow = double.tryParse(lonFrom.trim());
+    final lonHigh = double.tryParse(lonTo.trim());
+    final elevLow = double.tryParse(elevFrom.trim());
+    final elevHigh = double.tryParse(elevTo.trim());
+    final coordinateFilter = latFrom.trim().isNotEmpty || latTo.trim().isNotEmpty ||
+        lonFrom.trim().isNotEmpty || lonTo.trim().isNotEmpty;
+    final elevationFilter = elevFrom.trim().isNotEmpty || elevTo.trim().isNotEmpty;
+    final validBounds = isValidLatitudeRange(latFrom, latTo) &&
+        isValidLongitudeRange(lonFrom, lonTo) &&
+        isValidElevationRange(elevFrom, elevTo);
+    if (!validBounds) return const <StationRecord>[];
+
+    final needle = search.trim().toLowerCase();
+    return all.where((station) {
+      final typeMatches = stationType == 'كل الأنواع' ||
+          (stationType == 'كلاسيكية' && station.isClassic) ||
+          (stationType == 'آلية' && station.isAutomatic) ||
+          (stationType == 'غير مصنفة' && !station.isClassic && !station.isAutomatic);
+      final textMatches = needle.isEmpty ||
+          station.name.toLowerCase().contains(needle) ||
+          station.code.toLowerCase().contains(needle);
+      if (!typeMatches || !textMatches || !_matchesAltitudeBand(station)) return false;
+      if (coordinateFilter) {
+        if (!station.hasCoordinates) return false;
+        if (latLow != null && station.latitude! < latLow) return false;
+        if (latHigh != null && station.latitude! > latHigh) return false;
+        if (lonLow != null && station.longitude! < lonLow) return false;
+        if (lonHigh != null && station.longitude! > lonHigh) return false;
+      }
+      if (elevationFilter) {
+        final elevation = station.elevationM;
+        if (elevation == null) return false;
+        if (elevLow != null && elevation < elevLow) return false;
+        if (elevHigh != null && elevation > elevHigh) return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  void _showStationDetails(StationRecord station) {
+    final elevationLabel = station.elevationM == null
+        ? 'غير موثق' : '${station.elevationM!.toStringAsFixed(1)} م';
+    final coordinateLabel = station.hasCoordinates
+        ? '${station.latitude!.toStringAsFixed(5)}, ${station.longitude!.toStringAsFixed(5)}'
+        : 'غير موثقة';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: _canvas,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [
+                  Expanded(child: Text(station.name,
+                    style: const TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.bold))),
+                  IconButton(
+                    tooltip: 'إغلاق التفاصيل',
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ]),
+                _KeyValue(label: 'رمز المحطة', value: station.code),
+                _KeyValue(label: 'النوع', value: station.typeLabel),
+                _KeyValue(label: 'الارتفاع', value: elevationLabel),
+                _KeyValue(label: 'الإحداثيات', value: coordinateLabel),
+                _KeyValue(label: 'اعتماد الدليل', value: station.approvalLabel),
+                _KeyValue(label: 'الحالة التشغيلية', value: station.operationalLabel),
+                const SizedBox(height: 12),
+                const _SourceStatus(
+                  title: 'القراءات اللحظية',
+                  detail: 'بيانات دليل المحطة موثقة، لكن تدفق القياسات الآلية لم يُربط بعد. لن تُعرض قيم مطر أو رياح افتراضية.',
+                  connected: false,
+                ),
+                const SizedBox(height: 10),
+                const _Panel(title: 'تفاصيل القياسات', child: Column(children: [
+                  _KeyValue(label: 'الهطول المطري', value: 'لا توجد قراءة محملة'),
+                  _KeyValue(label: 'سرعة الرياح', value: 'لا توجد قراءة محملة'),
+                  _KeyValue(label: 'اتجاه الرياح', value: 'لا توجد قراءة محملة'),
+                  _KeyValue(label: 'هبات الرياح', value: 'لا توجد قراءة محملة'),
+                  _KeyValue(label: 'وقت آخر قراءة UTC', value: 'لا توجد قراءة محملة'),
+                ])),
+                const SizedBox(height: 10),
+                const _Panel(title: 'النشرة الواردة من المحطة', child: _EmptyState(
+                  icon: Icons.article_outlined,
+                  title: 'لا توجد نشرة محملة',
+                  message: 'ستظهر هنا الرسالة الخام وفك ترميزها ووقت الاستلام ومصدرها وسجل التحقق عند ربط خدمة النشرات.',
+                )),
+              ],
+            )),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => _WorkspaceScaffold(
+    title: 'مراكز التنبؤ الجوي',
+    subtitle: 'مقارنة المحطات والمناطق عبر الإحداثيات والارتفاع ومتابعة القراءات اللحظية',
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const _SourceStatus(
+        title: 'تغذية المحطات اللحظية',
+        detail: 'دليل المحطات وإحداثياتها وارتفاعاتها يُحمّل من الخدمة المحمية. تدفق القياسات والنشرات اللحظية لم يُربط بعد.',
+        connected: false,
+      ),
+      const SizedBox(height: 14),
+      _Panel(title: 'معايير المقارنة', child: Column(children: [
+        TextField(
+          onChanged: (value) => setState(() => search = value),
+          decoration: const InputDecoration(
+            labelText: 'بحث باسم المحطة أو رمزها',
+            prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: stationType,
+          decoration: const InputDecoration(labelText: 'نوع المحطة', border: OutlineInputBorder()),
+          items: const ['كل الأنواع', 'كلاسيكية', 'آلية', 'غير مصنفة']
+              .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+          onChanged: (value) => setState(() => stationType = value ?? stationType),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: altitude,
+          decoration: const InputDecoration(labelText: 'نطاق الارتفاع', border: OutlineInputBorder()),
+          items: const [
+            'كل الارتفاعات', 'أقل من 500 م', '500 إلى أقل من 1000 م',
+            '1000 إلى 1500 م', 'أكثر من 1500 م',
+          ].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+          onChanged: (value) => setState(() => altitude = value ?? altitude),
+        ),
+        const SizedBox(height: 12),
+        const Align(
+          alignment: Alignment.centerRight,
+          child: Text('تحديد المنطقة عبر نطاق الإحداثيات الجغرافية (درجات عشرية)',
+            style: TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12)),
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => latFrom = value),
+            decoration: const InputDecoration(labelText: 'خط العرض من', border: OutlineInputBorder()),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => latTo = value),
+            decoration: const InputDecoration(labelText: 'خط العرض إلى', border: OutlineInputBorder()),
+          )),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => lonFrom = value),
+            decoration: const InputDecoration(labelText: 'خط الطول من', border: OutlineInputBorder()),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => lonTo = value),
+            decoration: const InputDecoration(labelText: 'خط الطول إلى', border: OutlineInputBorder()),
+          )),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => elevFrom = value),
+            decoration: const InputDecoration(labelText: 'الارتفاع من (م)', border: OutlineInputBorder()),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (value) => setState(() => elevTo = value),
+            decoration: const InputDecoration(labelText: 'الارتفاع إلى (م)', border: OutlineInputBorder()),
+          )),
+        ]),
+        const SizedBox(height: 10),
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(
+          onPressed: () {
+            final valid = isValidLatitudeRange(latFrom, latTo) &&
+                isValidLongitudeRange(lonFrom, lonTo) &&
+                isValidElevationRange(elevFrom, elevTo);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+              valid ? 'حدود الإحداثيات والارتفاع صالحة شكلياً.' : 'أدخل حدوداً رقمية صحيحة وبترتيب تصاعدي.',
+            )));
+          },
+          icon: const Icon(Icons.rule),
+          label: const Text('التحقق من حدود المقارنة'),
+        )),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: window,
+          decoration: const InputDecoration(labelText: 'نافذة المقارنة الزمنية', border: OutlineInputBorder()),
+          items: const ['آخر 10 دقائق', 'آخر ساعة', 'آخر 3 ساعات', 'آخر 6 ساعات', 'آخر 24 ساعة']
+              .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+          onChanged: (value) => setState(() => window = value ?? window),
+        ),
+        const SizedBox(height: 10),
+        const Align(
+          alignment: Alignment.centerRight,
+          child: Text('تُعرض المحطات حسب الإحداثيات والارتفاع الموثقين فقط؛ لا يُستنتج موقع أو ارتفاع من اسم المحطة.',
+            style: TextStyle(color: Colors.blueGrey, fontSize: 11)),
+        ),
+      ])),
+      const SizedBox(height: 14),
+      const Text('مؤشرات القياس المطلوبة', style: TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 16)),
       const SizedBox(height: 10),
-      SizedBox(width: double.infinity, child: OutlinedButton.icon(
-        onPressed: () {
-          final valid = isValidLatitudeRange(latFrom, latTo) && isValidLongitudeRange(lonFrom, lonTo) && isValidElevationRange(elevFrom, elevTo);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(valid ? 'حدود الإحداثيات والارتفاع صالحة شكلياً.' : 'تحقق من حدود العرض والطول وترتيب الارتفاعات.')));
-        },
-        icon: const Icon(Icons.rule),
-        label: const Text('التحقق من حدود المقارنة'),
+      const Wrap(spacing: 8, runSpacing: 8, children: [
+        _MetricPill(icon: Icons.water_drop, label: 'مطر 1/3/6/24 ساعة'),
+        _MetricPill(icon: Icons.air, label: 'سرعة الرياح'),
+        _MetricPill(icon: Icons.explore, label: 'اتجاه الرياح'),
+        _MetricPill(icon: Icons.speed, label: 'الهبات واتجاهها'),
+        _MetricPill(icon: Icons.thermostat, label: 'الحرارة والندى'),
+        _MetricPill(icon: Icons.compress, label: 'الضغط'),
+        _MetricPill(icon: Icons.water, label: 'الرطوبة'),
+        _MetricPill(icon: Icons.visibility_outlined, label: 'الرؤية'),
+        _MetricPill(icon: Icons.cloud_outlined, label: 'الغيوم والطقس'),
+      ]),
+      const SizedBox(height: 14),
+      _Panel(title: 'جدول المحطات المقارن', child: Column(children: [
+        if (stationsFuture == null)
+          const _EmptyState(
+            icon: Icons.lock_outline,
+            title: 'دليل المحطات غير مهيأ',
+            message: 'يلزم تشغيل التطبيق بجلسة مصادق عليها وصلاحية قراءة دليل المحطات لعرض السجلات المعتمدة.',
+          )
+        else
+          FutureBuilder<List<StationRecord>>(
+            future: stationsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+              }
+              if (snapshot.hasError) {
+                return _EmptyState(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'تعذر تحميل دليل المحطات',
+                  message: 'تحقق من جلسة الحساب وصلاحية stations.read ثم أعد المحاولة.',
+                );
+              }
+              final all = snapshot.data ?? const <StationRecord>[];
+              final validBounds = isValidLatitudeRange(latFrom, latTo) &&
+                  isValidLongitudeRange(lonFrom, lonTo) &&
+                  isValidElevationRange(elevFrom, elevTo);
+              final filtered = _filterStations(all);
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text('${filtered.length} محطة مطابقة من أصل ${all.length}',
+                    style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
+                  IconButton(
+                    tooltip: 'تحديث دليل المحطات',
+                    onPressed: _refreshStations,
+                    icon: const Icon(Icons.refresh, color: _blue),
+                  ),
+                ]),
+                if (!validBounds)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: _InlineWarning(text: 'أحد نطاقات الإحداثيات أو الارتفاع غير مكتمل أو غير صالح؛ لن تظهر نتائج حتى تصحيح الحدود.'),
+                  ),
+                if (all.isEmpty)
+                  const _EmptyState(icon: Icons.sensors_off_outlined, title: 'لا توجد محطات في الدليل', message: 'لا توجد سجلات محطات متاحة ضمن صلاحيات الحساب.')
+                else if (filtered.isEmpty && validBounds)
+                  const _EmptyState(icon: Icons.search_off, title: 'لا توجد محطات مطابقة', message: 'غيّر البحث أو نوع المحطة أو نطاق الإحداثيات والارتفاع.')
+                else
+                  for (final station in filtered)
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: Colors.white,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => _showStationDetails(station),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Expanded(child: Text(station.name,
+                                style: const TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 13))),
+                              Text(station.code, style: const TextStyle(color: _blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 5),
+                              const Icon(Icons.chevron_left, size: 17, color: Colors.blueGrey),
+                            ]),
+                            const SizedBox(height: 5),
+                            Builder(builder: (context) {
+                              final elevationLabel = station.elevationM == null
+                                  ? 'الارتفاع غير موثق'
+                                  : '${station.elevationM!.toStringAsFixed(1)} م';
+                              return Text('${station.typeLabel} • $elevationLabel',
+                                style: const TextStyle(color: Colors.blueGrey, fontSize: 10));
+                            }),
+                            const SizedBox(height: 4),
+                            Text(
+                              station.hasCoordinates
+                                  ? 'الإحداثيات: ${station.latitude!.toStringAsFixed(5)}, ${station.longitude!.toStringAsFixed(5)}'
+                                  : 'الإحداثيات غير موثقة',
+                              style: const TextStyle(color: Colors.blueGrey, fontSize: 10),
+                            ),
+                            const SizedBox(height: 7),
+                            const Text('مطر: —   •   رياح: —   •   الاتجاه: —   •   الهبات: —',
+                              style: TextStyle(color: Colors.blueGrey, fontSize: 10)),
+                            const SizedBox(height: 3),
+                            Text('${station.approvalLabel} • ${station.operationalLabel}',
+                              style: const TextStyle(color: Colors.blueGrey, fontSize: 10)),
+                          ]),
+                        ),
+                      ),
+                    ),
+                const SizedBox(height: 6),
+                const _InlineWarning(text: 'الشرطات في أعمدة القياسات تعني عدم وجود تدفق لحظي متصل، ولا تمثل صفراً أو قراءة فعلية.'),
+              ]);
+            },
+          ),
+      ])),
+      const SizedBox(height: 14),
+      const _Panel(title: 'تفاصيل النشرة الواردة', child: _EmptyState(
+        icon: Icons.article_outlined,
+        title: 'بانتظار أول نشرة موثقة',
+        message: 'عند ربط خدمة النشرات ستظهر الرسالة الخام والمفككة ووقت الاستلام ومصدرها وسجل التحقق؛ ويمكن فتح التفاصيل من بطاقة المحطة.',
       )),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(value: window, decoration: const InputDecoration(labelText: 'نافذة المقارنة الزمنية', border: OutlineInputBorder()), items: const ['آخر 10 دقائق', 'آخر ساعة', 'آخر 3 ساعات', 'آخر 6 ساعات', 'آخر 24 ساعة'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => window = v ?? window)),
-      const SizedBox(height: 10),
-      const Align(alignment: Alignment.centerRight, child: Text('تُحسب المنطقة والارتفاع والإحداثيات من دليل المحطات الموثق فقط؛ لا تُستنتج من اسم الموقع.', style: TextStyle(color: Colors.blueGrey, fontSize: 11))),
-    ])),
-    const SizedBox(height: 14),
-    const Text('مؤشرات المقارنة', style: TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 16)),
-    const SizedBox(height: 10),
-    const Wrap(spacing: 8, runSpacing: 8, children: [
-      _MetricPill(icon: Icons.water_drop, label: 'مطر 1/3/6/24 ساعة'), _MetricPill(icon: Icons.air, label: 'سرعة الرياح'), _MetricPill(icon: Icons.explore, label: 'اتجاه الرياح'), _MetricPill(icon: Icons.speed, label: 'الهبات واتجاهها'), _MetricPill(icon: Icons.thermostat, label: 'الحرارة والندى'), _MetricPill(icon: Icons.compress, label: 'الضغط'), _MetricPill(icon: Icons.water, label: 'الرطوبة'), _MetricPill(icon: Icons.visibility_outlined, label: 'الرؤية'), _MetricPill(icon: Icons.cloud_outlined, label: 'الغيوم والطقس'),
     ]),
-    const SizedBox(height: 14),
-    _Panel(title: 'جدول المحطات المقارن', child: Column(children: [
-      Text('الفلاتر الحالية: $region • $altitude • $window • خط العرض: $latFrom إلى $latTo • خط الطول: $lonFrom إلى $lonTo • الارتفاع: $elevFrom إلى $elevTo م • بحث: $search', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
-      const SizedBox(height: 12),
-      const _EmptyState(icon: Icons.sensors_off_outlined, title: 'لا توجد قراءات لحظية متاحة', message: 'ستظهر هنا المحطة والرمز والإحداثيات والارتفاع ووقت آخر قراءة، ثم المطر والرياح واتجاهها والهبات وبقية العناصر بعد ربط مصدر المحطات.'),
-    ])),
-    const SizedBox(height: 14),
-    const _Panel(title: 'تفاصيل النشرة الواردة', child: _EmptyState(icon: Icons.article_outlined, title: 'بانتظار أول نشرة موثقة', message: 'عند وصول نشرة من محطة، ستظهر تفاصيلها الخام والمفككة ووقت الاستلام ومصدرها وسجل التحقق، مع إمكانية فتح سجل المحطة.')),
-  ]));
+  );
 }
 
 class ForecastOfficePage extends StatefulWidget {
