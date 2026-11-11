@@ -211,8 +211,6 @@ class _ObservationFormsCataloguePageState extends State<ObservationFormsCatalogu
   ObservationFormDefinition get selected => observationFormDefinitions.firstWhere((item) => item.id == selectedId);
   @override
   void dispose() { for (final controller in controllers.values) { controller.dispose(); } super.dispose(); }
-  TextEditingController controllerFor(String key) => controllers.putIfAbsent(key, TextEditingController.new);
-
   @override
   Widget build(BuildContext context) {
     final groups = <String, List<ObservationInputField>>{};
