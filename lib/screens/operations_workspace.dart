@@ -946,7 +946,7 @@ String buildAftnLocalPreview({
     origin.trim().toUpperCase(),
     if (optionalHeading.trim().isNotEmpty) optionalHeading.trim(),
   ].join(' ');
-  return [header, body.trim(), 'NNNN'].join('\\n');
+  return [header, body.trim(), 'NNNN'].join('\n');
 }
 
 class AftnWorkspacePage extends StatefulWidget {
