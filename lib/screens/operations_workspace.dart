@@ -226,32 +226,71 @@ class BulletinWorkspacePage extends StatefulWidget {
 }
 class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
   String type = 'نشرة ساعية', stationCode = '';
-  final raw = TextEditingController();
-  @override void dispose() { raw.dispose(); super.dispose(); }
+  final raw = TextEditingController(), reportTime = TextEditingController();
   @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'النشرات الجوية', subtitle: 'إدخال ومراجعة النشرات الساعية واليومية والملخصات', child: Column(children: [
-    const _SourceStatus(title: 'خدمة النشرات', detail: 'تجهيز الواجهة متاح؛ عقد الحفظ والتدقيق النهائي لم يعتمد بعد لجميع أنواع النشرات.', connected: false),
-    const SizedBox(height: 14),
-    _Panel(title: 'اختيار نوع النشرة', child: Wrap(spacing: 8, runSpacing: 8, children: [
-      for (final item in ['نشرة ساعية', 'نشرة يومية', 'SYNOP', 'METAR', 'TAF', 'ملخص جوي']) ChoiceChip(label: Text(item), selected: type == item, onSelected: (_) => setState(() => type = item)),
-    ])),
-    const SizedBox(height: 14),
-    _Panel(title: 'بيانات النشرة', child: Column(children: [
-      TextFormField(onChanged: (v) => stationCode = v, decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
-      const SizedBox(height: 12),
-      TextField(controller: raw, minLines: 5, maxLines: 9, decoration: InputDecoration(labelText: 'محتوى النشرة / الرسالة', alignLabelWithHint: true, hintText: type == 'METAR' || type == 'SYNOP' ? 'أدخل النص المشفر للمراجعة' : 'أدخل محتوى النشرة', border: const OutlineInputBorder())),
-      const SizedBox(height: 10),
-      const _InlineWarning(text: 'لا تُرسل هذه المسودة إلى قاعدة البيانات. يلزم ربط مخطط الحقول والمدقق العلمي الخاص بكل نوع نشرة.'),
-      const SizedBox(height: 12),
-      Row(children: [
-        Expanded(child: OutlinedButton.icon(onPressed: () { if (stationCode.trim().isEmpty || raw.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل رمز المحطة ومحتوى النشرة أولاً.'))); return; } ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم فحص اكتمال الحقول محلياً فقط.'))); }, icon: const Icon(Icons.rule), label: const Text('فحص الحقول'))),
-        const SizedBox(width: 8),
-        Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.save_outlined), label: const Text('حفظ / إرسال'))),
+  void dispose() { raw.dispose(); reportTime.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'النشرات الجوية',
+      subtitle: 'تحرير النشرات ومراجعتها واعتمادها وتتبع حالتها',
+      child: Column(children: [
+        const _SourceStatus(title: 'خدمة النشرات', detail: 'تجهيز الواجهة متاح؛ عقد الحفظ والتدقيق النهائي لم يعتمد بعد لجميع أنواع النشرات.', connected: false),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'إنشاء نشرة'), Tab(text: 'بانتظار المراجعة'), Tab(text: 'معتمدة'), Tab(text: 'معادة للتصحيح'),
+        ]),
+        SizedBox(height: 650, child: TabBarView(children: [
+          ListView(padding: const EdgeInsets.only(top: 14), children: [
+            _Panel(title: 'نوع النشرة', child: Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final item in ['نشرة ساعية', 'نشرة يومية', 'SYNOP', 'METAR', 'TAF', 'ملخص جوي'])
+                ChoiceChip(label: Text(item), selected: type == item, onSelected: (_) => setState(() => type = item)),
+            ])),
+            const SizedBox(height: 12),
+            _Panel(title: 'بيانات النشرة', child: Column(children: [
+              TextField(onChanged: (v) => stationCode = v, decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              TextField(controller: reportTime, decoration: const InputDecoration(labelText: 'تاريخ ووقت الرصد UTC', hintText: 'YYYY-MM-DD HH:MM UTC', border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              TextField(controller: raw, minLines: 6, maxLines: 10, decoration: InputDecoration(labelText: 'محتوى النشرة / الرسالة', alignLabelWithHint: true, hintText: type == 'METAR' || type == 'SYNOP' || type == 'TAF' ? 'أدخل النص المشفر للمراجعة' : 'أدخل محتوى النشرة', border: const OutlineInputBorder())),
+              const SizedBox(height: 10),
+              const _InlineWarning(text: 'لا تُرسل هذه المسودة إلى قاعدة البيانات. يلزم ربط مخطط الحقول والمدقق العلمي الخاص بكل نوع نشرة.'),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: OutlinedButton.icon(onPressed: () {
+                  if (stationCode.trim().isEmpty || raw.text.trim().isEmpty || reportTime.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل رمز المحطة ووقت الرصد ومحتوى النشرة أولاً.')));
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم فحص اكتمال الحقول محلياً فقط.')));
+                }, icon: const Icon(Icons.rule), label: const Text('فحص الحقول'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.save_outlined), label: const Text('حفظ / إرسال'))),
+              ]),
+            ])),
+            const SizedBox(height: 12),
+            const _Panel(title: 'معاينة فك الترميز', child: _EmptyState(icon: Icons.code, title: 'لا توجد نتيجة فك ترميز', message: 'تظهر هنا الحقول المفككة مع النص الخام وملاحظات المدقق بعد ربط المحلل المعتمد لكل نوع نشرة.')),
+          ]),
+          const _BulletinQueueTab(title: 'النشرات بانتظار المراجعة', detail: 'تعرض النشرات المرسلة للمراجعة مع المحطة والوقت ونوع النشرة وصاحب الإدخال والتنبيهات وقائمة الملاحظات.'),
+          const _BulletinQueueTab(title: 'النشرات المعتمدة', detail: 'تعرض النشرات التي اعتمدها مراجع مخول مع هوية المعتمد والتوقيت UTC وإصدار التحقق وبصمة السجل.'),
+          const _BulletinQueueTab(title: 'النشرات المعادة للتصحيح', detail: 'تعرض سبب الإرجاع والحقول المطلوبة للتصحيح وسجل المحاولات السابقة مع الحفاظ على النسخ الأصلية.'),
+        ])),
       ]),
-    ])),
-    const SizedBox(height: 14),
-    const _Panel(title: 'سجل النشرات', child: _EmptyState(icon: Icons.inbox_outlined, title: 'لا توجد نشرات محملة', message: 'سيظهر سجل النشرات بعد توصيل واجهة القراءة مع حالة كل نشرة ووقت إنشائها ومراجعتها واعتمادها.')),
-  ]));
+    ),
+  );
+}
+
+class _BulletinQueueTab extends StatelessWidget {
+  const _BulletinQueueTab({required this.title, required this.detail});
+  final String title, detail;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    _Panel(title: title, child: _EmptyState(icon: Icons.inbox_outlined, title: 'لا توجد نشرات محملة', message: detail)),
+    const SizedBox(height: 12),
+    const _InlineWarning(text: 'حالات النشرات وقرارات الاعتماد تُقرأ من الخدمة الخادمية فقط. لا تُنشأ حالة اعتماد أو سجل مراجعة داخل الجهاز.'),
+  ]);
 }
 
 class ElectronicAuditPage extends StatefulWidget {
