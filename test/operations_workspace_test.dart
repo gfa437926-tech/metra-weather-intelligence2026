@@ -53,6 +53,9 @@ void main() {
     expect(isValidElevationRange('100', '10'), isFalse);
     expect(isValidElevationRange('low', '100'), isFalse);
     expect(isValidElevationRange('10', ''), isFalse);
+    expect(isValidElevationRange('-500', '9000'), isTrue);
+    expect(isValidElevationRange('-501', '100'), isFalse);
+    expect(isValidElevationRange('10', '9001'), isFalse);
   });
 
   testWidgets('forecast centre displays coordinate and altitude comparison controls', (tester) async {
