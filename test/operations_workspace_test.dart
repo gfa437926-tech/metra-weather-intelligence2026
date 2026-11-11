@@ -90,6 +90,7 @@ void main() {
     expect(find.text('نماذج الرصد التفصيلية'), findsOneWidget);
     expect(find.text('درجة الحرارة الجافة *'), findsOneWidget);
     expect(find.text('درجة الحرارة الرطبة *'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ضغط المحطة *'), 240);
     expect(find.text('ضغط المحطة *'), findsOneWidget);
     expect(find.text('حفظ / إرسال — ينتظر عقد API المعتمد'), findsOneWidget);
   });
@@ -100,7 +101,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('النشرة اليومية — 24 ساعة').last);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('أكبر رطوبة نسبية'), 240);
     expect(find.text('أكبر رطوبة نسبية'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('أصغر رطوبة نسبية'), 240);
     expect(find.text('أصغر رطوبة نسبية'), findsOneWidget);
     expect(find.text('عواصف رعدية'), findsOneWidget);
     expect(find.text('وقت أكبر نفحة UTC'), findsOneWidget);
