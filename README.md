@@ -85,3 +85,21 @@ A successful CI run verifies source checks and produces a web artifact. It does 
 The station review transaction is applied to the METRA Supabase database under migration `20261104110000_secure_station_catalogue_review`. The public RPC is executable only by `service_role`; the Edge Function verifies the caller JWT, active METRA account, and explicit time-bounded review grant. Decisions are `approved`, `rejected`, or `changes_requested`, each with a reason of at least five characters.
 
 Catalogue approval is intentionally separate from operational verification/activation. Do not grant `stations.catalogue.review` until an authorized real reviewer has been identified and provisioned through the controlled identity process.
+
+
+## Flutter operational workspace — UI implementation
+
+The Flutter application uses a compact mobile navigation bar (home, map, stations, observations, work center). The work center groups the METRA operational interfaces so the primary navigation does not become overcrowded.
+
+The current UI branch adds:
+- Forecast-centre station comparison filters for region and documented elevation, with explicit slots for coordinates, rainfall, wind speed/direction/gusts, observation time, and incoming bulletin details.
+- Forecaster product preparation and local completeness validation.
+- Bulletin workspace for hourly/daily bulletins and SYNOP, METAR, TAF, and summary products.
+- Electronic audit search/filter shell with a read-only server-ledger boundary.
+- AFTN message composition with local address/priority validation; actual transmission remains disabled until a reviewed gateway exists.
+- CLIMATOL/climate analysis setup with a scientific-approval gate.
+- Daily/monthly/annual report tabs, user/access role overview, quality-control and climate-archive entry points.
+- Account password-recovery UI and access to existing station-review and two-stage registration-approval screens.
+
+**Integration truth:** this is a UI implementation, not a claim that every module is operational. Live station telemetry, official alerts, AFTN transport, climate series/CLIMATOL, audit-log reads, report aggregation, and permission-grant management still require reviewed service contracts and authorized sources. Screens show explicit disconnected/approval states rather than invented operational values. No database, schema, migration, secret, or legacy resource was changed.
+
