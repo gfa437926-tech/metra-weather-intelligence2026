@@ -169,6 +169,9 @@ void main() {
     expect(find.text('من UTC'), findsOneWidget);
     expect(find.text('نتيجة العملية'), findsWidgets);
     expect(find.text('تفاصيل الحدث المحدد'), findsOneWidget);
+    await tester.tap(find.text('تطبيق المرشحات'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('المعايير المحددة:'), findsOneWidget);
   });
 
   testWidgets('reports workspace exposes station period element and output filters', (tester) async {
@@ -179,6 +182,9 @@ void main() {
     expect(find.text('العنصر المناخي / التشغيلي'), findsOneWidget);
     expect(find.text('صيغة التصدير'), findsOneWidget);
     expect(find.text('إنشاء التقرير — بانتظار مصدر البيانات المعتمد'), findsOneWidget);
+    await tester.tap(find.text('معاينة معايير التقرير'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('المحطة: الكل'), findsOneWidget);
   });
 
   testWidgets('user access separates accounts roles and permission domains without grants', (tester) async {
@@ -204,6 +210,9 @@ void main() {
     expect(find.text('سارية'), findsOneWidget);
     expect(find.text('منتهية'), findsOneWidget);
     expect(find.text('الأرشيف'), findsOneWidget);
+    await tester.tap(find.text('تطبيق المرشحات'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('بحث:'), findsOneWidget);
   });
 
   testWidgets('quality control and climate archive expose filters and raw-data boundaries', (tester) async {
@@ -211,10 +220,16 @@ void main() {
     expect(find.text('ضبط جودة البيانات'), findsOneWidget);
     expect(find.text('مجموعة القواعد'), findsOneWidget);
     expect(find.text('بانتظار التصحيح'), findsOneWidget);
+    await tester.tap(find.text('تطبيق المرشحات'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('محطة:'), findsOneWidget);
     await tester.pumpWidget(const MaterialApp(home: ClimateArchivePage()));
     expect(find.text('الأرشيف المناخي'), findsOneWidget);
     expect(find.text('نوع السجل'), findsOneWidget);
     expect(find.textContaining('تظل السجلات الخام غير قابلة للتعديل'), findsOneWidget);
+    await tester.tap(find.text('تطبيق المرشحات'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('بحث:'), findsOneWidget);
   });
 
   testWidgets('paper and mechanical audit screen exposes three-source review', (tester) async {
