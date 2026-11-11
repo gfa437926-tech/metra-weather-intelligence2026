@@ -119,3 +119,14 @@ void main() {
     expect(find.text('وقت أكبر نفحة UTC'), findsOneWidget);
   });
 }
+
+  testWidgets('bulletin workspace separates draft, review, approved and correction queues', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
+    expect(find.text('النشرات الجوية'), findsOneWidget);
+    expect(find.text('إنشاء نشرة'), findsOneWidget);
+    expect(find.text('بانتظار المراجعة'), findsOneWidget);
+    expect(find.text('معتمدة'), findsOneWidget);
+    expect(find.text('معادة للتصحيح'), findsOneWidget);
+    expect(find.text('معاينة فك الترميز'), findsOneWidget);
+  });
+}
