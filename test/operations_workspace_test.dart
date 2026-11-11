@@ -137,6 +137,61 @@ void main() {
     expect(sendButton.onPressed, isNull);
   });
 
+  testWidgets('electronic audit exposes advanced read-only filters and event details', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ElectronicAuditPage()));
+    expect(find.text('التدقيق الإلكتروني'), findsOneWidget);
+    expect(find.text('معرّف الارتباط'), findsOneWidget);
+    expect(find.text('من UTC'), findsOneWidget);
+    expect(find.text('نتيجة العملية'), findsOneWidget);
+    expect(find.text('تفاصيل الحدث المحدد'), findsOneWidget);
+  });
+
+  testWidgets('reports workspace exposes station period element and output filters', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ReportsWorkspacePage()));
+    expect(find.text('التقارير والإحصاء'), findsOneWidget);
+    expect(find.text('معايير إعداد التقرير'), findsOneWidget);
+    expect(find.text('رمز المحطة (اختياري)'), findsOneWidget);
+    expect(find.text('العنصر المناخي / التشغيلي'), findsOneWidget);
+    expect(find.text('صيغة التصدير'), findsOneWidget);
+    expect(find.text('إنشاء التقرير — بانتظار مصدر البيانات المعتمد'), findsOneWidget);
+  });
+
+  testWidgets('user access separates accounts roles and permission domains without grants', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: UserAccessWorkspacePage()));
+    expect(find.text('المستخدمون والصلاحيات'), findsOneWidget);
+    expect(find.text('المستخدمون'), findsOneWidget);
+    expect(find.text('الأدوار'), findsOneWidget);
+    expect(find.text('مجالات الصلاحيات'), findsOneWidget);
+    expect(find.text('لا توجد حسابات محملة'), findsOneWidget);
+    await tester.tap(find.text('الأدوار').last);
+    await tester.pumpAndSettle();
+    expect(find.text('مدير النظام'), findsOneWidget);
+    await tester.tap(find.text('مجالات الصلاحيات').last);
+    await tester.pumpAndSettle();
+    expect(find.text('المحطات'), findsOneWidget);
+  });
+
+  testWidgets('alerts workspace exposes official alert filters and lifecycle tabs', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: AlertsWorkspacePage()));
+    expect(find.text('التنبيهات الجوية'), findsOneWidget);
+    expect(find.text('مصدر التحذيرات الرسمية'), findsOneWidget);
+    expect(find.text('درجة التأثير'), findsOneWidget);
+    expect(find.text('سارية'), findsOneWidget);
+    expect(find.text('منتهية'), findsOneWidget);
+    expect(find.text('الأرشيف'), findsOneWidget);
+  });
+
+  testWidgets('quality control and climate archive expose filters and raw-data boundaries', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: QualityControlWorkspacePage()));
+    expect(find.text('ضبط جودة البيانات'), findsOneWidget);
+    expect(find.text('مجموعة القواعد'), findsOneWidget);
+    expect(find.text('بانتظار التصحيح'), findsOneWidget);
+    await tester.pumpWidget(const MaterialApp(home: ClimateArchivePage()));
+    expect(find.text('الأرشيف المناخي'), findsOneWidget);
+    expect(find.text('نوع السجل'), findsOneWidget);
+    expect(find.textContaining('تظل السجلات الخام غير قابلة للتعديل'), findsOneWidget);
+  });
+
   testWidgets('paper and mechanical audit screen exposes three-source review', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaperAndRecorderAuditPage()));
     expect(find.text('تدقيق السجلات الورقية والآلية'), findsOneWidget);
