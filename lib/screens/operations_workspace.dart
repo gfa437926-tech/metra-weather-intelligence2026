@@ -927,6 +927,28 @@ class _ElectronicAuditPageState extends State<ElectronicAuditPage> {
   );
 }
 
+String buildAftnLocalPreview({
+  required String transmissionId,
+  required String additionalService,
+  required String priority,
+  required String destination,
+  required String dateTimeGroup,
+  required String origin,
+  required String optionalHeading,
+  required String body,
+}) {
+  final header = <String>[
+    'ZCZC ' + transmissionId.trim().toUpperCase(),
+    if (additionalService.trim().isNotEmpty) additionalService.trim(),
+    priority.trim(),
+    destination.trim().toUpperCase(),
+    dateTimeGroup.trim(),
+    origin.trim().toUpperCase(),
+    if (optionalHeading.trim().isNotEmpty) optionalHeading.trim(),
+  ].join(' ');
+  return [header, body.trim(), 'NNNN'].join('\\n');
+}
+
 class AftnWorkspacePage extends StatefulWidget {
   const AftnWorkspacePage({super.key});
   @override State<AftnWorkspacePage> createState() => _AftnWorkspacePageState();
@@ -943,18 +965,16 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
     if (localPreview != null) setState(() => localPreview = null);
   }
 
-  String _composeLocalPreview() {
-    final header = <String>[
-      'ZCZC ' + transmissionId.text.trim().toUpperCase(),
-      if (additionalService.text.trim().isNotEmpty) additionalService.text.trim(),
-      priority,
-      destination.text.trim().toUpperCase(),
-      dateTimeGroup.text.trim(),
-      origin.text.trim().toUpperCase(),
-      if (optionalHeading.text.trim().isNotEmpty) optionalHeading.text.trim(),
-    ].join(' ');
-    return [header, body.text.trim(), 'NNNN'].join('\n');
-  }
+  String _composeLocalPreview() => buildAftnLocalPreview(
+    transmissionId: transmissionId.text,
+    additionalService: additionalService.text,
+    priority: priority,
+    destination: destination.text,
+    dateTimeGroup: dateTimeGroup.text,
+    origin: origin.text,
+    optionalHeading: optionalHeading.text,
+    body: body.text,
+  );
   @override
   void dispose() { origin.dispose(); destination.dispose(); body.dispose(); transmissionId.dispose(); additionalService.dispose(); dateTimeGroup.dispose(); optionalHeading.dispose(); super.dispose(); }
 
