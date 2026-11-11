@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_flow.dart';
 import 'station_review_page.dart';
+import 'observation_forms_catalogue_page.dart';
 
 const _ink = Color(0xFF102448), _navy = Color(0xFF071A43), _blue = Color(0xFF1769D2), _canvas = Color(0xFFF3F6FC);
 
-enum WorkspaceModule { forecastCenter, forecastOffice, bulletins, electronicAudit, paperAudit, aiModelManagement, aftn, climatol, homogenization, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts, settings }
+enum WorkspaceModule { observationForms, forecastCenter, forecastOffice, bulletins, electronicAudit, paperAudit, aiModelManagement, aftn, climatol, homogenization, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts, settings }
 
 class WorkspaceModuleInfo {
   const WorkspaceModuleInfo(this.module, this.title, this.description, this.icon, this.group, this.status);
@@ -15,6 +16,7 @@ class WorkspaceModuleInfo {
 }
 
 const workspaceModules = <WorkspaceModuleInfo>[
+  WorkspaceModuleInfo(WorkspaceModule.observationForms, 'نماذج الرصد التفصيلية', 'النشرات الساعية واليومية والزراعية والمطرية والظواهر والأعطال', Icons.dynamic_form_outlined, 'التنبؤ والعمليات', 'حقول مفصلة — الإرسال مقيد'),
   WorkspaceModuleInfo(WorkspaceModule.forecastCenter, 'مراكز التنبؤ الجوي', 'مقارنة المحطات والمناطق حسب الإحداثيات والارتفاع ومتابعة الرصد اللحظي', Icons.query_stats, 'التنبؤ والعمليات', 'بانتظار ربط القياسات'),
   WorkspaceModuleInfo(WorkspaceModule.forecastOffice, 'مكتب المتنبئ', 'إعداد وتحليل النشرات والتوقعات الجوية ومراجعة صلاحيتها', Icons.cloud_sync_outlined, 'التنبؤ والعمليات', 'واجهة تشغيلية قيد الربط'),
   WorkspaceModuleInfo(WorkspaceModule.bulletins, 'النشرات الجوية', 'النشرات الساعية واليومية والملخصات والرسائل المشفرة', Icons.description_outlined, 'التنبؤ والعمليات', 'واجهة إدخال ومراجعة'),
@@ -111,6 +113,7 @@ class WorkspaceModulePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (module) {
+      case WorkspaceModule.observationForms: return const ObservationFormsCataloguePage();
       case WorkspaceModule.forecastCenter: return const ForecastCenterPage();
       case WorkspaceModule.forecastOffice: return const ForecastOfficePage();
       case WorkspaceModule.bulletins: return const BulletinWorkspacePage();
