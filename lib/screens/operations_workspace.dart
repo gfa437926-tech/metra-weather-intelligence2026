@@ -349,6 +349,7 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
       const SizedBox(height: 14),
       _Panel(title: 'معايير المقارنة', child: Column(children: [
         TextField(
+          key: const Key('forecast-station-search'),
           onChanged: (value) => setState(() => search = value),
           decoration: const InputDecoration(
             labelText: 'بحث باسم المحطة أو رمزها',
@@ -358,6 +359,7 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          key: const Key('forecast-station-type'),
           value: stationType,
           decoration: const InputDecoration(labelText: 'نوع المحطة', border: OutlineInputBorder()),
           items: const ['كل الأنواع', 'كلاسيكية', 'آلية', 'غير مصنفة']
@@ -366,6 +368,7 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          key: const Key('forecast-altitude-band'),
           value: altitude,
           decoration: const InputDecoration(labelText: 'نطاق الارتفاع', border: OutlineInputBorder()),
           items: const [
@@ -383,12 +386,14 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         const SizedBox(height: 8),
         Row(children: [
           Expanded(child: TextField(
+            key: const Key('forecast-lat-from'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => latFrom = value),
             decoration: const InputDecoration(labelText: 'خط العرض من', border: OutlineInputBorder()),
           )),
           const SizedBox(width: 8),
           Expanded(child: TextField(
+            key: const Key('forecast-lat-to'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => latTo = value),
             decoration: const InputDecoration(labelText: 'خط العرض إلى', border: OutlineInputBorder()),
@@ -397,12 +402,14 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         const SizedBox(height: 8),
         Row(children: [
           Expanded(child: TextField(
+            key: const Key('forecast-lon-from'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => lonFrom = value),
             decoration: const InputDecoration(labelText: 'خط الطول من', border: OutlineInputBorder()),
           )),
           const SizedBox(width: 8),
           Expanded(child: TextField(
+            key: const Key('forecast-lon-to'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => lonTo = value),
             decoration: const InputDecoration(labelText: 'خط الطول إلى', border: OutlineInputBorder()),
@@ -411,12 +418,14 @@ class _ForecastCenterPageState extends State<ForecastCenterPage> {
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: TextField(
+            key: const Key('forecast-elev-from'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => elevFrom = value),
             decoration: const InputDecoration(labelText: 'الارتفاع من (م)', border: OutlineInputBorder()),
           )),
           const SizedBox(width: 8),
           Expanded(child: TextField(
+            key: const Key('forecast-elev-to'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: (value) => setState(() => elevTo = value),
             decoration: const InputDecoration(labelText: 'الارتفاع إلى (م)', border: OutlineInputBorder()),
