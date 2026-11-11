@@ -13,13 +13,14 @@
 
 1. Replaced the seven-item bottom navigation with a compact five-destination mobile navigation: home, map, stations, observations, and work centre.
 2. Added a categorized work-centre catalogue for forecast centres, forecaster, bulletins, electronic audit, quality control, AFTN, CLIMATOL, reports, climate archive, users/permissions, station review, registration approvals, alerts, and account settings.
-3. Added a forecast-centre comparison screen with station search, region/elevation filters, and explicit fields/empty states for coordinates, rainfall, wind speed/direction/gusts, timestamp, and received bulletin details.
-4. Added local-only forecaster and bulletin preparation screens with required-field checks; no server write is represented as completed.
-5. Added electronic-audit read-only shell, AFTN message composition and local address/priority validation, CLIMATOL analysis setup, report tabs, role overview, and account settings.
-6. Added password-recovery UI through Supabase Auth.
-7. Preserved existing station directory, map, observation, station review, and registration approval flows; exposed existing station-review and two-stage registration-approval interfaces from the work centre when configured.
-8. Added paper/mechanical record audit, three-source comparison, device library, AI training/model-version, and climate-homogenization interface groups while preserving the raw-series immutability boundary.
-9. Added tests for module catalogue coverage, AFTN address/priority validation, forecast-centre controls, paper audit and climate homogenization, and disabled AFTN transmission.
+3. Added a detailed observation form catalogue with hourly/daily/synoptic and operational incident forms; source-required flags are rendered as required fields, UTC labels are explicit, conditional source notes are visible, and save/send remain disabled until the current API accepts the full payload contracts.
+4. Added a forecast-centre comparison screen with station search, region/elevation filters, and explicit fields/empty states for coordinates, rainfall, wind speed/direction/gusts, timestamp, and received bulletin details.
+5. Added local-only forecaster and bulletin preparation screens with required-field checks; no server write is represented as completed.
+6. Added electronic-audit read-only shell, AFTN message composition and local address/priority validation, CLIMATOL analysis setup, report tabs, role overview, and account settings.
+7. Added password-recovery UI through Supabase Auth.
+8. Preserved existing station directory, map, observation, station review, and registration approval flows; exposed existing station-review and two-stage registration-approval interfaces from the work centre when configured.
+9. Added paper/mechanical record audit, three-source comparison, device library, AI training/model-version, and climate-homogenization interface groups while preserving the raw-series immutability boundary.
+10. Added tests for detailed observation forms, module catalogue coverage, AFTN address/priority validation, forecast-centre controls, paper audit and climate homogenization, and disabled AFTN transmission.
 9. Updated README with interface scope and integration boundaries.
 
 ## Files changed
@@ -52,3 +53,12 @@
 ## Release gate
 
 This task remains **in progress**. The first-pass interfaces are not equivalent to fully integrated operational modules. No overall project percentage is changed by this UI branch.
+
+
+## Follow-up round — detailed observation forms (2026-11-11T12:51:25.909Z UTC)
+
+- Added `lib/screens/observation_forms_catalogue_page.dart` with 12 detailed form variants: standard hourly, synoptic 06 UTC, synoptic 18 UTC, daily 24h, agricultural, rainfall, weather phenomenon, agricultural phenomena, soil temperature, observation-equipment faults, telecommunications faults, and IT incidents.
+- Exposed the catalogue from the operational observation screen and the work-centre navigation.
+- Rendered source-required fields, grouped field labels, units, boolean controls, known fixed choice lists, UTC date/time hints, and source-specific conditional notes.
+- The catalogue is a UI/domain field inventory only. It does not claim server validation, scientific limit approval, persistence or API support. Save/send remain disabled because the current observation Edge Function accepts only its narrow generic payload keys; sending these extended fields would be rejected or silently unsupported.
+- Added tests for catalogue coverage, key hourly/daily fields, UTC synoptic variants and screen rendering.
