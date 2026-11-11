@@ -5,7 +5,7 @@ import 'station_review_page.dart';
 
 const _ink = Color(0xFF102448), _navy = Color(0xFF071A43), _blue = Color(0xFF1769D2), _canvas = Color(0xFFF3F6FC);
 
-enum WorkspaceModule { forecastCenter, forecastOffice, bulletins, electronicAudit, aftn, climatol, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts, settings }
+enum WorkspaceModule { forecastCenter, forecastOffice, bulletins, electronicAudit, paperAudit, aiModelManagement, aftn, climatol, homogenization, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts, settings }
 
 class WorkspaceModuleInfo {
   const WorkspaceModuleInfo(this.module, this.title, this.description, this.icon, this.group, this.status);
@@ -19,10 +19,13 @@ const workspaceModules = <WorkspaceModuleInfo>[
   WorkspaceModuleInfo(WorkspaceModule.forecastOffice, 'مكتب المتنبئ', 'إعداد وتحليل النشرات والتوقعات الجوية ومراجعة صلاحيتها', Icons.cloud_sync_outlined, 'التنبؤ والعمليات', 'واجهة تشغيلية قيد الربط'),
   WorkspaceModuleInfo(WorkspaceModule.bulletins, 'النشرات الجوية', 'النشرات الساعية واليومية والملخصات والرسائل المشفرة', Icons.description_outlined, 'التنبؤ والعمليات', 'واجهة إدخال ومراجعة'),
   WorkspaceModuleInfo(WorkspaceModule.alerts, 'التنبيهات الجوية', 'متابعة التحذيرات الرسمية وحالات الطقس المؤثرة', Icons.warning_amber_rounded, 'التنبؤ والعمليات', 'مصدر رسمي غير مربوط'),
-  WorkspaceModuleInfo(WorkspaceModule.electronicAudit, 'التدقيق الإلكتروني', 'تتبع التغييرات والقرارات وسجل المراجعة والأخطاء', Icons.fact_check_outlined, 'الجودة والرقابة', 'بانتظار ربط سجل التدقيق'),
+  WorkspaceModuleInfo(WorkspaceModule.electronicAudit, 'سجل التدقيق الإلكتروني', 'تتبع التغييرات والقرارات وسجل المراجعة والأخطاء', Icons.fact_check_outlined, 'الجودة والرقابة', 'بانتظار ربط سجل التدقيق'),
+  WorkspaceModuleInfo(WorkspaceModule.paperAudit, 'تدقيق السجلات الورقية والآلية', 'مقارنة الدفاتر الورقية ومسجلات الأجهزة والرصد الإلكتروني', Icons.document_scanner_outlined, 'الجودة والرقابة', 'مراجعة بشرية إلزامية'),
+  WorkspaceModuleInfo(WorkspaceModule.aiModelManagement, 'إدارة نماذج الذكاء الاصطناعي', 'مكتبة الأجهزة والتدريب وإصدارات النماذج ودرجات الثقة', Icons.model_training_outlined, 'الجودة والرقابة', 'بيئة التدريب غير مهيأة'),
   WorkspaceModuleInfo(WorkspaceModule.qualityControl, 'ضبط جودة البيانات', 'قواعد التحقق والتنبيهات والقيم الشاذة ومتابعة التصحيحات', Icons.rule_folder_outlined, 'الجودة والرقابة', 'قواعد الاعتماد مطلوبة'),
   WorkspaceModuleInfo(WorkspaceModule.aftn, 'مركز AFTN', 'إنشاء الرسائل الجوية ومراجعتها وتتبع حالة الإرسال والاستلام', Icons.send_outlined, 'الاتصالات والتوزيع', 'بوابة الإرسال غير مربوطة'),
   WorkspaceModuleInfo(WorkspaceModule.climatol, 'المناخ وCLIMATOL', 'تجميع السلاسل المناخية والتحقق منها وإعداد منتجات CLIMAT', Icons.stacked_line_chart, 'المناخ والإحصاء', 'بانتظار اعتماد القواعد العلمية'),
+  WorkspaceModuleInfo(WorkspaceModule.homogenization, 'تجانس السلاسل المناخية', 'كشف الانقطاعات ومقارنة المحطات المرجعية وإدارة السلاسل المصححة', Icons.timeline_outlined, 'المناخ والإحصاء', 'البيانات الخام محفوظة دون تعديل'),
   WorkspaceModuleInfo(WorkspaceModule.reports, 'التقارير والإحصاء', 'التقارير اليومية والشهرية والسنوية ومؤشرات المحطات', Icons.assessment_outlined, 'المناخ والإحصاء', 'مصدر التقارير غير مربوط'),
   WorkspaceModuleInfo(WorkspaceModule.archive, 'الأرشيف المناخي', 'البحث في السجلات التاريخية ومراجعة اكتمال البيانات ومصدرها', Icons.inventory_2_outlined, 'المناخ والإحصاء', 'قراءة الأرشيف غير مفعلة'),
   WorkspaceModuleInfo(WorkspaceModule.userAccess, 'المستخدمون والصلاحيات', 'إدارة الهوية والأدوار والعضويات وتفويض الصلاحيات', Icons.admin_panel_settings_outlined, 'الإدارة والحوكمة', 'إدارة الصلاحيات مقيدة'),
@@ -112,8 +115,11 @@ class WorkspaceModulePage extends StatelessWidget {
       case WorkspaceModule.forecastOffice: return const ForecastOfficePage();
       case WorkspaceModule.bulletins: return const BulletinWorkspacePage();
       case WorkspaceModule.electronicAudit: return const ElectronicAuditPage();
+      case WorkspaceModule.paperAudit: return const PaperAndRecorderAuditPage();
+      case WorkspaceModule.aiModelManagement: return const AiModelManagementPage();
       case WorkspaceModule.aftn: return const AftnWorkspacePage();
       case WorkspaceModule.climatol: return const ClimatolWorkspacePage();
+      case WorkspaceModule.homogenization: return const ClimateHomogenizationPage();
       case WorkspaceModule.reports: return const ReportsWorkspacePage();
       case WorkspaceModule.userAccess: return const UserAccessWorkspacePage();
       case WorkspaceModule.qualityControl: return const _ModuleStatusPage(title: 'ضبط جودة البيانات', subtitle: 'قواعد التحقق ومتابعة الحالات غير الطبيعية', message: 'تظهر هنا نتائج قواعد التحقق المعتمدة، وسجل القيم المرفوضة، وطلبات التصحيح. لم يتم تحميل قواعد النطاقات العلمية أو ربط محرك الجودة بعد.', icon: Icons.rule_folder_outlined);
@@ -552,4 +558,232 @@ class _SettingsWorkspacePageState extends State<SettingsWorkspacePage> {
       ])),
     ]),
   );
+}
+
+
+class PaperAndRecorderAuditPage extends StatelessWidget {
+  const PaperAndRecorderAuditPage({super.key});
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'تدقيق السجلات الورقية والآلية',
+      subtitle: 'مطابقة المصادر الثلاثة مع حفظ الأصل ومراجعة بشرية إلزامية',
+      child: Column(children: [
+        const _InlineWarning(text: 'لا يتم تعديل الصورة أو السجل الأصلي. أي قيمة مستخرجة أو مصححة تحفظ كنسخة مشتقة منفصلة، ولا تعتمد قبل موافقة المدقق والمراجع المخوّل.'),
+        const SizedBox(height: 12),
+        const TabBar(
+          isScrollable: true,
+          labelColor: _blue,
+          unselectedLabelColor: Colors.blueGrey,
+          tabs: [
+            Tab(text: 'لوحة التدقيق'),
+            Tab(text: 'السجلات الورقية'),
+            Tab(text: 'المسجلات الآلية'),
+            Tab(text: 'مقارنة المصادر'),
+          ],
+        ),
+        SizedBox(height: 610, child: TabBarView(children: [
+          _AuditDashboardTab(),
+          _AuditSourceTab(
+            title: 'السجلات الورقية',
+            icon: Icons.menu_book_outlined,
+            sourceType: 'دفتر الرصد الورقي',
+            details: 'رفع صورة صفحة الدفتر مع المحطة والتاريخ والوردية ورقم الصفحة. تحفظ الصورة الأصلية وبصمتها الرقمية وبيانات الرفع.',
+          ),
+          _AuditSourceTab(
+            title: 'المسجلات الميكانيكية',
+            icon: Icons.settings_input_component_outlined,
+            sourceType: 'نوع الجهاز',
+            details: 'يدعم سجل الأجهزة Thermograph وHygrograph وBarograph وPluviograph، مع صورة المخطط والفترة الزمنية ومعايرة الجهاز.',
+          ),
+          _ThreeSourceComparisonTab(),
+        ])),
+      ]),
+    ),
+  );
+}
+
+class _AuditDashboardTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 14),
+    child: Column(children: [
+      const Wrap(spacing: 8, runSpacing: 8, children: [
+        _MetricPill(icon: Icons.upload_file, label: 'الوارد'),
+        _MetricPill(icon: Icons.compare_arrows, label: 'بانتظار المطابقة'),
+        _MetricPill(icon: Icons.rate_review_outlined, label: 'بانتظار التدقيق'),
+        _MetricPill(icon: Icons.verified_outlined, label: 'المعتمد'),
+      ]),
+      const SizedBox(height: 14),
+      const _EmptyState(icon: Icons.fact_check_outlined, title: 'لا توجد ملفات تدقيق محملة', message: 'ستظهر هنا قوائم المهام حسب المحطة والتاريخ ونوع المصدر وحالة الاستخراج ودرجة الثقة واسم المدقق.'),
+      const SizedBox(height: 12),
+      const _Panel(title: 'الأدوار ومسار الاعتماد', child: Column(children: [
+        _RoleRow('رافع السجلات', 'رفع الأصل وإدخال بياناته الوصفية دون اعتماد النتائج'),
+        _RoleRow('المدقق', 'مراجعة الاستخراج ومقارنة المصادر واقتراح التصحيح'),
+        _RoleRow('المعتمد', 'اعتماد النتيجة أو إعادتها مع السبب'),
+        _RoleRow('مدير النماذج', 'إدارة نسخ النموذج ومجموعات التدريب'),
+        _RoleRow('مدير النظام', 'إدارة الإعدادات والصلاحيات ضمن التفويض'),
+      ])),
+    ]),
+  );
+}
+
+class _AuditSourceTab extends StatefulWidget {
+  const _AuditSourceTab({required this.title, required this.icon, required this.sourceType, required this.details});
+  final String title, sourceType, details;
+  final IconData icon;
+  @override
+  State<_AuditSourceTab> createState() => _AuditSourceTabState();
+}
+class _AuditSourceTabState extends State<_AuditSourceTab> {
+  String station = '';
+  String date = '';
+  String notes = '';
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    _Panel(title: 'بيانات المصدر', child: Column(children: [
+      Text(widget.details, style: const TextStyle(color: Colors.blueGrey, fontSize: 12, height: 1.5)),
+      const SizedBox(height: 12),
+      TextField(onChanged: (v) => station = v, decoration: const InputDecoration(labelText: 'رمز المحطة من الدليل المعتمد', border: OutlineInputBorder())),
+      const SizedBox(height: 10),
+      TextField(onChanged: (v) => date = v, decoration: const InputDecoration(labelText: 'تاريخ السجل / بداية الفترة (UTC)', border: OutlineInputBorder())),
+      const SizedBox(height: 10),
+      TextField(onChanged: (v) => notes = v, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات وبيانات وصفية', border: OutlineInputBorder())),
+      const SizedBox(height: 12),
+      const _SourceStatus(title: 'خدمة رفع الملفات', detail: 'لم يتم ربط التخزين الآمن أو خدمة استخراج القيم بعد. لا يمكن رفع ملفات فعلية من هذه الشاشة حالياً.', connected: false),
+      const SizedBox(height: 12),
+      SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: null, icon: Icon(widget.icon), label: const Text('اختيار الملف الأصلي'))),
+      const SizedBox(height: 6),
+      const Text('الأصل غير قابل للاستبدال • تحفظ النسخ المشتقة بإصدار مستقل', style: TextStyle(color: Colors.blueGrey, fontSize: 10)),
+    ])),
+    const SizedBox(height: 12),
+    const _EmptyState(icon: Icons.folder_open_outlined, title: 'لا توجد ملفات ضمن هذا النوع', message: 'بعد تفعيل الرفع ستظهر الملفات مع بصمة SHA-256 ووقت الرفع وصاحب العملية وحالة الفحص.'),
+  ]);
+}
+
+class _ThreeSourceComparisonTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    const _Panel(title: 'مصادر المقارنة', child: Column(children: [
+      _KeyValue(label: 'المصدر الأول', value: 'السجل الورقي'),
+      _KeyValue(label: 'المصدر الثاني', value: 'المسجل الميكانيكي'),
+      _KeyValue(label: 'المصدر الثالث', value: 'الرصد الإلكتروني'),
+    ])),
+    const SizedBox(height: 12),
+    const _Panel(title: 'نتائج المطابقة حسب العنصر والوقت', child: _EmptyState(icon: Icons.compare_arrows, title: 'لا توجد مقارنة بعد', message: 'ستعرض المقارنة القيم المتقابلة والانحراف ودرجة الثقة ومصدر كل قيمة وحالة الاتفاق والاختلاف، دون استبدال أي قيمة أصلية.')),
+    const SizedBox(height: 12),
+    const _InlineWarning(text: 'مخرجات الذكاء الاصطناعي اقتراحات مساعدة فقط. قرار التصحيح أو الاعتماد يبقى بشرياً ويُسجل مع السبب وهوية المراجع.'),
+  ]);
+}
+
+class AiModelManagementPage extends StatelessWidget {
+  const AiModelManagementPage({super.key});
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 4,
+    child: _WorkspaceScaffold(
+      title: 'إدارة نماذج الذكاء الاصطناعي',
+      subtitle: 'مكتبة الأجهزة ومجموعات التدريب وإصدارات النماذج',
+      child: Column(children: [
+        const TabBar(
+          isScrollable: true,
+          labelColor: _blue,
+          unselectedLabelColor: Colors.blueGrey,
+          tabs: [Tab(text: 'مكتبة الأجهزة'), Tab(text: 'التدريب'), Tab(text: 'الإصدارات'), Tab(text: 'التقارير')],
+        ),
+        SizedBox(height: 560, child: TabBarView(children: [
+          _ModelLibraryTab(),
+          _ModelTrainingTab(),
+          _ModelVersionsTab(),
+          const _ModuleStatusPage(title: 'تقارير النموذج', subtitle: 'مؤشرات الدقة والأخطاء والانحراف', message: 'تظهر تقارير الأداء بعد توافر مجموعة تحقق معتمدة ومقاييس تقييم موثقة.', icon: Icons.analytics_outlined),
+        ])),
+      ]),
+    ),
+  );
+}
+class _ModelLibraryTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    const _Panel(title: 'أنواع الأجهزة', child: Column(children: [
+      _RoleRow('Thermograph', 'مسجل درجة الحرارة'),
+      _RoleRow('Hygrograph', 'مسجل الرطوبة'),
+      _RoleRow('Barograph', 'مسجل الضغط الجوي'),
+      _RoleRow('Pluviograph', 'مسجل الأمطار'),
+    ])),
+    const SizedBox(height: 12),
+    const _SourceStatus(title: 'أرشيف الصور المرجعية', detail: 'لم يتم ربط مستودع ملفات الأجهزة أو مكتبة الصور المرجعية.', connected: false),
+    const SizedBox(height: 12),
+    const _EmptyState(icon: Icons.photo_library_outlined, title: 'لا توجد صور مرجعية', message: 'ستحفظ الصور الأصلية وبيانات الجهاز والمعايرة والمحطة وتاريخ الالتقاط ومصدر الصورة.'),
+  ]);
+}
+class _ModelTrainingTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(top: 14), children: [
+    const _Panel(title: 'إعداد مجموعة التدريب', child: Column(children: [
+      _KeyValue(label: 'المدخلات', value: 'صور سجلات معتمدة وموسومة'),
+      _KeyValue(label: 'مخرجات التدريب', value: 'اقتراح استخراج منظم مع الثقة'),
+      _KeyValue(label: 'التحقق', value: 'مجموعة مستقلة غير مستخدمة بالتدريب'),
+      _KeyValue(label: 'الاعتماد', value: 'مراجعة بشرية قبل النشر'),
+    ])),
+    const SizedBox(height: 12),
+    const _InlineWarning(text: 'لا تستخدم بيانات محطة أو صوراً حقيقية للتدريب قبل اعتماد سياسة الخصوصية والموافقة ومصدر البيانات وفصل بيانات التدريب عن الاختبار.'),
+    const SizedBox(height: 12),
+    const SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: Icon(Icons.model_training_outlined), label: Text('بدء التدريب'))),
+  ]);
+}
+class _ModelVersionsTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => const ListView(padding: EdgeInsets.only(top: 14), children: [
+    _EmptyState(icon: Icons.layers_outlined, title: 'لا توجد إصدارات منشورة', message: 'سيظهر لكل إصدار رقم النسخة وبصمة النموذج ومجموعة التدريب ومقاييس التحقق وتاريخ النشر وحالة التراجع.'),
+  ]);
+}
+
+class ClimateHomogenizationPage extends StatefulWidget {
+  const ClimateHomogenizationPage({super.key});
+  @override
+  State<ClimateHomogenizationPage> createState() => _ClimateHomogenizationPageState();
+}
+class _ClimateHomogenizationPageState extends State<ClimateHomogenizationPage> {
+  String variable = 'درجة الحرارة';
+  String period = 'سنوي';
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 5,
+    child: _WorkspaceScaffold(
+      title: 'تجانس السلاسل المناخية',
+      subtitle: 'كشف الانقطاعات ومقارنة المحطات وإدارة السلاسل المصححة',
+      child: Column(children: [
+        const _InlineWarning(text: 'تبقى السلسلة الخام محفوظة كما وردت دون تعديل. تُنشأ سلسلة مصححة مستقلة مع سجل كامل لكل تغيير وسبب التصحيح وإصدار خوارزمية التجانس.'),
+        const SizedBox(height: 12),
+        _Panel(title: 'إعداد التحليل', child: Column(children: [
+          DropdownButtonFormField<String>(value: variable, decoration: const InputDecoration(labelText: 'العنصر', border: OutlineInputBorder()), items: const ['درجة الحرارة', 'الأمطار', 'سرعة الرياح', 'الرطوبة', 'الضغط'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => variable = v ?? variable)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(value: period, decoration: const InputDecoration(labelText: 'الفترة التحليلية', border: OutlineInputBorder()), items: const ['شهري', 'فصلي', 'سنوي'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => period = v ?? period)),
+        ])),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'السلاسل الزمنية'), Tab(text: 'نقاط الانقطاع'), Tab(text: 'المحطات المرجعية'), Tab(text: 'السلسلة المصححة'), Tab(text: 'المناخيات والتقارير'),
+        ]),
+        SizedBox(height: 560, child: TabBarView(children: [
+          _ClimatePanelTab(title: 'تحليل السلسلة الزمنية', message: 'عرض القيم الخام والفجوات والقيم الشاذة حسب الزمن. لا يتم تعديل السلسلة الخام.', icon: Icons.show_chart),
+          _ClimatePanelTab(title: 'نقاط الانقطاع', message: 'تحديد نقاط التغير المحتملة ومراجعة تاريخ الأجهزة أو نقل المحطة أو تغير البيئة المحيطة.', icon: Icons.timeline),
+          _ClimatePanelTab(title: 'مقارنة المحطات المرجعية', message: 'اختيار محطات مرجعية متجانسة مكانياً ومناخياً، مع توثيق سبب اختيار كل محطة.', icon: Icons.compare_arrows),
+          _ClimatePanelTab(title: 'إدارة السلاسل المصححة', message: 'عرض نسخة مصححة منفصلة ومقارنة قبل/بعد مع إصدار الخوارزمية وموافقة المسؤول.', icon: Icons.rule_folder_outlined),
+          _ClimatePanelTab(title: 'المعدلات المناخية والتقارير', message: 'المعدلات الشهرية والفصلية والسنوية والأمطار والحرارة والرياح والمؤشرات والاتجاهات والمقارنة الجغرافية.', icon: Icons.assessment_outlined),
+        ])),
+      ]),
+    ),
+  );
+}
+class _ClimatePanelTab extends StatelessWidget {
+  const _ClimatePanelTab({required this.title, required this.message, required this.icon});
+  final String title, message;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(top: 14), child: _Panel(title: title, child: Column(children: [
+    const _SourceStatus(title: 'محرك CLIMATOL / R', detail: 'لم يتم ربط محرك التحليل أو مستودع السلاسل بعد.', connected: false),
+    const SizedBox(height: 12),
+    _EmptyState(icon: icon, title: 'لا توجد نتائج متاحة', message: message),
+  ])));
 }
