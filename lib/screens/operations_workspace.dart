@@ -81,7 +81,7 @@ bool isValidElevationRange(String minimum, String maximum) {
   if (minText.isEmpty && maxText.isEmpty) return true;
   if (minText.isEmpty || maxText.isEmpty) return false;
   final low = double.tryParse(minText), high = double.tryParse(maxText);
-  return low != null && high != null && low <= high;
+  return low != null && high != null && low >= -500 && high <= 9000 && low <= high;
 }
 
 
