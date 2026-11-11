@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'registration_flow.dart';
+import 'station_review_page.dart';
 
 const _ink = Color(0xFF102448), _navy = Color(0xFF071A43), _blue = Color(0xFF1769D2), _canvas = Color(0xFFF3F6FC);
 
-enum WorkspaceModule { forecastCenter, forecastOffice, bulletins, electronicAudit, aftn, climatol, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts }
+enum WorkspaceModule { forecastCenter, forecastOffice, bulletins, electronicAudit, aftn, climatol, reports, userAccess, qualityControl, archive, stationReview, registrationApprovals, alerts, settings }
 
 class WorkspaceModuleInfo {
   const WorkspaceModuleInfo(this.module, this.title, this.description, this.icon, this.group, this.status);
@@ -26,6 +28,7 @@ const workspaceModules = <WorkspaceModuleInfo>[
   WorkspaceModuleInfo(WorkspaceModule.userAccess, 'المستخدمون والصلاحيات', 'إدارة الهوية والأدوار والعضويات وتفويض الصلاحيات', Icons.admin_panel_settings_outlined, 'الإدارة والحوكمة', 'إدارة الصلاحيات مقيدة'),
   WorkspaceModuleInfo(WorkspaceModule.stationReview, 'اعتماد دليل المحطات', 'مراجعة بيانات المحطة ونوعها وإحداثياتها ومصدرها', Icons.location_searching, 'الإدارة والحوكمة', 'مراجعة حسب الصلاحية'),
   WorkspaceModuleInfo(WorkspaceModule.registrationApprovals, 'طلبات الانتساب', 'مراجعة الطلبات على مرحلتين وفصل مهام الاعتماد', Icons.how_to_reg_outlined, 'الإدارة والحوكمة', 'مراجعة حسب الصلاحية'),
+  WorkspaceModuleInfo(WorkspaceModule.settings, 'إعدادات الحساب', 'حالة الحساب وتفضيلات التطبيق وتسجيل الخروج', Icons.settings_outlined, 'الإدارة والحوكمة', 'إعدادات التطبيق'),
 ];
 
 bool isValidAftnAddress(String value) => RegExp(r'^[A-Z]{4}$').hasMatch(value.trim().toUpperCase());
@@ -115,9 +118,10 @@ class WorkspaceModulePage extends StatelessWidget {
       case WorkspaceModule.userAccess: return const UserAccessWorkspacePage();
       case WorkspaceModule.qualityControl: return const _ModuleStatusPage(title: 'ضبط جودة البيانات', subtitle: 'قواعد التحقق ومتابعة الحالات غير الطبيعية', message: 'تظهر هنا نتائج قواعد التحقق المعتمدة، وسجل القيم المرفوضة، وطلبات التصحيح. لم يتم تحميل قواعد النطاقات العلمية أو ربط محرك الجودة بعد.', icon: Icons.rule_folder_outlined);
       case WorkspaceModule.archive: return const _ModuleStatusPage(title: 'الأرشيف المناخي', subtitle: 'استعراض السجلات التاريخية ومصدرها', message: 'واجهة الأرشيف جاهزة للتكامل. لا تُعرض السجلات التاريخية قبل تثبيت عقد القراءة وربط كل سجل بمحطته ومصدره دون تخمين.', icon: Icons.inventory_2_outlined);
-      case WorkspaceModule.stationReview: return const _ModuleStatusPage(title: 'اعتماد دليل المحطات', subtitle: 'التحقق من المحطة ومصدر بياناتها', message: 'تتطلب هذه الشاشة صلاحية مراجعة صريحة. استخدم حساب المراجع المعتمد للوصول إلى قائمة المراجعة.', icon: Icons.location_searching);
-      case WorkspaceModule.registrationApprovals: return const _ModuleStatusPage(title: 'طلبات الانتساب', subtitle: 'مراجعة ثنائية المرحلة', message: 'تظهر الطلبات فقط للمراجع الذي يحمل صلاحية المرحلة المناسبة. يجب أن يبقى مقدم الطلب ومراجع المرحلتين منفصلين وفق سياسة الاعتماد.', icon: Icons.how_to_reg_outlined);
+      case WorkspaceModule.stationReview: return StationReviewPage(client: client);
+      case WorkspaceModule.registrationApprovals: return client == null ? const _ModuleStatusPage(title: 'طلبات الانتساب', subtitle: 'مراجعة ثنائية المرحلة', message: 'تتطلب هذه الشاشة جلسة مصادقاً عليها وصلاحية المراجعة المناسبة.', icon: Icons.how_to_reg_outlined) : const RegistrationApprovalsPage();
       case WorkspaceModule.alerts: return const _ModuleStatusPage(title: 'التنبيهات الجوية', subtitle: 'التحذيرات الرسمية وحالات الطقس المؤثرة', message: 'لا يوجد مصدر رسمي موثّق متصل حالياً. لن يتم إنشاء تنبيه أو عرضه على أنه صادر عن جهة الأرصاد دون تغذية موثوقة.', icon: Icons.warning_amber_rounded);
+      case WorkspaceModule.settings: return SettingsWorkspacePage(client: client);
     }
   }
 }
@@ -451,4 +455,101 @@ class _KeyValue extends StatelessWidget {
     Expanded(child: Text(label, style: const TextStyle(color: Colors.blueGrey, fontSize: 12))),
     Text(value, style: const TextStyle(color: _ink, fontWeight: FontWeight.bold, fontSize: 12)),
   ]));
+}
+
+
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key, required this.client});
+  final SupabaseClient client;
+  @override
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+}
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+  final email = TextEditingController();
+  bool busy = false, sent = false;
+  String? error;
+  @override
+  void dispose() { email.dispose(); super.dispose(); }
+  Future<void> sendReset() async {
+    final value = email.text.trim();
+    if (value.isEmpty || !value.contains('@')) {
+      setState(() => error = 'أدخل بريداً إلكترونياً صحيحاً.');
+      return;
+    }
+    setState(() { busy = true; error = null; });
+    try {
+      await widget.client.auth.resetPasswordForEmail(value);
+      if (mounted) setState(() => sent = true);
+    } on AuthException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => error = 'تعذر إرسال رابط الاستعادة حالياً.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(title: const Text('استعادة كلمة المرور')),
+      body: Center(child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 420), child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_reset_outlined, size: 54, color: _blue),
+            const SizedBox(height: 14),
+            const Text('استعادة الوصول إلى حسابك', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _ink)),
+            const SizedBox(height: 10),
+            Text(sent ? 'إذا كان البريد مسجلاً، فستصلك تعليمات الاستعادة وفق إعدادات مزود الهوية.' : 'أدخل بريد الحساب لإرسال رابط استعادة كلمة المرور.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.blueGrey)),
+            const SizedBox(height: 20),
+            TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined), border: OutlineInputBorder())),
+            if (error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(error!, style: const TextStyle(color: Colors.red))),
+            const SizedBox(height: 16),
+            SizedBox(width: double.infinity, child: FilledButton(onPressed: busy || sent ? null : sendReset, child: busy ? const CircularProgressIndicator() : const Text('إرسال رابط الاستعادة'))),
+          ],
+        )),
+      )),
+    ),
+  );
+}
+
+class SettingsWorkspacePage extends StatefulWidget {
+  const SettingsWorkspacePage({super.key, this.client});
+  final SupabaseClient? client;
+  @override
+  State<SettingsWorkspacePage> createState() => _SettingsWorkspacePageState();
+}
+class _SettingsWorkspacePageState extends State<SettingsWorkspacePage> {
+  bool signingOut = false;
+  String units = 'مئوية';
+  Future<void> signOut() async {
+    if (widget.client == null) return;
+    setState(() => signingOut = true);
+    try {
+      await widget.client!.auth.signOut();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تسجيل الخروج. تحقق من الاتصال.')));
+    } finally {
+      if (mounted) setState(() => signingOut = false);
+    }
+  }
+  @override
+  Widget build(BuildContext context) => _WorkspaceScaffold(
+    title: 'إعدادات الحساب', subtitle: 'تفضيلات العرض وحالة جلسة المستخدم',
+    child: Column(children: [
+      _Panel(title: 'تفضيلات العرض', child: Column(children: [
+        DropdownButtonFormField<String>(value: units, decoration: const InputDecoration(labelText: 'وحدة الحرارة', border: OutlineInputBorder()), items: const ['مئوية', 'فهرنهايت'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => units = v ?? units)),
+        const SizedBox(height: 10),
+        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.language, color: _blue), title: Text('لغة الواجهة'), subtitle: Text('العربية — من اليمين إلى اليسار')),
+      ])),
+      const SizedBox(height: 14),
+      _Panel(title: 'الجلسة والأمان', child: Column(children: [
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.verified_user_outlined, color: _blue), title: const Text('حالة المصادقة'), subtitle: Text(widget.client == null ? 'وضع عرض دون اتصال' : 'تدار الجلسة بواسطة مزود الهوية')),
+        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: widget.client == null || signingOut ? null : signOut, icon: const Icon(Icons.logout), label: Text(signingOut ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'))),
+      ])),
+    ]),
+  );
 }
