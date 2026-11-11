@@ -130,3 +130,13 @@ void main() {
     expect(find.text('معاينة فك الترميز'), findsOneWidget);
   });
 }
+
+  testWidgets('CLIMATOL workspace exposes CLIMAT, CLIMAT TEMP and statistics', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ClimatolWorkspacePage()));
+    expect(find.text('المناخ وCLIMATOL'), findsOneWidget);
+    expect(find.text('CLIMAT'), findsOneWidget);
+    expect(find.text('CLIMAT TEMP'), findsOneWidget);
+    expect(find.text('الإحصاءات والتقارير'), findsOneWidget);
+    expect(find.text('السنة'), findsOneWidget);
+  });
+}
