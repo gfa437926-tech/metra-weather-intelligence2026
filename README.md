@@ -96,6 +96,9 @@ The current UI branch adds:
 - Forecaster product preparation and local completeness validation.
 - Bulletin workspace for hourly/daily bulletins and SYNOP, METAR, TAF, and summary products.
 - Electronic audit search/filter shell with a read-only server-ledger boundary.
+- Paper and mechanical recorder audit workspace for original paper logs and Thermograph/Hygrograph/Barograph/Pluviograph traces, three-source comparison (paper/mechanical/electronic), confidence/review placeholders, and human approval roles.
+- AI device library, training-set governance, model-version and audit-report workspaces.
+- Climate homogenization workspace for time series, breakpoints, reference-station comparison, separate corrected series, climate normals, trends and geographic reporting.
 - AFTN message composition with local address/priority validation; actual transmission remains disabled until a reviewed gateway exists.
 - CLIMATOL/climate analysis setup with a scientific-approval gate.
 - Daily/monthly/annual report tabs, user/access role overview, quality-control and climate-archive entry points.
