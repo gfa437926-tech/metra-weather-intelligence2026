@@ -87,3 +87,10 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Added day/month/season/year period selection, element selection and an unopinionated year input rather than imposing a guessed climatological normal period.
 - Exposed placeholders for missing-data/QC flags, station provenance, coded message review, monthly/seasonal/annual rainfall/temperature/wind/humidity statistics, climate indicators, trends, geographic comparisons and reports.
 - Execution and report generation remain disabled until the scientific variable dictionary, units, normal periods, missing-value rules and R/CLIMATOL service contract are approved.
+
+
+## Follow-up round — forecaster product form (2026-11-11T13:01:55.671Z UTC)
+
+- Expanded the forecaster screen with UTC issue time and validity start/end, area, temperature min/max, precipitation/probability, wind speed/direction/gust, visibility, clouds/base and phenomena, plus narrative analysis.
+- Added a widget test for the UTC and core meteorological product fields.
+- The UI does not assert operational thresholds or issue a forecast; approval, model inputs and persistence remain disabled until approved contracts and scientific rules are connected.
