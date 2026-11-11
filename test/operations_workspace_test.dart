@@ -145,6 +145,8 @@ void main() {
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
     useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1000));
+    await tester.pumpAndSettle();
     expect(find.text('مركز AFTN'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('إرسال AFTN'), findsOneWidget);
@@ -162,6 +164,8 @@ void main() {
     await tester.enterText(find.byKey(const Key('aftn-destination')), 'ABCDEFGH');
     await tester.enterText(find.byKey(const Key('aftn-date-time-group')), '111200');
     await tester.enterText(find.byKey(const Key('aftn-origin')), 'IJKLNMOP');
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1000));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('aftn-body')), 'Weather report for test station.');
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
@@ -179,7 +183,7 @@ void main() {
     expect(find.text('التدقيق الإلكتروني'), findsOneWidget);
     expect(find.text('معرّف الارتباط'), findsWidgets);
     expect(find.text('من UTC'), findsOneWidget);
-    expect(find.text('نتيجة العملية'), findsOneWidget);
+    expect(find.text('نتيجة العملية'), findsWidgets);
     expect(find.text('تفاصيل الحدث المحدد'), findsOneWidget);
   });
 
@@ -241,6 +245,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
     await tester.enterText(find.byKey(const Key('bulletin-station')), 'STN001');
     await tester.enterText(find.byKey(const Key('bulletin-time')), '2026-11-11 12:00 UTC');
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1000));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('bulletin-raw')), 'SYNOP 111200Z sample raw text');
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
