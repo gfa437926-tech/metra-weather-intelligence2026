@@ -713,6 +713,7 @@ class BulletinWorkspacePage extends StatefulWidget {
 class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
   String type = 'نشرة ساعية', stationCode = '';
   final raw = TextEditingController(), reportTime = TextEditingController();
+  String? rawPreview;
   @override
   void dispose() { raw.dispose(); reportTime.dispose(); super.dispose(); }
 
@@ -736,11 +737,11 @@ class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
             ])),
             const SizedBox(height: 12),
             _Panel(title: 'بيانات النشرة', child: Column(children: [
-              TextField(onChanged: (v) => stationCode = v, decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
+              TextField(key: const Key('bulletin-station'), onChanged: (v) { stationCode = v; rawPreview = null; }, decoration: const InputDecoration(labelText: 'رمز المحطة المعتمد', hintText: 'يُقرأ من دليل المحطات', border: OutlineInputBorder())),
               const SizedBox(height: 10),
-              TextField(controller: reportTime, decoration: const InputDecoration(labelText: 'تاريخ ووقت الرصد UTC', hintText: 'YYYY-MM-DD HH:MM UTC', border: OutlineInputBorder())),
+              TextField(key: const Key('bulletin-time'), controller: reportTime, onChanged: (_) => setState(() => rawPreview = null), decoration: const InputDecoration(labelText: 'تاريخ ووقت الرصد UTC', hintText: 'YYYY-MM-DD HH:MM UTC', border: OutlineInputBorder())),
               const SizedBox(height: 10),
-              TextField(controller: raw, minLines: 6, maxLines: 10, decoration: InputDecoration(labelText: 'محتوى النشرة / الرسالة', alignLabelWithHint: true, hintText: type == 'METAR' || type == 'SYNOP' || type == 'TAF' ? 'أدخل النص المشفر للمراجعة' : 'أدخل محتوى النشرة', border: const OutlineInputBorder())),
+              TextField(key: const Key('bulletin-raw'), controller: raw, minLines: 6, maxLines: 10, onChanged: (_) => setState(() => rawPreview = null), decoration: InputDecoration(labelText: 'محتوى النشرة / الرسالة', alignLabelWithHint: true, hintText: type == 'METAR' || type == 'SYNOP' || type == 'TAF' ? 'أدخل النص المشفر للمراجعة' : 'أدخل محتوى النشرة', border: const OutlineInputBorder())),
               const SizedBox(height: 10),
               const _InlineWarning(text: 'لا تُرسل هذه المسودة إلى قاعدة البيانات. يلزم ربط مخطط الحقول والمدقق العلمي الخاص بكل نوع نشرة.'),
               const SizedBox(height: 12),
@@ -750,14 +751,24 @@ class _BulletinWorkspacePageState extends State<BulletinWorkspacePage> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل رمز المحطة ووقت الرصد ومحتوى النشرة أولاً.')));
                     return;
                   }
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم فحص اكتمال الحقول محلياً فقط.')));
+                  setState(() => rawPreview = raw.text.trim());
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء معاينة للنص الخام؛ لم يتم فك الترميز أو الحفظ.')));
                 }, icon: const Icon(Icons.rule), label: const Text('فحص الحقول'))),
                 const SizedBox(width: 8),
                 Expanded(child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.save_outlined), label: const Text('حفظ / إرسال'))),
               ]),
             ])),
             const SizedBox(height: 12),
-            const _Panel(title: 'معاينة فك الترميز', child: _EmptyState(icon: Icons.code, title: 'لا توجد نتيجة فك ترميز', message: 'تظهر هنا الحقول المفككة مع النص الخام وملاحظات المدقق بعد ربط المحلل المعتمد لكل نوع نشرة.')),
+            _Panel(title: 'معاينة فك الترميز', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (rawPreview == null)
+                const _EmptyState(icon: Icons.code, title: 'لا توجد معاينة بعد', message: 'أدخل بيانات النشرة ثم نفّذ فحص الحقول. سيظل فك الترميز الفعلي معطلاً حتى ربط المحلل المعتمد لكل نوع.' )
+              else ...[
+                const _KeyValue(label: 'حالة المعاينة', value: 'نص خام — لم يُفك ترميزه'),
+                SelectableText(rawPreview!, style: const TextStyle(color: _ink, fontFamily: 'monospace', height: 1.5)),
+                const SizedBox(height: 8),
+                const _InlineWarning(text: 'هذه معاينة للنص الخام فقط؛ لم تُستخرج مجموعات أو قيم أرصاد ولم يُنشأ سجل نشرة.'),
+              ],
+            ])),
           ]),
           const _BulletinQueueTab(title: 'النشرات بانتظار المراجعة', detail: 'تعرض النشرات المرسلة للمراجعة مع المحطة والوقت ونوع النشرة وصاحب الإدخال والتنبيهات وقائمة الملاحظات.'),
           const _BulletinQueueTab(title: 'النشرات المعتمدة', detail: 'تعرض النشرات التي اعتمدها مراجع مخول مع هوية المعتمد والتوقيت UTC وإصدار التحقق وبصمة السجل.'),
