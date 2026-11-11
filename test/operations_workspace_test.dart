@@ -42,6 +42,9 @@ void main() {
     expect(find.text('مراكز التنبؤ الجوي'), findsOneWidget);
     expect(find.text('نطاق الارتفاع'), findsOneWidget);
     expect(find.text('اتجاه الرياح'), findsOneWidget);
+    expect(find.text('خط العرض من'), findsOneWidget);
+    expect(find.text('خط الطول إلى'), findsOneWidget);
+    expect(find.text('نافذة المقارنة الزمنية'), findsOneWidget);
     expect(find.text('لا توجد قراءات لحظية متاحة'), findsOneWidget);
   });
 
