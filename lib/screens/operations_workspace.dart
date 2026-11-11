@@ -61,7 +61,13 @@ bool _isValidOrderedRange(String minimum, String maximum, double lowerLimit, dou
 }
 bool isValidLatitudeRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -90, 90);
 bool isValidLongitudeRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -180, 180);
-bool isValidElevationRange(String minimum, String maximum) => _isValidOrderedRange(minimum, maximum, -1000, 9000);
+bool isValidElevationRange(String minimum, String maximum) {
+  final minText = minimum.trim(), maxText = maximum.trim();
+  if (minText.isEmpty && maxText.isEmpty) return true;
+  if (minText.isEmpty || maxText.isEmpty) return false;
+  final low = double.tryParse(minText), high = double.tryParse(maxText);
+  return low != null && high != null && low <= high;
+}
 
 
 class OperationsHubPage extends StatelessWidget {
