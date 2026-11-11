@@ -1157,19 +1157,110 @@ class _ReportTab extends StatelessWidget {
   ])));
 }
 
-class UserAccessWorkspacePage extends StatelessWidget {
+class UserAccessWorkspacePage extends StatefulWidget {
   const UserAccessWorkspacePage({super.key});
-  @override
-  Widget build(BuildContext context) => _WorkspaceScaffold(title: 'المستخدمون والصلاحيات', subtitle: 'الهوية والأدوار والعضويات والتفويض', child: Column(children: [
-    const _SourceStatus(title: 'خدمة إدارة الهوية', detail: 'تتوفر قراءة سياق الصلاحيات في الإعدادات، لكن لا توجد واجهة آمنة مكتملة لمنح الصلاحيات أو تعديل الأدوار.', connected: false),
-    const SizedBox(height: 14),
-    const _Panel(title: 'الأدوار الوظيفية', child: Column(children: [
-      _RoleRow('مدير النظام', 'إدارة النظام وفق التفويض الأعلى'), _RoleRow('مدير الرصد', 'الإشراف على عمليات الرصد والمحطات'), _RoleRow('رئيس محطة', 'متابعة محطة محددة ومراجعة رصدها'), _RoleRow('راصد جوي', 'إدخال الرصد للمحطة المسندة'), _RoleRow('مدقق محطة', 'تدقيق السجلات ضمن نطاق المحطة'), _RoleRow('متنبئ جوي', 'إعداد منتجات التنبؤ'), _RoleRow('مسؤول AFTN', 'إعداد الرسائل الجوية وتوزيعها'), _RoleRow('مسؤول المناخ', 'المنتجات والإحصاءات المناخية'),
-    ])),
-    const SizedBox(height: 14),
-    const _InlineWarning(text: 'لا تسمح هذه الواجهة بمنح أو تعديل الصلاحيات. أي عملية تفويض يجب أن تمر عبر معاملة خادمية تتحقق من صلاحية المفوّض ونطاقه وفصل المهام.'),
-  ]));
+  @override State<UserAccessWorkspacePage> createState() => _UserAccessWorkspacePageState();
 }
+
+class _UserAccessWorkspacePageState extends State<UserAccessWorkspacePage> {
+  final userSearch = TextEditingController();
+  final roleSearch = TextEditingController();
+  String accountState = 'كل الحالات';
+
+  static const roles = <_RoleDescription>[
+    _RoleDescription('مدير النظام', 'إدارة النظام ضمن سقف التفويض الأعلى المعتمد'),
+    _RoleDescription('مدير الرصد', 'الإشراف على عمليات الرصد والمحطات ضمن النطاق المصرح'),
+    _RoleDescription('رئيس محطة', 'متابعة محطة محددة ومراجعة رصدها'),
+    _RoleDescription('راصد جوي', 'إدخال الرصد للمحطة المسندة'),
+    _RoleDescription('مدقق محطة', 'تدقيق السجلات ضمن نطاق المحطة'),
+    _RoleDescription('متنبئ جوي', 'إعداد منتجات التنبؤ ومراجعتها'),
+    _RoleDescription('مسؤول AFTN', 'إعداد الرسائل الجوية ومتابعة التوجيه'),
+    _RoleDescription('مسؤول المناخ', 'المنتجات والإحصاءات المناخية'),
+  ];
+
+  @override
+  void dispose() {
+    userSearch.dispose();
+    roleSearch.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 3,
+    child: _WorkspaceScaffold(
+      title: 'المستخدمون والصلاحيات',
+      subtitle: 'الهوية والأدوار والعضويات والتفويض',
+      child: Column(children: [
+        const _SourceStatus(
+          title: 'خدمة إدارة الهوية',
+          detail: 'تتوفر قراءة سياق الصلاحيات في الإعدادات، لكن لا توجد واجهة آمنة مكتملة لمنح الصلاحيات أو تعديل الأدوار.',
+          connected: false,
+        ),
+        const SizedBox(height: 12),
+        const TabBar(isScrollable: true, labelColor: _blue, unselectedLabelColor: Colors.blueGrey, tabs: [
+          Tab(text: 'المستخدمون'), Tab(text: 'الأدوار'), Tab(text: 'مجالات الصلاحيات'),
+        ]),
+        SizedBox(height: 560, child: TabBarView(children: [
+          ListView(padding: const EdgeInsets.only(top: 14), children: [
+            _Panel(title: 'البحث في حسابات المستخدمين', child: Column(children: [
+              TextField(controller: userSearch, decoration: const InputDecoration(labelText: 'الاسم أو البريد أو رقم الحساب', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: accountState,
+                decoration: const InputDecoration(labelText: 'حالة الحساب', border: OutlineInputBorder()),
+                items: const ['كل الحالات', 'بانتظار التفعيل', 'بانتظار الاعتماد', 'فعال', 'موقوف', 'محظور']
+                    .map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                onChanged: (value) => setState(() => accountState = value ?? accountState),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(width: double.infinity, child: FilledButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('إنشاء حساب — بانتظار خدمة الهوية'),
+              )),
+            ])),
+            const SizedBox(height: 12),
+            const _EmptyState(icon: Icons.people_outline, title: 'لا توجد حسابات محملة', message: 'ستظهر بيانات الحساب وحالة التفعيل والعضوية والمحطة المسندة والأدوار الفعالة بعد ربط خدمة إدارة الهوية المصرح بها.'),
+          ]),
+          ListView(padding: const EdgeInsets.only(top: 14), children: [
+            TextField(controller: roleSearch, onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'بحث عن دور وظيفي', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
+            const SizedBox(height: 10),
+            _Panel(title: 'الأدوار الوظيفية', child: Column(children: [
+              for (final role in roles.where((item) => roleSearch.text.trim().isEmpty ||
+                  item.title.contains(roleSearch.text.trim()) || item.description.contains(roleSearch.text.trim())))
+                _RoleRow(role.title, role.description),
+            ])),
+            const SizedBox(height: 12),
+            const _InlineWarning(text: 'الأسماء المعروضة تعريفية للواجهة، ويجب مطابقتها مع كتالوج الأدوار الفعلي قبل أي تفويض أو تعديل.'),
+          ]),
+          ListView(padding: const EdgeInsets.only(top: 14), children: const [
+            _Panel(title: 'مجالات الصلاحيات', child: Column(children: [
+              _RoleRow('المحطات', 'قراءة الدليل ومراجعة واعتماد بيانات المحطة ضمن النطاق'),
+              _RoleRow('الرصد', 'إدخال النشرات ومراجعتها واعتمادها أو إرجاعها'),
+              _RoleRow('التنبؤ', 'إعداد المنتجات ومراجعة واعتماد التوقعات'),
+              _RoleRow('التدقيق', 'قراءة سجل الأحداث والتفاصيل دون تعديل'),
+              _RoleRow('AFTN', 'إنشاء الرسائل والتوجيه والتسليم وفق تفويض منفصل'),
+              _RoleRow('المناخ', 'قراءة السلاسل وإعداد الإحصاءات والمنتجات المناخية'),
+              _RoleRow('الإدارة', 'إدارة العضويات والتفويض ضمن سقف صلاحية المفوض'),
+            ])),
+            SizedBox(height: 12),
+            _InlineWarning(text: 'هذه مجالات عرض وليست أكواد صلاحيات قابلة للتطبيق. لا تمنح الواجهة أي صلاحية ولا تعرض مفاتيح أو بيانات اعتماد.'),
+          ]),
+        ])),
+        const SizedBox(height: 12),
+        const _InlineWarning(text: 'أي عملية تفويض يجب أن تمر عبر معاملة خادمية تتحقق من صلاحية المفوّض ونطاقه وسقف التفويض وفصل المهام، مع سجل تدقيق غير قابل للتعديل.'),
+      ]),
+    ),
+  );
+}
+
+class _RoleDescription {
+  const _RoleDescription(this.title, this.description);
+  final String title, description;
+}
+
 class _RoleRow extends StatelessWidget {
   const _RoleRow(this.title, this.description);
   final String title, description;
