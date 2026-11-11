@@ -21,7 +21,7 @@ const workspaceModules = <WorkspaceModuleInfo>[
   WorkspaceModuleInfo(WorkspaceModule.alerts, 'التنبيهات الجوية', 'متابعة التحذيرات الرسمية وحالات الطقس المؤثرة', Icons.warning_amber_rounded, 'التنبؤ والعمليات', 'مصدر رسمي غير مربوط'),
   WorkspaceModuleInfo(WorkspaceModule.electronicAudit, 'التدقيق الإلكتروني', 'تتبع التغييرات والقرارات وسجل المراجعة والأخطاء', Icons.fact_check_outlined, 'الجودة والرقابة', 'بانتظار ربط سجل التدقيق'),
   WorkspaceModuleInfo(WorkspaceModule.qualityControl, 'ضبط جودة البيانات', 'قواعد التحقق والتنبيهات والقيم الشاذة ومتابعة التصحيحات', Icons.rule_folder_outlined, 'الجودة والرقابة', 'قواعد الاعتماد مطلوبة'),
-  WorkspaceModuleInfo(WorkspaceModule.aftn, 'مركز AFTN', 'إنشاء الرسائل الجوية ومراجعتها وتتبع حالة الإرسال والاستلام', Icons.send_time_extension_outlined, 'الاتصالات والتوزيع', 'بوابة الإرسال غير مربوطة'),
+  WorkspaceModuleInfo(WorkspaceModule.aftn, 'مركز AFTN', 'إنشاء الرسائل الجوية ومراجعتها وتتبع حالة الإرسال والاستلام', Icons.send_outlined, 'الاتصالات والتوزيع', 'بوابة الإرسال غير مربوطة'),
   WorkspaceModuleInfo(WorkspaceModule.climatol, 'المناخ وCLIMATOL', 'تجميع السلاسل المناخية والتحقق منها وإعداد منتجات CLIMAT', Icons.stacked_line_chart, 'المناخ والإحصاء', 'بانتظار اعتماد القواعد العلمية'),
   WorkspaceModuleInfo(WorkspaceModule.reports, 'التقارير والإحصاء', 'التقارير اليومية والشهرية والسنوية ومؤشرات المحطات', Icons.assessment_outlined, 'المناخ والإحصاء', 'مصدر التقارير غير مربوط'),
   WorkspaceModuleInfo(WorkspaceModule.archive, 'الأرشيف المناخي', 'البحث في السجلات التاريخية ومراجعة اكتمال البيانات ومصدرها', Icons.inventory_2_outlined, 'المناخ والإحصاء', 'قراءة الأرشيف غير مفعلة'),
@@ -277,7 +277,7 @@ class _AftnWorkspacePageState extends State<AftnWorkspacePage> {
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'درجة الأولوية', border: OutlineInputBorder()), items: const ['SS', 'DD', 'FF', 'GG', 'KK'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => priority = v ?? 'GG')),
       const SizedBox(height: 12),
-      TextFormField(controller: body, minLines: 6, maxLines: 10, decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
+      TextFormField(controller: body, minLines: 6, maxLines: 10, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'نص الرسالة', alignLabelWithHint: true, border: OutlineInputBorder()), validator: (v) => (v == null || v.trim().length < 10) ? 'أدخل نص الرسالة' : null),
       const SizedBox(height: 8),
       Align(alignment: Alignment.centerLeft, child: Text(body.text.length.toString() + ' حرف', style: const TextStyle(color: Colors.blueGrey, fontSize: 11))),
       const SizedBox(height: 10),
@@ -498,7 +498,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 420), child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.lock_reset_outlined, size: 54, color: _blue),
+            const Icon(Icons.lock_reset, size: 54, color: _blue),
             const SizedBox(height: 14),
             const Text('استعادة الوصول إلى حسابك', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _ink)),
             const SizedBox(height: 10),
