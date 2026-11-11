@@ -102,11 +102,10 @@ void main() {
     expect(station.approvalLabel, 'بانتظار الاعتماد');
     expect(station.operationalLabel, 'غير متحقق منها');
   });
+  test('parses optional station elevation without inventing missing values', () {
+    expect(parse(elevation: '545.50').elevationM, 545.5);
+    expect(parse(elevation: null).elevationM, isNull);
+    expect(parse(elevation: 'unknown').elevationM, isNull);
+  });
+
 }
-
-
-test('parses optional station elevation without inventing missing values', () {
-  expect(parse(elevation: '545.50').elevationM, 545.5);
-  expect(parse(elevation: null).elevationM, isNull);
-  expect(parse(elevation: 'unknown').elevationM, isNull);
-});
