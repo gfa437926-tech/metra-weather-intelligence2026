@@ -45,6 +45,8 @@ void main() {
     expect(find.text('خط العرض من'), findsOneWidget);
     expect(find.text('خط الطول إلى'), findsOneWidget);
     expect(find.text('نافذة المقارنة الزمنية'), findsOneWidget);
+    expect(find.text('الارتفاع من (م)'), findsOneWidget);
+    expect(find.text('التحقق من حدود المقارنة'), findsOneWidget);
     expect(find.text('لا توجد قراءات لحظية متاحة'), findsOneWidget);
   });
 
@@ -138,5 +140,19 @@ void main() {
     expect(find.text('CLIMAT TEMP'), findsOneWidget);
     expect(find.text('الإحصاءات والتقارير'), findsOneWidget);
     expect(find.text('السنة'), findsOneWidget);
+  });
+}
+
+  test('forecast-centre coordinate and elevation range validators reject invalid bounds', () {
+    expect(isValidLatitude('90'), isTrue);
+    expect(isValidLatitude('-90'), isTrue);
+    expect(isValidLatitude('90.01'), isFalse);
+    expect(isValidLatitude('north'), isFalse);
+    expect(isValidLongitude('180'), isTrue);
+    expect(isValidLongitude('-180'), isTrue);
+    expect(isValidLongitude('180.1'), isFalse);
+    expect(isValidElevationRange('10', '100'), isTrue);
+    expect(isValidElevationRange('100', '10'), isFalse);
+    expect(isValidElevationRange('low', '100'), isFalse);
   });
 }
