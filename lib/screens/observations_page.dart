@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'observation_forms_catalogue_page.dart';
 
 class ObservationsPage extends StatefulWidget {
   const ObservationsPage({super.key, required this.client});
@@ -348,7 +349,14 @@ class _ObservationsPageState extends State<ObservationsPage> {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(title: const Text('الرصد التشغيلي')),
+          appBar: AppBar(
+            title: const Text('الرصد التشغيلي'),
+            actions: [IconButton(
+              tooltip: 'النماذج التفصيلية',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ObservationFormsCataloguePage())),
+              icon: const Icon(Icons.dynamic_form_outlined),
+            )],
+          ),
           body: const Center(child: Padding(
             padding: EdgeInsets.all(24),
             child: Text('خدمة الرصد غير مهيأة. شغّل التطبيق بإعدادات Supabase.'),
