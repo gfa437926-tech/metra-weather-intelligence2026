@@ -3,6 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:metra_weather_intelligence/screens/operations_workspace.dart';
 import 'package:metra_weather_intelligence/screens/observation_forms_catalogue_page.dart';
 
+void useTallViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(900, 3600);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   test('workspace catalogue exposes the core METRA operational modules', () {
     final modules = workspaceModules.map((item) => item.module).toSet();
@@ -83,6 +90,7 @@ void main() {
   });
 
   testWidgets('forecaster rejects invalid UTC order and inconsistent forecast values', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: ForecastOfficePage()));
     await tester.enterText(find.byKey(const Key('forecast-issued-at')), '2026-11-11 10:00 UTC');
     await tester.enterText(find.byKey(const Key('forecast-valid-from')), '2026-11-11 12:00 UTC');
@@ -91,9 +99,6 @@ void main() {
     await tester.enterText(find.byKey(const Key('forecast-max-temp')), '5');
     await tester.enterText(find.byKey(const Key('forecast-rain-probability')), '101');
     await tester.enterText(find.byType(TextFormField).first, 'دمشق ومحيطها');
-    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
-    await tester.pumpAndSettle();
-    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     await tester.tap(find.text('التحقق من اكتمال المسودة'));
     await tester.pumpAndSettle();
@@ -103,11 +108,9 @@ void main() {
   });
 
   testWidgets('AFTN screen keeps transmission disabled without a gateway', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     expect(find.text('مركز AFTN'), findsOneWidget);
-    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
-    await tester.pumpAndSettle();
-    await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('إرسال AFTN'), findsOneWidget);
     expect(find.text('الصادر'), findsOneWidget);
@@ -118,6 +121,7 @@ void main() {
   });
 
   testWidgets('AFTN local preview is generated only after field validation and never sent', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: AftnWorkspacePage()));
     await tester.enterText(find.byKey(const Key('aftn-transmission-id')), 'ABC123');
     await tester.enterText(find.byKey(const Key('aftn-destination')), 'ABCDEFGH');
@@ -200,6 +204,7 @@ void main() {
   });
 
   testWidgets('bulletin workspace previews raw text without claiming a decode', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
     await tester.enterText(find.byKey(const Key('bulletin-station')), 'STN001');
     await tester.enterText(find.byKey(const Key('bulletin-time')), '2026-11-11 12:00 UTC');
@@ -244,6 +249,7 @@ void main() {
   });
 
   testWidgets('detailed observation form exposes source-required hourly fields', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: ObservationFormsCataloguePage()));
     expect(find.text('نماذج الرصد التفصيلية'), findsOneWidget);
     expect(find.text('درجة الحرارة الجافة *'), findsOneWidget);
@@ -260,6 +266,7 @@ void main() {
   });
 
   testWidgets('daily form switch exposes 24-hour humidity and phenomenon controls', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: ObservationFormsCataloguePage()));
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
@@ -279,6 +286,7 @@ void main() {
   });
 
   testWidgets('bulletin workspace separates draft, review, approved and correction queues', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: BulletinWorkspacePage()));
     await tester.dragFrom(const Offset(400, 550), const Offset(0, -520));
     await tester.pumpAndSettle();
