@@ -728,7 +728,7 @@ class _ModelTrainingTab extends StatelessWidget {
     const SizedBox(height: 12),
     const _InlineWarning(text: 'لا تستخدم بيانات محطة أو صوراً حقيقية للتدريب قبل اعتماد سياسة الخصوصية والموافقة ومصدر البيانات وفصل بيانات التدريب عن الاختبار.'),
     const SizedBox(height: 12),
-    const SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: Icon(Icons.model_training_outlined), label: Text('بدء التدريب'))),
+    SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: null, icon: const Icon(Icons.model_training), label: const Text('بدء التدريب'))),
   ]);
 }
 class _ModelVersionsTab extends StatelessWidget {
