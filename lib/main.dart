@@ -18,7 +18,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   const publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
-  if (supabaseUrl.isNotEmpty && publishableKey.isNotEmpty) {
+  const metraApiUrl = String.fromEnvironment('METRA_API_URL');
+  if (supabaseUrl.isNotEmpty && publishableKey.isNotEmpty && metraApiUrl.isNotEmpty) {
     await Supabase.initialize(url: supabaseUrl, publishableKey: publishableKey);
     metraSupabaseClient = Supabase.instance.client;
   }
@@ -56,7 +57,7 @@ class SetupRequiredPage extends StatelessWidget {
                 ),
                 SizedBox(height: 10),
                 Text(
-                  'تم إيقاف الوصول إلى صفحات النظام لأن إعدادات المصادقة العامة غير متوفرة. لن تُعرض أي بيانات محمية دون اتصال موثوق.',
+                  'تم إيقاف الوصول إلى صفحات النظام لأن إعدادات المصادقة أو عنوان خدمة .NET API غير متوفرة. لن تُعرض أي بيانات محمية دون اتصال موثوق.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.blueGrey, height: 1.6),
                 ),
