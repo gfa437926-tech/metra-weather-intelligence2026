@@ -2,33 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:metra_weather_intelligence/main.dart';
 
 void main() {
-  testWidgets('METRA shell renders Arabic navigation and weather overview', (tester) async {
+  testWidgets('METRA fails closed when public authentication configuration is absent', (tester) async {
     await tester.pumpWidget(const MetraWeatherApp());
-    expect(find.text('METRA'), findsOneWidget);
-    expect(find.text('الرئيسية'), findsWidgets);
-    expect(find.text('الخريطة'), findsWidgets);
-    expect(find.text('المحطات'), findsWidgets);
-    expect(find.text('الرصد'), findsWidgets);
-    expect(find.text('التنبيهات'), findsWidgets);
-    expect(find.text('الإعدادات'), findsWidgets);
-  });
 
-  testWidgets('observations page explains missing Supabase configuration', (tester) async {
-    await tester.pumpWidget(const MetraWeatherApp());
-    await tester.tap(find.text('الرصد').last);
-    await tester.pumpAndSettle();
-    expect(find.text('الرصد التشغيلي'), findsOneWidget);
-    expect(find.text('خدمة الرصد غير مهيأة. شغّل التطبيق بإعدادات Supabase.'), findsOneWidget);
-  });
-
-  testWidgets('station directory does not label placeholder records as live', (tester) async {
-    await tester.pumpWidget(const MetraWeatherApp());
-    await tester.tap(find.text('المحطات').last);
-    await tester.pumpAndSettle();
-    expect(find.text('محطات الرصد'), findsOneWidget);
-    expect(find.text('خدمة المحطات غير مهيأة'), findsOneWidget);
+    expect(find.text('لم يتم إعداد اتصال METRA'), findsOneWidget);
+    expect(find.text('الرئيسية'), findsNothing);
+    expect(find.text('الرصد'), findsNothing);
     expect(find.text('محطة الرياض'), findsNothing);
   });
+
+  testWidgets('configuration warning explains that protected data remains unavailable', (tester) async {
+    await tester.pumpWidget(const MetraWeatherApp());
+
+    expect(
+      find.textContaining('لن تُعرض أي بيانات محمية دون اتصال موثوق'),
+      findsOneWidget,
+    );
+  });
 }
-
-
