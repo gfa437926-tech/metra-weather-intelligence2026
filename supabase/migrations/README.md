@@ -20,7 +20,7 @@ otherwise it performs the original verified replacement. This makes clean replay
 idempotent without changing the already-applied production migration ledger.
 
 Migration `20261103162738_seed_conservative_observation_role_permissions.sql` now
-seeds four temporary role-catalogue rows before its allow-list insert. Those rows
+seeds six temporary role-catalogue rows before its allow-list insert. Those rows
 were present when the migration ran on the live project but were not represented
 by an earlier migration source. They exist only in the transitional `public`
 schema and are replaced by the greenfield `iam.roles` catalogue later in the chain.
