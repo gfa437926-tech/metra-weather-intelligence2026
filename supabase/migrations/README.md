@@ -5,11 +5,19 @@ The active migration directory is reconciled against the new METRA Supabase proj
 
 - The active chain contains **86** migration files, one per applied migration version.
 - The restored SQL was recovered from the exact `statements` arrays retained by the
-  Supabase migration ledger.
+  Supabase migration ledger. One replay-only correction is documented below.
 - `ledger.manifest` records the expected version/name set. CI verifies that every
   expected source exists exactly once and that no unreviewed or empty migration
   is added to the active chain.
 - `supabase/pending-migrations/` is intentionally outside the active chain.
+
+## Replay-only correction
+
+Migration `20261103002006_fix_pending_registration_replay_classification.sql` now
+checks whether the immediately preceding migration has already put the pending
+request branch first. If so, it verifies the ordering and safely does nothing;
+otherwise it performs the original verified replacement. This makes clean replay
+idempotent without changing the already-applied production migration ledger.
 
 ## Important duplicate names
 
