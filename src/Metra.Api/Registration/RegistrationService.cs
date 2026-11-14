@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Metra.Api.Data;
+using Metra.Api.Identity;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Metra.Api.Registration;
 
@@ -11,11 +14,389 @@ public interface IRegistrationService
         Guid userId,
         RegistrationSubmissionRequest request,
         CancellationToken cancellationToken);
+    Task<RegistrationApprovalQueueResponse> GetApprovalQueueAsync(
+        Guid userId, CancellationToken cancellationToken);
+    Task<RegistrationApprovalDecisionResponse> DecideAsync(
+        Guid userId, Guid requestId, RegistrationApprovalDecisionRequest request,
+        CancellationToken cancellationToken);
 }
 
-public sealed class RegistrationService(MetraDatabase database) : IRegistrationService
+public sealed class RegistrationService(
+    MetraDatabase database,
+    ICurrentUserService currentUserService) : IRegistrationService
 {
     private const string CurrentTermsVersion = "metra-terms-2026-11";
+
+    public async Task<RegistrationApprovalQueueResponse> GetApprovalQueueAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active")
+            throw new RegistrationApprovalAccessDeniedException();
+
+        var scopes = ResolveApprovalScopes(user.Permissions);
+        if (!scopes.StationGlobal && scopes.StationIds.Length == 0 &&
+            !scopes.OrganizationGlobal && scopes.OrganizationIds.Length == 0)
+            throw new RegistrationApprovalAccessDeniedException();
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        const string sql = """
+            select rr.id, rr.request_state,
+                   p.given_name, p.father_name, p.family_name,
+                   s.name_ar, s.station_code, r.name_ar, r.role_code, rr.submitted_at
+            from iam.registration_requests rr
+            join iam.user_profiles p on p.user_id = rr.applicant_user_id
+            join catalog.stations s on s.id = rr.requested_station_id
+            join iam.roles r on r.id = rr.requested_role_id
+            where (
+                rr.request_state = 'pending_station_review'
+                and (@station_global or rr.requested_station_id = any(@station_ids))
+            ) or (
+                rr.request_state = 'pending_system_review'
+                and (@organization_global or rr.organization_id = any(@organization_ids))
+            )
+            order by rr.submitted_at, rr.id
+            limit 500;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("station_global", scopes.StationGlobal);
+        command.Parameters.AddWithValue("station_ids", scopes.StationIds);
+        command.Parameters.AddWithValue("organization_global", scopes.OrganizationGlobal);
+        command.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var items = new List<RegistrationApprovalItem>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var requestState = reader.GetString(1);
+            items.Add(new RegistrationApprovalItem(
+                reader.GetGuid(0),
+                requestState == "pending_station_review"
+                    ? "pending_station_approval"
+                    : "pending_system_approval",
+                requestState == "pending_station_review" ? "station" : "organization",
+                new RegistrationApprovalApplicant(
+                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3),
+                    reader.IsDBNull(4) ? null : reader.GetString(4)),
+                new RegistrationApprovalStation(reader.GetString(5), reader.GetString(6)),
+                new RegistrationApprovalRole(reader.GetString(7)),
+                reader.GetString(8),
+                reader.GetFieldValue<DateTimeOffset>(9)));
+        }
+
+        return new RegistrationApprovalQueueResponse(items);
+    }
+
+    public async Task<RegistrationApprovalDecisionResponse> DecideAsync(
+        Guid userId,
+        Guid requestId,
+        RegistrationApprovalDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateApprovalDecision(request);
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active")
+            throw new RegistrationApprovalAccessDeniedException();
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string lockSql = """
+            select rr.applicant_user_id, rr.organization_id, rr.requested_station_id,
+                   rr.requested_unit_id, rr.requested_role_id, rr.request_state,
+                   r.role_code, r.role_state, r.is_assignable
+            from iam.registration_requests rr
+            join iam.roles r on r.id = rr.requested_role_id
+            where rr.id = @request_id
+            for update of rr;
+            """;
+
+        Guid applicantUserId;
+        Guid organizationId;
+        Guid stationId;
+        Guid? unitId;
+        Guid roleId;
+        string requestState;
+        string roleCode;
+        string roleState;
+        bool roleAssignable;
+        await using (var command = new NpgsqlCommand(lockSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("request_id", requestId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+                throw new RegistrationApprovalConflictException("طلب الانتساب غير موجود أو لم يعد متاحاً.");
+
+            applicantUserId = reader.GetGuid(0);
+            organizationId = reader.GetGuid(1);
+            stationId = reader.GetGuid(2);
+            unitId = reader.IsDBNull(3) ? null : reader.GetGuid(3);
+            roleId = reader.GetGuid(4);
+            requestState = reader.GetString(5);
+            roleCode = reader.GetString(6);
+            roleState = reader.GetString(7);
+            roleAssignable = reader.GetBoolean(8);
+        }
+
+        if (applicantUserId == userId)
+            throw new RegistrationApprovalAccessDeniedException();
+
+        var stage = requestState switch
+        {
+            "pending_station_review" => "station",
+            "pending_system_review" => "organization",
+            _ => throw new RegistrationApprovalConflictException(
+                "تغيرت حالة الطلب أو تمت معالجته مسبقاً.")
+        };
+
+        var expectedStatus = stage == "station"
+            ? "pending_station_approval"
+            : "pending_system_approval";
+        if (!string.Equals(request.ExpectedStatus, expectedStatus, StringComparison.Ordinal))
+            throw new RegistrationApprovalConflictException("تغيرت حالة الطلب؛ حدّث القائمة قبل اتخاذ القرار.");
+
+        var permissionCode = stage == "station"
+            ? "registrations.review_station"
+            : "registrations.review_organization";
+        if (!PermissionScopeEvaluator.Allows(
+            user.Permissions, permissionCode, organizationId, unitId, stationId))
+            throw new RegistrationApprovalAccessDeniedException();
+
+        if (request.Decision == "approve" && (roleState != "active" || !roleAssignable))
+            throw new RegistrationApprovalConflictException("الدور المطلوب لم يعد قابلاً للتعيين.");
+
+        var decision = request.Decision == "approve" ? "approved" : "rejected";
+        var reason = string.IsNullOrWhiteSpace(request.Note)
+            ? decision == "approved" ? "تمت المراجعة والموافقة" : "تم رفض الطلب"
+            : request.Note.Trim();
+
+        const string sequenceSql = """
+            select coalesce(max(decision_sequence), 0) + 1
+            from iam.registration_decisions
+            where request_id = @request_id and stage = @stage;
+            """;
+        int sequence;
+        await using (var command = new NpgsqlCommand(sequenceSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("request_id", requestId);
+            command.Parameters.AddWithValue("stage", stage);
+            sequence = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
+        }
+
+        const string decisionSql = """
+            insert into iam.registration_decisions (
+                request_id, stage, decision_sequence, reviewer_user_id, decision, reason, decided_at
+            )
+            values (@request_id, @stage, @sequence, @reviewer_id, @decision, @reason, now());
+            """;
+        await using (var command = new NpgsqlCommand(decisionSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("request_id", requestId);
+            command.Parameters.AddWithValue("stage", stage);
+            command.Parameters.AddWithValue("sequence", sequence);
+            command.Parameters.AddWithValue("reviewer_id", userId);
+            command.Parameters.AddWithValue("decision", decision);
+            command.Parameters.AddWithValue("reason", reason);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        string resultingStatus;
+        if (decision == "rejected")
+        {
+            const string rejectSql = """
+                update iam.registration_requests
+                set request_state = 'rejected', resolved_at = now()
+                where id = @request_id and request_state = @expected_state;
+                """;
+            await using var command = new NpgsqlCommand(rejectSql, connection, transaction);
+            command.Parameters.AddWithValue("request_id", requestId);
+            command.Parameters.AddWithValue("expected_state", requestState);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+                throw new RegistrationApprovalConflictException("تغيرت حالة الطلب أثناء المراجعة.");
+            resultingStatus = "rejected";
+        }
+        else if (stage == "station")
+        {
+            const string advanceSql = """
+                update iam.registration_requests
+                set request_state = 'pending_system_review'
+                where id = @request_id and request_state = 'pending_station_review';
+                """;
+            await using var command = new NpgsqlCommand(advanceSql, connection, transaction);
+            command.Parameters.AddWithValue("request_id", requestId);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+                throw new RegistrationApprovalConflictException("تغيرت حالة الطلب أثناء المراجعة.");
+            resultingStatus = "pending_system_approval";
+        }
+        else
+        {
+            const string existingMembershipSql = """
+                select id
+                from iam.memberships
+                where user_id = @user_id
+                  and organization_id = @organization_id
+                  and unit_id is not distinct from @unit_id
+                  and membership_state = 'active'
+                  and valid_from <= now()
+                  and (valid_to is null or valid_to > now())
+                order by created_at
+                limit 1
+                for update;
+                """;
+            Guid membershipId;
+            await using (var command = new NpgsqlCommand(existingMembershipSql, connection, transaction))
+            {
+                command.Parameters.AddWithValue("user_id", applicantUserId);
+                command.Parameters.AddWithValue("organization_id", organizationId);
+                command.Parameters.AddWithValue("unit_id", (object?)unitId ?? DBNull.Value);
+                var existing = await command.ExecuteScalarAsync(cancellationToken);
+                if (existing is Guid existingId)
+                {
+                    membershipId = existingId;
+                }
+                else
+                {
+                    const string membershipInsertSql = """
+                        insert into iam.memberships (
+                            user_id, organization_id, unit_id, membership_state,
+                            valid_from, requested_at, approved_at, approved_by
+                        )
+                        values (
+                            @user_id, @organization_id, @unit_id, 'active',
+                            now(), now(), now(), @approved_by
+                        )
+                        returning id;
+                        """;
+                    await using var membershipCommand = new NpgsqlCommand(
+                        membershipInsertSql, connection, transaction);
+                    membershipCommand.Parameters.AddWithValue("user_id", applicantUserId);
+                    membershipCommand.Parameters.AddWithValue("organization_id", organizationId);
+                    membershipCommand.Parameters.AddWithValue("unit_id", (object?)unitId ?? DBNull.Value);
+                    membershipCommand.Parameters.AddWithValue("approved_by", userId);
+                    membershipId = (Guid)(await membershipCommand.ExecuteScalarAsync(cancellationToken)
+                        ?? throw new RegistrationApprovalConflictException("تعذر إنشاء العضوية."));
+                }
+            }
+
+            var scopeType = unitId is not null
+                ? "unit"
+                : roleCode is "observer" or "station_manager" or "data_reviewer" or "maintenance_technician"
+                    ? "station"
+                    : "organization";
+            var assignmentUnitId = scopeType == "unit" ? unitId : null;
+            var assignmentStationId = scopeType == "station" ? stationId : null;
+
+            const string assignmentSql = """
+                insert into iam.role_assignments (
+                    membership_id, organization_id, unit_id, station_id,
+                    role_id, scope_type, assignment_state, valid_from, assigned_by
+                )
+                select @membership_id, @organization_id, @unit_id, @station_id,
+                       @role_id, @scope_type, 'active', now(), @assigned_by
+                where not exists (
+                    select 1 from iam.role_assignments ra
+                    where ra.membership_id = @membership_id
+                      and ra.role_id = @role_id
+                      and ra.scope_type = @scope_type
+                      and ra.organization_id is not distinct from @organization_id
+                      and ra.unit_id is not distinct from @unit_id
+                      and ra.station_id is not distinct from @station_id
+                      and ra.assignment_state = 'active'
+                      and ra.valid_from <= now()
+                      and (ra.valid_to is null or ra.valid_to > now())
+                );
+                """;
+            await using (var command = new NpgsqlCommand(assignmentSql, connection, transaction))
+            {
+                command.Parameters.AddWithValue("membership_id", membershipId);
+                command.Parameters.AddWithValue("organization_id", organizationId);
+                command.Parameters.AddWithValue("unit_id", (object?)assignmentUnitId ?? DBNull.Value);
+                command.Parameters.AddWithValue("station_id", (object?)assignmentStationId ?? DBNull.Value);
+                command.Parameters.AddWithValue("role_id", roleId);
+                command.Parameters.AddWithValue("scope_type", scopeType);
+                command.Parameters.AddWithValue("assigned_by", userId);
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            const string approveSql = """
+                update iam.registration_requests
+                set request_state = 'approved', resolved_at = now()
+                where id = @request_id and request_state = 'pending_system_review';
+                """;
+            await using (var command = new NpgsqlCommand(approveSql, connection, transaction))
+            {
+                command.Parameters.AddWithValue("request_id", requestId);
+                if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+                    throw new RegistrationApprovalConflictException("تغيرت حالة الطلب أثناء المراجعة.");
+            }
+            resultingStatus = "active";
+        }
+
+        var metadata = JsonSerializer.Serialize(new
+        {
+            stage,
+            decision,
+            resulting_status = resultingStatus
+        });
+        const string auditSql = """
+            insert into audit.events (
+                occurred_at, actor_user_id, action_code, entity_schema, entity_table,
+                entity_id, organization_id, station_id, outcome, correlation_id, metadata
+            )
+            values (
+                now(), @actor_user_id, 'registration.review_decided', 'iam', 'registration_requests',
+                @entity_id, @organization_id, @station_id, 'success', @correlation_id, @metadata
+            );
+            """;
+        await using (var command = new NpgsqlCommand(auditSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("actor_user_id", userId);
+            command.Parameters.AddWithValue("entity_id", requestId);
+            command.Parameters.AddWithValue("organization_id", organizationId);
+            command.Parameters.AddWithValue("station_id", stationId);
+            command.Parameters.AddWithValue("correlation_id", Guid.NewGuid());
+            command.Parameters.Add(new NpgsqlParameter("metadata", NpgsqlDbType.Jsonb) { Value = metadata });
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return new RegistrationApprovalDecisionResponse("committed", resultingStatus);
+    }
+
+    private static (
+        bool StationGlobal,
+        Guid[] StationIds,
+        bool OrganizationGlobal,
+        Guid[] OrganizationIds) ResolveApprovalScopes(IEnumerable<PermissionScopeResponse> permissions)
+    {
+        var station = permissions.Where(p => p.PermissionCode == "registrations.review_station").ToArray();
+        var organization = permissions.Where(p => p.PermissionCode == "registrations.review_organization").ToArray();
+        var stationGlobal = station.Any(p => p.ScopeType == "global" &&
+            p.OrganizationId is null && p.UnitId is null && p.StationId is null);
+        var stationIds = station.Where(p => p.ScopeType == "station" &&
+                p.OrganizationId is not null && p.UnitId is null && p.StationId is not null)
+            .Select(p => p.StationId!.Value).Distinct().ToArray();
+        var organizationGlobal = organization.Any(p => p.ScopeType == "global" &&
+            p.OrganizationId is null && p.UnitId is null && p.StationId is null);
+        var organizationIds = organization.Where(p => p.ScopeType == "organization" &&
+                p.OrganizationId is not null && p.UnitId is null && p.StationId is null)
+            .Select(p => p.OrganizationId!.Value).Distinct().ToArray();
+        return (stationGlobal, stationIds, organizationGlobal, organizationIds);
+    }
+
+    private static void ValidateApprovalDecision(RegistrationApprovalDecisionRequest request)
+    {
+        if (request.ExpectedStatus is not ("pending_station_approval" or "pending_system_approval") ||
+            request.Decision is not ("approve" or "reject"))
+            throw new RegistrationApprovalValidationException("مرحلة الاعتماد أو القرار غير صالحين.");
+        if (request.Decision == "reject" &&
+            (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length < 3))
+            throw new RegistrationApprovalValidationException("سبب الرفض مطلوب ويجب ألا يقل عن 3 محارف.");
+        if (request.Note is { Length: > 2000 })
+            throw new RegistrationApprovalValidationException("ملاحظة المراجعة تتجاوز الحد المسموح.");
+    }
 
     public async Task<RegistrationCatalogResponse> GetCatalogAsync(
         CancellationToken cancellationToken)
