@@ -1,5 +1,5 @@
--- Keep the source of the already-applied migration 20261104024652
--- synchronized with production schema history.
+-- Harden NULL handling for expected-state and decision parameters.
+-- The function remains server-runtime-only; its public wrapper ACL is unchanged.
 create or replace function private.decide_station_catalogue_review(
   p_station_id uuid,
   p_expected_status text,
@@ -92,5 +92,10 @@ begin
 end;
 $function$;
 
+-- Reassert the production privilege boundary after replacing the function.
 revoke all on function private.decide_station_catalogue_review(uuid, text, uuid, text, text, timestamptz)
   from public, anon, authenticated, service_role;
+revoke all on function public.decide_station_catalogue_review(uuid, text, uuid, text, text, timestamptz)
+  from public, anon, authenticated;
+grant execute on function public.decide_station_catalogue_review(uuid, text, uuid, text, text, timestamptz)
+  to service_role;
