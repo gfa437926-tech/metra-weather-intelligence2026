@@ -61,6 +61,25 @@ jobs:
             in role metra_api_runtime;
           SQL
 
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "
+            do \$check\$
+            begin
+              if not exists (
+                select 1 from pg_roles
+                where rolname = 'metra_api_test_login'
+                  and rolcanlogin
+                  and not rolsuper
+                  and not rolbypassrls
+              ) then
+                raise exception 'Integration login role is not least-privileged';
+              end if;
+              if not pg_has_role('metra_api_test_login', 'metra_api_runtime', 'member') then
+                raise exception 'Integration login does not inherit metra_api_runtime';
+              end if;
+            end
+            \$check\$;
+          "
+
           DB_PARTS="$(python3 - "$DB_URL" <<'PY'
           import sys
           from urllib.parse import urlparse
