@@ -1,4 +1,4 @@
--- Move the security-definer submission function out of the exposed public schema.
+
 revoke all on function public.submit_metra_registration(
   uuid,text,text,text,text,text,uuid,text,timestamptz,text
 ) from public,anon,authenticated,service_role,metra_api_runtime;
