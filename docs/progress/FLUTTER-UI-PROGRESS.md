@@ -38,7 +38,7 @@ Android APK/App Bundle and unsigned iOS build jobs are enabled in CI. Their fina
 3. Configure production `METRA_API_URL`, Flutter Web CORS origins and release environment values.
 4. Add operational station create/update, full user/role administration, alert ingestion/rule management, forecast ingestion, operations, file access, exports and complete observation revision workflows.
 5. Add integration/security tests against a disposable database, including transaction, BOLA/IDOR and lifecycle cases.
-6. Restore the source SQL for the three core greenfield schema migrations.
+6. Reconcile migration history: 86 remote versions, 55 local files, 32 remote versions without source files, and one local-only file.
 7. Verify end-to-end login, station-scoped access, registration approval, observation submission/review and alert feed against the deployed service.
 
 ## Progress accounting
