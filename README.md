@@ -125,7 +125,7 @@ The development branch contains database-backed .NET 10 endpoints for identity, 
 ### Operational blockers
 
 - The database role `metra_api_runtime` is now provisioned with limited grants and internal RLS policies; it is `NOLOGIN` and `NOBYPASSRLS`. A separate managed login role inheriting it, a protected connection secret, and a .NET hosting target are still required for live DB-backed execution.
-- The three core greenfield rebuild migrations remain in remote Supabase history without their matching SQL source files in Git. Additive migrations for registration review and API runtime privileges are present.
+- The migration audit found 86 versions in remote Supabase history and 55 SQL files in Git: 32 remote versions have no matching local source file, including the three core greenfield rebuild migrations and earlier identity/observation/security migrations. One local file (`20261110120000_honor_scheduled_permission_revocation.sql`) has no matching remote version. Migration history reconciliation and source recovery are release blockers; do not claim `supabase db reset` is reproducible yet. Additive registration-review and API-runtime migrations are present.
 - No organization, station or application-user seed data exists. Scientific parameter/unit definitions remain intentionally empty until approved by a meteorological specialist.
 - Official alert ingestion, forecast ingestion, station create/update, full user/role administration, operational incidents, file authorization, exports and full observation revision workflows remain incomplete.
 - The five legacy Edge Functions remain deployed but are not used by the migrated Flutter screens; retire them only after confirming no external clients depend on them.
