@@ -180,4 +180,3 @@ GRANT EXECUTE ON FUNCTION public.revoke_authority_permission_grant(uuid,uuid,tex
 GRANT EXECUTE ON FUNCTION public.get_authority_access_queue(uuid,text,uuid,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_authority_access_audit(uuid,uuid,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.decide_station_catalogue_review(uuid,text,uuid,text,text,timestamptz) TO service_role;
-
