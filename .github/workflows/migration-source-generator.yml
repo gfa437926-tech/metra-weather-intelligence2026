@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - work/database-architecture-fresh-design-2026-11-14
-    paths-ignore:
-      - 'supabase/migrations/**'
+    paths:
+      - '.github/workflows/migration-source-generator.yml'
 
 permissions:
   contents: write
