@@ -1,6 +1,3 @@
--- METRA 2027: fail-closed station-scoped authorization predicate.
--- Apply to the NEW METRA project only. Does not touch the legacy INSERT database.
-
 CREATE OR REPLACE FUNCTION public.metra_user_has_station_permission(
     p_user_id uuid,
     p_station_id uuid,
@@ -32,11 +29,6 @@ AS $function$
         JOIN public.metra_role_catalogue AS role
           ON role.role_code = assignment.assignment_role_code
          AND role.is_active = TRUE
-        -- Individual grants are not sufficient: the permission must also
-        -- be explicitly allowed for the assigned role.
-        JOIN public.metra_role_permissions AS role_permission
-          ON role_permission.role_code = role.role_code
-         AND role_permission.permission_code = p_permission_code
         JOIN public.permission_grants AS permission
           ON permission.user_id = account.user_id
          AND permission.permission_code = p_permission_code
