@@ -310,7 +310,7 @@ public sealed class RegistrationService(
                     ? "station"
                     : "organization";
             Guid? assignmentUnitId = scopeType == "unit" ? unitId : null;
-            Guid? assignmentStationId = scopeType == "station" ? stationId : null;
+            Guid? assignmentStationId = scopeType == "station" ? stationId : (Guid?)null;
 
             const string assignmentSql = """
                 insert into iam.role_assignments (
