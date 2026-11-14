@@ -4,6 +4,7 @@ using Metra.Api.Data;
 using Metra.Api.Identity;
 using Metra.Api.Stations;
 using Metra.Api.Registration;
+using Metra.Api.Reference;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,7 @@ builder.Services.AddSingleton<MetraDatabase>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStationDirectoryService, StationDirectoryService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<IReferenceDataService, ReferenceDataService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -310,6 +312,57 @@ app.MapPost("/api/v1/registration", async (
         return Results.Problem(
             title: "Registration service is temporarily unavailable",
             statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.RequireAuthorization();
+
+
+app.MapGet("/api/v1/reference/observation-types", async (
+    ClaimsPrincipal principal,
+    ICurrentUserService currentUserService,
+    IReferenceDataService referenceData,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active") return Results.Forbid();
+        return Results.Ok(await referenceData.GetObservationTypesAsync(cancellationToken));
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Reference catalogue unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Reference catalogue unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+app.MapGet("/api/v1/reference/parameters", async (
+    ClaimsPrincipal principal,
+    ICurrentUserService currentUserService,
+    IReferenceDataService referenceData,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active") return Results.Forbid();
+        return Results.Ok(await referenceData.GetParametersAsync(cancellationToken));
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Reference catalogue unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Reference catalogue unavailable", statusCode: 503);
     }
 })
 .RequireAuthorization();
