@@ -370,15 +370,26 @@ app.MapGet("/api/v1/reference/parameters", async (
 
 
 app.MapGet("/api/v1/stations/review-queue", async (
+    HttpRequest request,
     ClaimsPrincipal principal,
     IStationReviewService stationReview,
     CancellationToken cancellationToken) =>
 {
     var subject = principal.FindFirstValue("sub");
     if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    if (!int.TryParse(request.Query["page"], out var page)) page = 1;
+    if (!int.TryParse(request.Query["page_size"], out var pageSize)) pageSize = 100;
+    if (page < 1 || pageSize is < 1 or > 200)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["pagination"] = ["page must be positive and page_size must be between 1 and 200."]
+        });
+    }
     try
     {
-        return Results.Ok(await stationReview.GetQueueAsync(userId, cancellationToken));
+        return Results.Ok(await stationReview.GetQueueAsync(
+            userId, page, pageSize, cancellationToken));
     }
     catch (StationReviewAccessDeniedException)
     {
