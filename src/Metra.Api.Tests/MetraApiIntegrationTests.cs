@@ -86,11 +86,11 @@ internal sealed class MetraApiFactory(string connectionString) : WebApplicationF
         {
             services.AddAuthentication(options =>
             {
-                options.DefaultAuthenticateScheme = IntegrationAuthenticationHandler.Scheme;
-                options.DefaultChallengeScheme = IntegrationAuthenticationHandler.Scheme;
-                options.DefaultForbidScheme = IntegrationAuthenticationHandler.Scheme;
+                options.DefaultAuthenticateScheme = IntegrationAuthenticationHandler.SchemeName;
+                options.DefaultChallengeScheme = IntegrationAuthenticationHandler.SchemeName;
+                options.DefaultForbidScheme = IntegrationAuthenticationHandler.SchemeName;
             }).AddScheme<AuthenticationSchemeOptions, IntegrationAuthenticationHandler>(
-                IntegrationAuthenticationHandler.Scheme, _ => { });
+                IntegrationAuthenticationHandler.SchemeName, _ => { });
         });
     }
 }
@@ -101,7 +101,7 @@ internal sealed class IntegrationAuthenticationHandler(
     UrlEncoder encoder)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string Scheme = "METRA-Integration";
+    public const string SchemeName = "METRA-Integration";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -111,9 +111,9 @@ internal sealed class IntegrationAuthenticationHandler(
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim("sub", userId.ToString())
         };
-        var identity = new ClaimsIdentity(claims, Scheme);
+        var identity = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, Scheme);
+        var ticket = new AuthenticationTicket(principal, SchemeName);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
