@@ -540,7 +540,7 @@ public sealed class ObservationService(
         CancellationToken cancellationToken)
     {
         var result = new Dictionary<Guid, List<ObservationValueResponse>>();
-        if (submissionIds.Length == 0) return [];
+        if (submissionIds.Length == 0) return new Dictionary<Guid, IReadOnlyList<ObservationValueResponse>>();
 
         const string sql = """
             select v.submission_id, p.parameter_code, p.name_ar, v.value_kind,
