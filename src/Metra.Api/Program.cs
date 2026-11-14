@@ -8,6 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 var supabaseUrl = builder.Configuration["Supabase:Url"]
     ?? Environment.GetEnvironmentVariable("SUPABASE_URL");
+if (string.IsNullOrWhiteSpace(supabaseUrl))
+{
+    throw new InvalidOperationException("SUPABASE_URL must be configured for JWT issuer validation.");
+}
+
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? [];
 
@@ -18,9 +23,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = string.IsNullOrWhiteSpace(supabaseUrl)
-            ? null
-            : $"{supabaseUrl.TrimEnd('/')}/auth/v1";
+        options.Authority = $"{supabaseUrl.TrimEnd('/')}/auth/v1";
         options.Audience = "authenticated";
         options.RequireHttpsMetadata = true;
         options.TokenValidationParameters = new TokenValidationParameters
@@ -77,8 +80,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("ConfiguredClients");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health/live").AllowAnonymous();
@@ -98,4 +101,4 @@ app.Run();
 
 internal sealed record CurrentIdentityResponse(string UserId);
 
-public partial class Program;
+public partial class Program { }
