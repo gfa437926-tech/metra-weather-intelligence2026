@@ -64,7 +64,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Restore API
-        run: dotnet restore src/Metra.Api/Metra.Api.csproj
+      - name: Restore API and tests
+        run: dotnet restore src/Metra.Api.Tests/Metra.Api.Tests.csproj
+      - name: Run API authorization tests
+        run: dotnet test src/Metra.Api.Tests/Metra.Api.Tests.csproj --configuration Release --no-restore
       - name: Build API
         run: dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release --no-restore
