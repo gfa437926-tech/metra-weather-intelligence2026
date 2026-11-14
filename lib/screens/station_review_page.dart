@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../data/metra_api_client.dart';
 
 class StationReviewPage extends StatefulWidget {
   const StationReviewPage({super.key, required this.client});
@@ -21,25 +22,28 @@ class _StationReviewPageState extends State<StationReviewPage> {
   Future<List<Map<String, dynamic>>> _load() async {
     final client = widget.client;
     if (client == null) return [];
-    final response = await client.functions.invoke('station-review', body: const {'action': 'list'});
-    if (response.status != 200 || response.data is! Map) {
-      throw Exception(_message(response.data));
-    }
-    final rows = (response.data as Map)['stations'];
-    if (rows is! List) throw Exception('استجابة قائمة المحطات غير صالحة.');
-    return rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+    final api = MetraApiClient(client);
+    const pageSize = 200;
+    var page = 1;
+    var total = 0;
+    final stations = <Map<String, dynamic>>[];
+    do {
+      final response = await api.get(
+        '/api/v1/stations/review-queue',
+        query: {'page': '$page', 'page_size': '$pageSize'},
+      );
+      final rows = response['stations'];
+      if (rows is! List) throw Exception('استجابة قائمة المحطات غير صالحة.');
+      stations.addAll(rows.whereType<Map>().map(
+        (row) => Map<String, dynamic>.from(row),
+      ));
+      total = (response['total'] as num?)?.toInt() ?? stations.length;
+      if (rows.isEmpty) break;
+      page++;
+    } while (stations.length < total);
+    return List<Map<String, dynamic>>.unmodifiable(stations);
   }
 
-  String _message(dynamic data) {
-    final code = data is Map ? data['error']?.toString() : null;
-    const messages = {
-      'account_not_active': 'الحساب غير معتمد أو غير نشط.',
-      'permission_denied': 'لا تملك صلاحية مراجعة دليل المحطات.',
-      'station_review_queue_failed': 'تعذر تحميل قائمة المحطات.',
-      'station_coordinate_lookup_failed': 'تعذر تحميل إحداثيات المحطات.',
-    };
-    return messages[code] ?? 'تعذر تنفيذ الطلب. حاول مرة أخرى.';
-  }
 
   Future<void> _decide(Map<String, dynamic> station, String decision) async {
     final controller = TextEditingController();
@@ -81,22 +85,10 @@ class _StationReviewPageState extends State<StationReviewPage> {
     if (reason == null || !mounted || busy) return;
     setState(() => busy = true);
     try {
-      final response = await widget.client!.functions.invoke('station-review', body: {
-        'action': 'decide',
-        'station_id': station['id'],
-        'decision': decision,
-        'reason': reason,
-      });
-      if (response.status != 200 || response.data is! Map) {
-        throw Exception(_message(response.data));
-      }
-      final result = (response.data as Map)['result'];
-      if (result is! Map) {
-        throw Exception('لم يرجع الخادم نتيجة مؤكدة لقرار المراجعة. حدّث القائمة قبل المتابعة.');
-      }
-      if (result['result_status'] == 'state_conflict') {
-        throw Exception('تغيرت حالة المحطة بواسطة مراجع آخر. حدّث القائمة.');
-      }
+      final result = await MetraApiClient(widget.client!).post(
+        '/api/v1/stations/${station['id']}/decisions',
+        body: {'decision': decision, 'reason': reason},
+      );
       if (result['result_status'] != 'updated' ||
           result['resulting_status'] != decision) {
         throw Exception('لم يؤكد الخادم حفظ القرار المطلوب. حدّث القائمة قبل المتابعة.');
@@ -131,7 +123,7 @@ class _StationReviewPageState extends State<StationReviewPage> {
           ],
         ),
         body: widget.client == null
-            ? const Center(child: Text('يلزم إعداد اتصال Supabase لتشغيل مراجعة المحطات.'))
+            ? const Center(child: Text('يلزم إعداد اتصال METRA API لتشغيل مراجعة المحطات.'))
             : FutureBuilder<List<Map<String, dynamic>>>(
                 future: queue,
                 builder: (context, snapshot) {
