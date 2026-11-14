@@ -73,4 +73,3 @@ BEGIN
   btrim(p_reason),jsonb_build_object('permission_code',v.permission_code),p_occurred_at);
  RETURN 'committed';
 END $$;
-
