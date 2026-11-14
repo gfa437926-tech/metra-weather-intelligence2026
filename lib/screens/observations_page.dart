@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +22,7 @@ class _ObservationsPageState extends State<ObservationsPage> {
   DateTime observedAt = DateTime.now();
   bool busy = false;
   String? idempotencyKey;
+  String? pendingFingerprint;
   String? error;
 
   @override
@@ -218,6 +221,20 @@ class _ObservationsPageState extends State<ObservationsPage> {
       return;
     }
 
+    final requestBody = <String, dynamic>{
+      'station_id': selectedStationId,
+      'observation_type': selectedTypeCode,
+      'observed_at': observedAt.toUtc().toIso8601String(),
+      'timezone_name': null,
+      'payload': values,
+      'submit': submit,
+    };
+    final fingerprint = jsonEncode(requestBody);
+    if (pendingFingerprint != fingerprint) {
+      idempotencyKey = _newIdempotencyKey();
+      pendingFingerprint = fingerprint;
+    }
+
     setState(() {
       busy = true;
       error = null;
@@ -225,15 +242,7 @@ class _ObservationsPageState extends State<ObservationsPage> {
     try {
       final result = await MetraApiClient(widget.client!).post(
         '/api/v1/observations',
-        body: {
-          'station_id': selectedStationId,
-          'observation_type': selectedTypeCode,
-          'observed_at': observedAt.toUtc().toIso8601String(),
-          'timezone_name': null,
-          'idempotency_key': idempotencyKey,
-          'payload': values,
-          'submit': submit,
-        },
+        body: {...requestBody, 'idempotency_key': idempotencyKey},
       );
       final id = result['id']?.toString() ?? '';
       final status = result['status']?.toString() ?? '';
@@ -241,6 +250,7 @@ class _ObservationsPageState extends State<ObservationsPage> {
         throw Exception('لم يؤكد الخادم حفظ سجل الرصد.');
       }
       idempotencyKey = _newIdempotencyKey();
+      pendingFingerprint = null;
       for (final controller in valueControllers.values) {
         controller.clear();
       }
