@@ -8,7 +8,9 @@ VALUES
   ('observer', 'راصد جوي', 'Weather observer', false, true, 100),
   ('station_head', 'رئيس محطة', 'Station head', false, true, 110),
   ('station_auditor', 'مدقق محطة', 'Station auditor', false, true, 120),
-  ('chief_auditor', 'مدقق رئيسي', 'Chief auditor', false, true, 130)
+  ('chief_auditor', 'مدقق رئيسي', 'Chief auditor', false, true, 130),
+  ('network_director', 'مدير شبكة', 'Network director', false, true, 140),
+  ('system_admin', 'مدير النظام', 'System administrator', false, true, 150)
 ON CONFLICT (role_code) DO NOTHING;
 
 INSERT INTO public.metra_role_permissions (role_code, permission_code)
