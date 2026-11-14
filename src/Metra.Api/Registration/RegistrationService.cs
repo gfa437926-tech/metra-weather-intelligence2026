@@ -41,7 +41,7 @@ public sealed class RegistrationService(MetraDatabase database) : IRegistrationS
         var stations = new List<RegistrationStation>();
         const string stationsSql = """
             select s.id, s.station_code, s.name_ar, s.name_en, st.type_code,
-                   s.operational_status, s.approval_status, s.owner_organization_id
+                   s.operational_status, s.approval_status, s.owner_organization_id, o.name_ar
             from catalog.stations s
             join catalog.station_types st on st.id = s.station_type_id and st.is_active = true
             join iam.organizations o on o.id = s.owner_organization_id and o.organization_state = 'active'
@@ -62,7 +62,8 @@ public sealed class RegistrationService(MetraDatabase database) : IRegistrationS
                     reader.GetString(4),
                     reader.GetString(5),
                     reader.GetString(6),
-                    reader.GetGuid(7)));
+                    reader.GetGuid(7),
+                    reader.GetString(8)));
             }
         }
 
