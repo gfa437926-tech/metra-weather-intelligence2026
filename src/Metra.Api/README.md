@@ -63,4 +63,4 @@ dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release
 - Configure production `METRA_API_URL` and exact Flutter Web CORS origins.
 - Implement station creation/update, organization bootstrap, full user/role administration, observation revision/edit workflow, file authorization, forecast ingestion, alert ingestion/rule management, operations, exports and audit query endpoints.
 - Add integration tests against a disposable database for transactions, registration state transitions, observation idempotency and BOLA/IDOR boundaries.
-- Reconstruct the source SQL for the three earlier greenfield rebuild migrations. Their remote migration history exists, but their SQL source files are still missing from Git.
+- Reconcile migration history: the latest audit found 86 remote migration versions versus 55 local SQL files, with 32 remote versions missing source files and one local-only version. Recover the missing SQL from an authoritative source and reconcile the local-only migration before claiming a reproducible database reset.
