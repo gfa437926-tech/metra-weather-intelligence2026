@@ -130,7 +130,6 @@ public sealed class StationReviewService(
         if (createdBy == userId)
             throw new StationReviewAccessDeniedException();
 
-        var scopes = ResolveScopes(user.Permissions, "stations.review");
         if (!PermissionScopeEvaluator.Allows(
             user.Permissions, "stations.review", organizationId, null, stationId))
         {
