@@ -170,3 +170,7 @@ erDiagram
 ## 8. Review gate
 
 No SQL migration is generated or applied by this draft. Once the ERD and data dictionary are approved, the next phase will create a fresh ordered migration set and a disposable empty-database rebuild test. No hosted Supabase project is touched by that local verification.
+
+## 9. Migration isolation note
+
+The repository already contains an earlier `supabase/migrations` chain for the currently implemented application. That chain is not the approved greenfield baseline and must not be replayed or extended as if it were an empty-database rebuild. After this ERD and dictionary are approved, the clean migration chain must be isolated (dedicated Supabase CLI project/configuration and explicit target) and verified against a disposable empty PostgreSQL instance. Existing hosted projects and their migration history remain untouched unless the owner separately authorizes a deployment.
