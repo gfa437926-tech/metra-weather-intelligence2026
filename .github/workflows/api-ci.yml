@@ -38,3 +38,40 @@ jobs:
 
       - name: Build API container
         run: docker build --tag metra-api:ci .
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Rebuild an isolated database and run API integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start
+          trap 'supabase stop --no-backup' EXIT
+          supabase db reset --local --yes
+
+          DB_URL="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"')"
+          test -n "$DB_URL"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create role metra_api_test_login
+            login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls
+            password 'metra-local-test-only'
+            in role metra_api_runtime;
+          SQL
+
+          DB_PARTS="$(python3 - "$DB_URL" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          parsed = urlparse(sys.argv[1])
+          if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
+              raise SystemExit("Unexpected local Supabase DB_URL")
+          print(f"{parsed.hostname}|{parsed.port or 5432}|{(parsed.path or '/postgres').lstrip('/')}")
+          PY
+          )"
+          IFS='|' read -r DB_HOST DB_PORT DB_NAME <<< "$DB_PARTS"
+          export METRA_TEST_DATABASE_CONNECTION_STRING="Host=$DB_HOST;Port=$DB_PORT;Database=$DB_NAME;Username=metra_api_test_login;Password=metra-local-test-only;Pooling=false;"
+          dotnet test src/Metra.Api.Tests/Metra.Api.Tests.csproj \
+            --configuration Release --no-restore \
+            --filter FullyQualifiedName~MetraApiIntegrationTests
