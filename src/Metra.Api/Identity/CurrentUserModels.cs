@@ -5,6 +5,7 @@ public sealed record CurrentUserResponse(
     string? Email,
     string? DisplayName,
     string? GivenName,
+    string? FatherName,
     string? FamilyName,
     string ProfileState,
     IReadOnlyList<MembershipResponse> Memberships,
