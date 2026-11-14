@@ -1,3 +1,4 @@
+
 create index if not exists station_catalogue_owner_country_idx
   on public.station_catalogue(owner_authority_id, country_id);
 create index if not exists station_catalogue_created_by_idx
