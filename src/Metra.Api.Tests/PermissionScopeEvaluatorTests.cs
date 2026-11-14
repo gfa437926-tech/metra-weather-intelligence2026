@@ -81,4 +81,54 @@ public sealed class PermissionScopeEvaluatorTests
         Assert.False(PermissionScopeEvaluator.Allows(
             permissions, "stations.read", OrganizationA, UnitA, StationA));
     }
+    [Fact]
+    public void Station_registration_review_is_limited_to_the_assigned_station()
+    {
+        var permissions = new[]
+        {
+            new PermissionScopeResponse(
+                "registrations.review_station", "station", OrganizationA, null, StationA, "role")
+        };
+
+        Assert.True(PermissionScopeEvaluator.Allows(
+            permissions, "registrations.review_station", OrganizationA, null, StationA));
+        Assert.False(PermissionScopeEvaluator.Allows(
+            permissions, "registrations.review_station", OrganizationA, null, StationB));
+    }
+
+    [Fact]
+    public void Organization_registration_review_cannot_cross_organization_boundary()
+    {
+        var permissions = new[]
+        {
+            new PermissionScopeResponse(
+                "registrations.review_organization", "organization", OrganizationA, null, null, "role")
+        };
+
+        Assert.True(PermissionScopeEvaluator.Allows(
+            permissions, "registrations.review_organization", OrganizationA, UnitA, StationA));
+        Assert.False(PermissionScopeEvaluator.Allows(
+            permissions, "registrations.review_organization", OrganizationB, UnitB, StationB));
+    }
+
+    [Fact]
+    public void Global_registration_review_requires_a_truly_global_scope()
+    {
+        var globalPermission = new[]
+        {
+            new PermissionScopeResponse(
+                "registrations.review_station", "global", null, null, null, "role")
+        };
+        var malformedGlobalPermission = new[]
+        {
+            new PermissionScopeResponse(
+                "registrations.review_station", "global", OrganizationA, null, null, "role")
+        };
+
+        Assert.True(PermissionScopeEvaluator.Allows(
+            globalPermission, "registrations.review_station", OrganizationB, UnitB, StationB));
+        Assert.False(PermissionScopeEvaluator.Allows(
+            malformedGlobalPermission, "registrations.review_station", OrganizationB, UnitB, StationB));
+    }
+
 }
