@@ -25,10 +25,11 @@ void main() {
 
   test('fetchStations authenticates and follows all API pages', () async {
     final requests = <http.Request>[];
+    var responseIndex = 0;
     final client = MockClient((request) async {
       requests.add(request);
-      final page = request.url.queryParameters['page'];
-      if (page == '1') {
+      final page = responseIndex++;
+      if (page == 0) {
         return http.Response(jsonEncode({
           'stations': [station('one001')],
           'total': 2,
