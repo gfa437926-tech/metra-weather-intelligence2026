@@ -29,8 +29,46 @@ Future<void> main() async {
 const ink = Color(0xFF102448), navy = Color(0xFF071A43), blue = Color(0xFF1769D2), sky = Color(0xFF46B9F5), canvas = Color(0xFFF3F6FC);
 class MetraWeatherApp extends StatelessWidget {
  const MetraWeatherApp({super.key});
- @override Widget build(BuildContext context) => MaterialApp(debugShowCheckedModeBanner:false,title:'METRA Weather Intelligence',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:canvas,colorScheme:ColorScheme.fromSeed(seedColor:blue),fontFamily:'Roboto'),home: metraSupabaseClient == null ? const Shell() : const AuthGate());
+ @override Widget build(BuildContext context) => MaterialApp(debugShowCheckedModeBanner:false,title:'METRA Weather Intelligence',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:canvas,colorScheme:ColorScheme.fromSeed(seedColor:blue),fontFamily:'Roboto'),home: metraSupabaseClient == null ? const SetupRequiredPage() : const AuthGate());
 }
+
+class SetupRequiredPage extends StatelessWidget {
+  const SetupRequiredPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(28),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 440),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off_outlined, size: 58, color: navy),
+                SizedBox(height: 18),
+                Text(
+                  'لم يتم إعداد اتصال METRA',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: navy),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'تم إيقاف الوصول إلى صفحات النظام لأن إعدادات المصادقة العامة غير متوفرة. لن تُعرض أي بيانات محمية دون اتصال موثوق.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.blueGrey, height: 1.6),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class Shell extends StatefulWidget { const Shell({super.key}); @override State<Shell> createState()=>_ShellState(); }
 class _ShellState extends State<Shell> {
  int page=0;
