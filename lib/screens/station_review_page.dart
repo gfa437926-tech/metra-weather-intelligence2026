@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../data/metra_api_client.dart';
+import '../data/metra_operations_service.dart';
 
 class StationReviewPage extends StatefulWidget {
   const StationReviewPage({super.key, required this.client});
@@ -22,28 +22,8 @@ class _StationReviewPageState extends State<StationReviewPage> {
   Future<List<Map<String, dynamic>>> _load() async {
     final client = widget.client;
     if (client == null) return [];
-    final api = MetraApiClient(client);
-    const pageSize = 200;
-    var page = 1;
-    var total = 0;
-    final stations = <Map<String, dynamic>>[];
-    do {
-      final response = await api.get(
-        '/api/v1/stations/review-queue',
-        query: {'page': '$page', 'page_size': '$pageSize'},
-      );
-      final rows = response['stations'];
-      if (rows is! List) throw Exception('استجابة قائمة المحطات غير صالحة.');
-      stations.addAll(rows.whereType<Map>().map(
-        (row) => Map<String, dynamic>.from(row),
-      ));
-      total = (response['total'] as num?)?.toInt() ?? stations.length;
-      if (rows.isEmpty) break;
-      page++;
-    } while (stations.length < total);
-    return List<Map<String, dynamic>>.unmodifiable(stations);
+    return MetraOperationsService.fromSupabase(client).fetchStationReviewQueue();
   }
-
 
   Future<void> _decide(Map<String, dynamic> station, String decision) async {
     final controller = TextEditingController();
@@ -85,10 +65,11 @@ class _StationReviewPageState extends State<StationReviewPage> {
     if (reason == null || !mounted || busy) return;
     setState(() => busy = true);
     try {
-      final result = await MetraApiClient(widget.client!).post(
-        '/api/v1/stations/${station['id']}/decisions',
-        body: {'decision': decision, 'reason': reason},
-      );
+      final result = await MetraOperationsService.fromSupabase(widget.client!)
+          .decideStation(
+            station['id']?.toString() ?? '',
+            {'decision': decision, 'reason': reason},
+          );
       if (result['result_status'] != 'updated' ||
           result['resulting_status'] != decision) {
         throw Exception('لم يؤكد الخادم حفظ القرار المطلوب. حدّث القائمة قبل المتابعة.');
