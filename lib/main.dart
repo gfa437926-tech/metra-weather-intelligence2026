@@ -36,7 +36,7 @@ class _ShellState extends State<Shell> {
  int page=0;
  final titles=['الرئيسية','الخريطة','المحطات','الرصد','اعتماد المحطات','مراكز التنبؤ','التنبيهات','الإعدادات'];
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
- body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),const ForecastCentersPage(client: metraSupabaseClient),const AlertsPage(),const SettingsPage()]),
+ body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),ForecastCentersPage(client: metraSupabaseClient),const AlertsPage(),const SettingsPage()]),
  bottomNavigationBar:NavigationBar(height:72,selectedIndex:page,onDestinationSelected:(i)=>setState(()=>page=i),destinations:const [
  NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'الرئيسية'),
  NavigationDestination(icon:Icon(Icons.map_outlined),selectedIcon:Icon(Icons.map),label:'الخريطة'),
