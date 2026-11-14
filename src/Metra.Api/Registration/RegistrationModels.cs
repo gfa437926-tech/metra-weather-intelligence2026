@@ -27,14 +27,14 @@ public sealed record RegistrationStatusResponse(
     [property: JsonPropertyName("request_state")] string? RequestState);
 
 public sealed record RegistrationSubmissionRequest(
-    Guid StationId,
-    string RoleCode,
-    string GivenName,
-    string FatherName,
-    string FamilyName,
-    string? Phone,
-    string TermsVersion,
-    string IdempotencyKey);
+    [property: JsonPropertyName("station_id")] Guid StationId,
+    [property: JsonPropertyName("role_code")] string RoleCode,
+    [property: JsonPropertyName("first_name")] string GivenName,
+    [property: JsonPropertyName("father_name")] string FatherName,
+    [property: JsonPropertyName("last_name")] string FamilyName,
+    [property: JsonPropertyName("phone")] string? Phone,
+    [property: JsonPropertyName("terms_version")] string TermsVersion,
+    [property: JsonPropertyName("idempotency_key")] string IdempotencyKey);
 
 public sealed record RegistrationSubmissionResponse(
     [property: JsonPropertyName("result_status")] string ResultStatus,
