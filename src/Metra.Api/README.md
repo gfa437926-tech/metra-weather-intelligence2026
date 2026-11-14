@@ -31,7 +31,7 @@ Flutter build-time configuration:
 
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
-- `METRA_API_URL`
+- `METRA_API_URL` (must use HTTPS; the Flutter API client rejects plaintext HTTP endpoints and unsafe absolute request paths).
 
 The publishable key and API URL are public client configuration. Never put a Supabase secret/service-role key or PostgreSQL password in Flutter, source control, or public build arguments.
 
