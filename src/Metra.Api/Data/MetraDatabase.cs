@@ -23,7 +23,7 @@ public sealed class MetraDatabase : IAsyncDisposable
             Timeout = 15,
             CommandTimeout = 30,
             Pooling = true,
-            MaximumPoolSize = 20
+            MaxPoolSize = 20
         };
         _dataSource = NpgsqlDataSource.Create(builder.ConnectionString);
     }
