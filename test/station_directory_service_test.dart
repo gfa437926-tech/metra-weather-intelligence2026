@@ -81,7 +81,7 @@ void main() {
     final result = await service.fetchStations();
 
     expect(result, isEmpty);
-    expect(() => result.add(StationRecordForTest.notUsed), throwsUnsupportedError);
+    expect(() => (result as List).add('not-a-station'), throwsUnsupportedError);
     client.close();
   });
 
