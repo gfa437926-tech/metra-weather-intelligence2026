@@ -1,6 +1,4 @@
--- Use the database clock for permission validity checks and audit timestamps.
--- The API-supplied timestamp is retained as an input contract but is not trusted
--- as the authority for grant/assignment validity.
+
 do $migration$
 declare v_definition text;
 begin
