@@ -200,6 +200,7 @@ public sealed class RegistrationService(MetraDatabase database) : IRegistrationS
         const string updateProfileSql = """
             update iam.user_profiles
             set given_name = @given_name,
+                father_name = @father_name,
                 family_name = @family_name,
                 display_name = @display_name,
                 phone_e164 = @phone_e164,
@@ -209,6 +210,7 @@ public sealed class RegistrationService(MetraDatabase database) : IRegistrationS
         await using (var command = new NpgsqlCommand(updateProfileSql, connection, transaction))
         {
             command.Parameters.AddWithValue("given_name", request.GivenName.Trim());
+            command.Parameters.AddWithValue("father_name", request.FatherName.Trim());
             command.Parameters.AddWithValue("family_name", request.FamilyName.Trim());
             command.Parameters.AddWithValue("display_name", fullDisplayName);
             command.Parameters.AddWithValue("phone_e164", (object?)NormalizePhone(request.Phone) ?? DBNull.Value);
