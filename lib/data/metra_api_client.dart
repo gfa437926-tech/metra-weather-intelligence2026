@@ -130,14 +130,37 @@ Uri buildMetraApiUri(
   String path,
   Map<String, String> query,
 ) {
+  // Validate the original string before Uri.parse: Dart normalizes literal
+  // dot segments (for example /../admin) while parsing, hiding traversal.
+  final rawSegments = path.split('/');
+  final hasUnsafeSegment = rawSegments.any((segment) {
+    var decoded = segment;
+    try {
+      for (var pass = 0; pass < 3; pass++) {
+        final next = Uri.decodeComponent(decoded);
+        if (next == decoded) break;
+        decoded = next;
+      }
+    } on FormatException {
+      return true;
+    }
+    return decoded == '.' ||
+        decoded == '..' ||
+        decoded.contains('/') ||
+        decoded.contains(r'\\');
+  });
   final route = Uri.tryParse(path);
   if (route == null ||
       route.hasScheme ||
       route.hasAuthority ||
       route.hasQuery ||
       route.hasFragment ||
-      !route.path.startsWith('/') ||
-      route.path.split('/').any((segment) => segment == '.' || segment == '..')) {
+      !path.startsWith('/') ||
+      path.startsWith('//') ||
+      path.contains(r'\\') ||
+      path.contains('?') ||
+      path.contains('#') ||
+      hasUnsafeSegment) {
     throw const MetraApiException(
       statusCode: 0,
       message: 'مسار طلب METRA API غير صالح.',
