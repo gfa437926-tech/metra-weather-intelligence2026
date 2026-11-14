@@ -27,6 +27,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddSingleton<MetraDatabase>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStationDirectoryService, StationDirectoryService>();
+builder.Services.AddScoped<IStationReviewService, StationReviewService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
 builder.Services.AddScoped<IReferenceDataService, ReferenceDataService>();
 
@@ -363,6 +364,73 @@ app.MapGet("/api/v1/reference/parameters", async (
     catch (NpgsqlException)
     {
         return Results.Problem(title: "Reference catalogue unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+
+app.MapGet("/api/v1/stations/review-queue", async (
+    ClaimsPrincipal principal,
+    IStationReviewService stationReview,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(await stationReview.GetQueueAsync(userId, cancellationToken));
+    }
+    catch (StationReviewAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Station review service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Station review service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+app.MapPost("/api/v1/stations/{stationId:guid}/decisions", async (
+    Guid stationId,
+    StationReviewDecisionRequest request,
+    ClaimsPrincipal principal,
+    IStationReviewService stationReview,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(await stationReview.DecideAsync(
+            userId, stationId, request, cancellationToken));
+    }
+    catch (StationReviewAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (StationReviewValidationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["decision"] = [exception.Message]
+        });
+    }
+    catch (StationReviewConflictException exception)
+    {
+        return Results.Problem(title: exception.Message, statusCode: 409);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Station review service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Station review service unavailable", statusCode: 503);
     }
 })
 .RequireAuthorization();
