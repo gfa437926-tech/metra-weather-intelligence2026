@@ -107,23 +107,27 @@ flutter build web --release
 
 لا تعدّل قاعدة METRA القديمة أو مستودعها، ولا تستورد منها أي بيانات.
 
-## Current implementation status (2026-11-14)
+## Current implementation status
 
-The development branch now contains:
+The development branch contains database-backed .NET 10 endpoints for identity, scoped station directory/review, registration submission and two-stage approval, reference catalogues, typed observation submission/history/review, and a scoped alert-event feed. Flutter station, registration, station-review, observation, approval and alert screens use the .NET API. The map reads verified station coordinates through the API. Dashboard weather values are clearly labelled as Open-Meteo forecasts, not station telemetry.
 
-- Database-backed .NET 10 endpoints for identity, station directory/review, registration submission/two-stage approval, meteorological reference catalogues, and typed observation submission/history/review.
-- Flutter station, registration, station-review, observation and approval screens now call the .NET API rather than the legacy Supabase Edge Function endpoints.
-- Flutter observation fields are generated from `ref.parameters`; while that scientific catalogue is empty, measurement submission is intentionally disabled rather than showing invented weather fields or limits.
-- A structured `father_name` profile field and explicit station/organization registration-review permissions were added by the new additive migration `20261114203913_metra_registration_review_permissions_and_father_name`.
-- CI currently builds .NET, runs scoped-authorization unit tests, type-checks/tests retained Edge Function source, analyzes Flutter, runs Flutter tests and builds the Web release.
+### Verified CI results
 
-### Verified boundaries and remaining blockers
+- Flutter analyzer: clean.
+- Flutter unit/widget tests: 45 passed.
+- Flutter Web release build: passed.
+- .NET API tests: 14 passed.
+- .NET Release build: passed.
+- .NET Docker image build: passed.
+- Retained Edge Function type checks and validation tests: passed.
+- Android APK/App Bundle and unsigned iOS build workflows are enabled; check the latest CI run for their final artifact status.
 
-- The new database schema remains the 46-table greenfield design; no legacy data was imported.
-- The .NET code builds, but live database-backed execution is not yet verified: `METRA_DATABASE_CONNECTION_STRING`, a least-privilege runtime login/grants and a hosting target are not configured.
-- The three earlier greenfield rebuild migrations are recorded in the remote Supabase history, but their matching SQL source files are still absent from Git. The newly added additive migration source is present and version-aligned.
-- No organization/station/user seed data has been added. The reference observation types exist, but scientific parameter and unit definitions remain empty pending approved meteorological definitions.
-- Station creation/update, user administration, forecast ingestion, alerts, operations, file access, exports, full observation revisions and disposable-database integration/security tests remain incomplete.
-- Legacy Edge Functions are no longer called by the migrated Flutter screens, but their deployed copies have not yet been retired.
+### Operational blockers
 
-The repository is not yet a deployable final release. Do not treat successful compilation as proof of live database integration.
+- The database role `metra_api_runtime` is now provisioned with limited grants and internal RLS policies; it is `NOLOGIN` and `NOBYPASSRLS`. A separate managed login role inheriting it, a protected connection secret, and a .NET hosting target are still required for live DB-backed execution.
+- The three core greenfield rebuild migrations remain in remote Supabase history without their matching SQL source files in Git. Additive migrations for registration review and API runtime privileges are present.
+- No organization, station or application-user seed data exists. Scientific parameter/unit definitions remain intentionally empty until approved by a meteorological specialist.
+- Official alert ingestion, forecast ingestion, station create/update, full user/role administration, operational incidents, file authorization, exports and full observation revision workflows remain incomplete.
+- The five legacy Edge Functions remain deployed but are not used by the migrated Flutter screens; retire them only after confirming no external clients depend on them.
+
+The repository is **not yet a deployable final release**. Passing CI proves source analysis and builds, not live authentication-to-database execution. Keep all work on the development branch; do not merge to `main` until the remaining runtime and security checks pass.
