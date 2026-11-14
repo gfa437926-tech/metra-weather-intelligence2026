@@ -595,6 +595,37 @@ public sealed class RegistrationService(
 
         var selection = await ResolveSelectionAsync(connection, transaction, request, cancellationToken);
 
+        const string pendingSql = """
+            select id, requested_station_id, requested_role_id, request_state
+            from iam.registration_requests
+            where applicant_user_id = @user_id
+              and request_state in ('pending_station_review', 'pending_system_review')
+            order by submitted_at desc
+            limit 1
+            for update;
+            """;
+        await using (var command = new NpgsqlCommand(pendingSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("user_id", userId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                var pendingId = reader.GetGuid(0);
+                var pendingStation = reader.GetGuid(1);
+                var pendingRole = reader.GetGuid(2);
+                var pendingState = reader.GetString(3);
+                if (pendingStation == request.StationId && pendingRole == selection.RoleId)
+                {
+                    await reader.CloseAsync();
+                    await transaction.CommitAsync(cancellationToken);
+                    return new RegistrationSubmissionResponse("already_created", pendingId, pendingState);
+                }
+
+                throw new RegistrationConflictException(
+                    "لديك طلب انتساب آخر قيد المراجعة. انتظر نتيجته قبل إرسال طلب جديد.");
+            }
+        }
+
         var fullDisplayName = string.Join(' ', new[]
         {
             request.GivenName.Trim(),
