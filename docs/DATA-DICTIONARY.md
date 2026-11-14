@@ -475,3 +475,7 @@ Proposed columns: `id uuid PK`, `forecast_point_id uuid FK`, `parameter_id uuid 
 - [ ] Review every FK, unique/check/exclusion constraint and delete behavior.
 
 **No migration files are included in this phase.** After written review/approval of this dictionary and ERD, create a new ordered migration chain, then rebuild it against a disposable empty PostgreSQL database and run schema/security/integration tests. Do not apply it to hosted Supabase as part of that test.
+
+## 11. Migration-chain isolation
+
+The repository currently contains a prior `supabase/migrations` history for the running application. It is not automatically the greenfield migration baseline described here. After review approval, create a separately isolated clean migration chain and CLI configuration for the new model, then prove a from-empty rebuild on a disposable PostgreSQL instance. Do not append these proposed DDL changes to the old chain, replay the old chain against the new empty database, or apply anything to hosted Supabase as part of local verification.
