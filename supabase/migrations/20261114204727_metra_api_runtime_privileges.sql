@@ -14,7 +14,7 @@ $$;
 comment on role metra_api_runtime is
   'Non-login, non-BYPASSRLS least-privilege role for the METRA ASP.NET API. A separate managed login must be granted membership; never connect as postgres or service_role.';
 
-grant usage on schema iam, catalog, ref, observations, audit to metra_api_runtime;
+grant usage on schema iam, catalog, ref, observations, alerts, audit to metra_api_runtime;
 
 grant select on
   iam.user_profiles,
@@ -66,6 +66,8 @@ grant update (submission_state, updated_at)
 grant insert on observations."values" to metra_api_runtime;
 grant insert on observations.revisions to metra_api_runtime;
 grant insert on observations.review_decisions to metra_api_runtime;
+
+grant select on alerts.alert_events, alerts.alert_recipients to metra_api_runtime;
 
 grant insert on audit.events to metra_api_runtime;
 
@@ -175,6 +177,13 @@ create policy metra_api_runtime_select on observations.review_decisions
 drop policy if exists metra_api_runtime_insert on observations.review_decisions;
 create policy metra_api_runtime_insert on observations.review_decisions
   for insert to metra_api_runtime with check (true);
+
+drop policy if exists metra_api_runtime_select on alerts.alert_events;
+create policy metra_api_runtime_select on alerts.alert_events
+  for select to metra_api_runtime using (true);
+drop policy if exists metra_api_runtime_select on alerts.alert_recipients;
+create policy metra_api_runtime_select on alerts.alert_recipients
+  for select to metra_api_runtime using (true);
 
 drop policy if exists metra_api_runtime_insert on audit.events;
 create policy metra_api_runtime_insert on audit.events
