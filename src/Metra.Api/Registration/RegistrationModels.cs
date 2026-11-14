@@ -68,7 +68,10 @@ public sealed record RegistrationApprovalItem(
     [property: JsonPropertyName("submitted_at")] DateTimeOffset SubmittedAt);
 
 public sealed record RegistrationApprovalQueueResponse(
-    [property: JsonPropertyName("items")] IReadOnlyList<RegistrationApprovalItem> Items);
+    [property: JsonPropertyName("items")] IReadOnlyList<RegistrationApprovalItem> Items,
+    [property: JsonPropertyName("total")] long Total,
+    [property: JsonPropertyName("page")] int Page,
+    [property: JsonPropertyName("page_size")] int PageSize);
 
 public sealed record RegistrationApprovalDecisionRequest(
     [property: JsonPropertyName("expected_status")] string ExpectedStatus,
