@@ -67,6 +67,7 @@ public sealed class StationDirectoryService(
             select count(*)
             from catalog.stations s
             where s.approval_status = 'approved'
+              and (@require_active = false or s.operational_status = 'active')
               and (
                 @is_global
                 or s.owner_organization_id = any(@organization_ids)
@@ -78,6 +79,7 @@ public sealed class StationDirectoryService(
         await using (var countCommand = new NpgsqlCommand(countSql, connection))
         {
             countCommand.Parameters.AddWithValue("is_global", isGlobal);
+            countCommand.Parameters.AddWithValue("require_active", requiredPermissionCode == "observations.create");
             countCommand.Parameters.AddWithValue("organization_ids", organizationIds);
             countCommand.Parameters.AddWithValue("station_ids", stationIds);
             total = Convert.ToInt64(await countCommand.ExecuteScalarAsync(cancellationToken));
@@ -99,6 +101,7 @@ public sealed class StationDirectoryService(
                 limit 1
             ) location on true
             where s.approval_status = 'approved'
+              and (@require_active = false or s.operational_status = 'active')
               and (
                 @is_global
                 or s.owner_organization_id = any(@organization_ids)
@@ -112,6 +115,7 @@ public sealed class StationDirectoryService(
         await using (var command = new NpgsqlCommand(stationSql, connection))
         {
             command.Parameters.AddWithValue("is_global", isGlobal);
+            command.Parameters.AddWithValue("require_active", requiredPermissionCode == "observations.create");
             command.Parameters.AddWithValue("organization_ids", organizationIds);
             command.Parameters.AddWithValue("station_ids", stationIds);
             command.Parameters.AddWithValue("page_size", pageSize);
