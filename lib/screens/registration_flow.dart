@@ -414,10 +414,24 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
   }
 
   Future<List<Map<String, dynamic>>> loadQueue() async {
-    final response = await MetraApiClient(Supabase.instance.client)
-        .get('/api/v1/registration/approvals');
-    return (response['items'] as List? ?? const [])
-      .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+    final api = MetraApiClient(Supabase.instance.client);
+    const pageSize = 200;
+    var page = 1;
+    var total = 0;
+    final items = <Map<String, dynamic>>[];
+    do {
+      final response = await api.get(
+        '/api/v1/registration/approvals',
+        query: {'page': '$page', 'page_size': '$pageSize'},
+      );
+      final rows = response['items'];
+      if (rows is! List) throw Exception('استجابة قائمة الاعتمادات غير صالحة.');
+      items.addAll(rows.whereType<Map>().map((item) => Map<String, dynamic>.from(item)));
+      total = (response['total'] as num?)?.toInt() ?? items.length;
+      if (rows.isEmpty) break;
+      page++;
+    } while (items.length < total);
+    return List<Map<String, dynamic>>.unmodifiable(items);
   }
 
   Future<String?> requestNote({required bool requiredNote}) async {
