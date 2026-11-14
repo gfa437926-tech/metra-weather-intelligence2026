@@ -45,6 +45,8 @@ dotnet test src/Metra.Api.Tests/Metra.Api.Tests.csproj --configuration Release
 dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release
 ```
 
+The API CI additionally starts an isolated local Supabase stack, replays the complete migration set into its empty database, creates a disposable login role that inherits `metra_api_runtime` without superuser or RLS-bypass privileges, and runs `MetraApiIntegrationTests` against that role. The local test password exists only inside that disposable CI database; it is never reused for hosted environments. Integration tests are automatically skipped in ordinary unit-test runs unless `METRA_TEST_DATABASE_CONNECTION_STRING` is supplied.
+
 ## Security controls
 
 - JWT issuer, audience, lifetime and signing key validation.
@@ -62,7 +64,6 @@ dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release
 - Provision a dedicated managed login role that inherits `metra_api_runtime`, store its connection string in the hosting secret manager, and deploy the .NET API.
 - Configure production `METRA_API_URL` and exact Flutter Web CORS origins.
 - Implement station creation/update, organization bootstrap, full user/role administration, observation revision/edit workflow, file authorization, forecast ingestion, alert ingestion/rule management, operations, exports and audit query endpoints.
-- Add integration tests against a disposable database for transactions, registration state transitions, observation idempotency and BOLA/IDOR boundaries.
 - Migration source coverage is reconciled at the version/file-name level: the new METRA database reports 86 applied migration versions, and the active branch contains 86 SQL migration files with an exact one-to-one version match (no missing remote versions, local-only versions or duplicate version numbers).
 - `supabase/migrations/ledger.manifest` is checked against the active SQL files by `scripts/verify_migration_source.py`. The dedicated migration CI workflow replays all migrations into an isolated, empty local Supabase database and verifies 86 ledger rows, 46 METRA tables with RLS enabled, the expected IAM seed counts, and empty station/user/observation operational catalogues.
 - This verifies reproducible source coverage and a clean local rebuild; it does not execute or rewrite the hosted migration ledger. The hosted project has been inspected read-only, and no production migration was applied during reconciliation.
