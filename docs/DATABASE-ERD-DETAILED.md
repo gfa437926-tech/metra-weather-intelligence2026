@@ -6,15 +6,14 @@
 
 ## 1. قواعد قراءة النموذج
 
-- كل PK من نوع UUID ما لم يذكر خلاف ذلك.
-- الرمز `FK` يعني مفتاحاً أجنبياً، و`UQ` قيد تفرد، و`CK` قيد تحقق، و`NN` عدم قبول NULL.
-- جميع الأوقات المطلقة `timestamptz`، مع حفظ المنطقة الزمنية IANA للمحطة عند الحاجة.
-- جداول `ref` وكتالوجات الحالة لا تُملأ إلا من مصادر جديدة معتمدة. لا توجد بيانات محطات مضمّنة في هذه المسودة.
+- كل PK من نوع UUID.
+- `FK` مفتاح أجنبي، `UQ` تفرد، `CK` تحقق، `NN` إلزامي.
+- جميع الأوقات المطلقة `timestamptz`، مع حفظ منطقة IANA عند الحاجة.
+- كتالوجات الحالات والبيانات المرجعية تُملأ من مصادر جديدة معتمدة فقط.
 - قيم القياسات العلمية وحدودها ودقتها ووحداتها النهائية **TBD** إلى أن يعتمدها مختص الأرصاد.
-- العلاقات الزمنية (الفترات السارية) تحتاج قيود عدم تداخل؛ يحدد تنفيذها بعد اعتماد PostgreSQL extensions والسياسة الزمنية.
-- لا يحتوي أي جدول على كلمات مرور أو مفاتيح API أو مفاتيح service-role.
+- لا يحتوي أي جدول على كلمات مرور أو مفاتيح API أو أسرار.
 
-## 2. مخطط ERD — النطاق الأساسي MVP
+## 2. ERD — الهوية والحوكمة والكتالوج والرصد
 
 ```mermaid
 erDiagram
@@ -26,17 +25,17 @@ erDiagram
   USER_PROFILES ||--o{ REGISTRATION_REQUESTS : requests
   ROLES ||--o{ REGISTRATION_REQUESTS : requested_role
   STATIONS ||--o{ REGISTRATION_REQUESTS : requested_station
-  REGISTRATION_REQUESTS ||--o{ REGISTRATION_DECISIONS : reviewed_by
+  REGISTRATION_REQUESTS ||--o{ REGISTRATION_DECISIONS : decisions
   USER_PROFILES ||--o{ REGISTRATION_DECISIONS : actor
-  ROLES ||--o{ ROLE_PERMISSIONS : grants
-  PERMISSIONS ||--o{ ROLE_PERMISSIONS : included
+  ROLES ||--o{ ROLE_PERMISSIONS : includes
+  PERMISSIONS ||--o{ ROLE_PERMISSIONS : assigned
   MEMBERSHIPS ||--o{ ROLE_ASSIGNMENTS : receives
-  ROLES ||--o{ ROLE_ASSIGNMENTS : assigned
+  ROLES ||--o{ ROLE_ASSIGNMENTS : role
   USER_PROFILES ||--o{ PERMISSION_GRANTS : subject
   PERMISSIONS ||--o{ PERMISSION_GRANTS : delegated
-  USER_PROFILES ||--o{ ACCESS_REVIEWS : reviewer
   ROLE_ASSIGNMENTS ||--o{ ACCESS_REVIEWS : reviewed
   PERMISSION_GRANTS ||--o{ ACCESS_REVIEWS : reviewed
+  USER_PROFILES ||--o{ ACCESS_REVIEWS : reviewer
   STATION_TYPES ||--o{ STATIONS : classifies
   STATIONS ||--o{ STATION_IDENTIFIERS : identified_by
   STATIONS ||--o{ STATION_LOCATIONS : located_at
@@ -45,21 +44,21 @@ erDiagram
   STATIONS ||--o{ STATION_REVIEWS : reviewed
   USER_PROFILES ||--o{ STATION_REVIEWS : reviewer
   STATIONS ||--o{ OBSERVATION_SUBMISSIONS : observed_at
-  USER_PROFILES ||--o{ OBSERVATION_SUBMISSIONS : submitted_by
+  USER_PROFILES ||--o{ OBSERVATION_SUBMISSIONS : submits
   OBSERVATION_TYPES ||--o{ OBSERVATION_SUBMISSIONS : classifies
   OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_VALUES : contains
-  METEOROLOGICAL_PARAMETERS ||--o{ OBSERVATION_VALUES : parameter
-  UNITS ||--o{ OBSERVATION_VALUES : reported_unit
+  METEOROLOGICAL_PARAMETERS ||--o{ OBSERVATION_VALUES : defines
+  UNITS ||--o{ OBSERVATION_VALUES : unit
   OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_REVISIONS : versioned
   OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_REVIEW_DECISIONS : decided
   USER_PROFILES ||--o{ OBSERVATION_REVIEW_DECISIONS : reviewer
   OBSERVATION_VALUES ||--o{ OBSERVATION_QUALITY_FLAGS : flagged
-  OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_QUALITY_FLAGS : submission_flag
+  OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_QUALITY_FLAGS : flagged
   FILE_OBJECTS ||--o{ OBSERVATION_ATTACHMENTS : linked
   OBSERVATION_SUBMISSIONS ||--o{ OBSERVATION_ATTACHMENTS : evidence
 ```
 
-## 3. مخطط ERD — الطقس والتكامل والتدقيق (مرحلي)
+## 3. ERD — التنبؤات والتكامل والتدقيق
 
 ```mermaid
 erDiagram
@@ -80,124 +79,111 @@ erDiagram
   STATIONS ||--o{ AUDIT_EVENTS : scope
 ```
 
-## 4. قاموس الكيانات حسب المجال
+## 4. الكيانات والجداول
 
-### 4.1 الهوية والحوكمة `iam`
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### IAM — `iam` (MVP)
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `user_profiles` | ملف التطبيق المرتبط بهوية مزود المصادقة | PK id؛ 1:1 مع auth subject الخارجي |
-| `organizations` | الجهة المالكة/المشغلة | PK id |
-| `organization_units` | وحدات إدارية متداخلة داخل الجهة | FK organization؛ FK parent اختياري |
-| `memberships` | عضوية مستخدم في جهة وحالتها وفترتها | FK user + organization |
-| `roles` | تعريف الأدوار المعتمدة | UQ code |
-| `permissions` | قاموس الصلاحيات الدقيقة | UQ code |
-| `role_permissions` | ربط الدور بالصلاحية | FK role + permission؛ UQ pair |
-| `role_assignments` | تعيين دور إلى عضوية ضمن نطاق زمني | FK membership + role؛ scope |
-| `permission_grants` | تفويض مباشر استثنائي محدد المدة والنطاق | FK subject + permission + grantor |
-| `access_reviews` | مراجعة دور/تفويض مميز وتجديده أو إلغاؤه | FK reviewer؛ مرجع واحد إلى assignment أو grant |
-| `registration_requests` | طلب انتساب بعد إنشاء هوية المصادقة | FK applicant + requested role + requested station |
-| `registration_decisions` | مراحل قرار طلب الانتساب وسجلها غير القابل للاستبدال | FK request + actor؛ stage |
+| user_profiles | ملف التطبيق المرتبط بهوية Auth خارجية | 1:1 auth subject |
+| organizations | الجهات المالكة/المشغلة | تملك وحدات ومحطات وعضويات |
+| organization_units | هيكل تنظيمي هرمي | جهة + parent اختياري |
+| memberships | عضوية مستخدم بجهة ووحدة وحالة وفترة | user + organization + unit |
+| roles | قاموس الأدوار | role_permissions وassignments |
+| permissions | قاموس الصلاحيات الدقيقة | role_permissions وgrants |
+| role_permissions | ربط الدور بالصلاحية | role + permission، UQ pair |
+| role_assignments | تعيين دور ضمن نطاق زمني | membership + role + scope |
+| permission_grants | تفويض مباشر استثنائي ومحدد المدة | user + permission + grantor + scope |
+| access_reviews | مراجعة/تجديد/إلغاء امتياز | reviewer + assignment أو grant |
+| registration_requests | طلب انتساب بعد إنشاء هوية Auth | applicant + role + station |
+| registration_decisions | سجل قرارات مراحل الانتساب | request + actor + stage |
 
-### 4.2 دليل المحطات `catalog`
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### Catalog — `catalog` (MVP)
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `station_types` | فئات المحطات المضبوطة | UQ code |
-| `stations` | الهوية الثابتة للمحطة | FK organization + station_type؛ UQ local code داخل الجهة |
-| `station_identifiers` | رموز المحطة في مصادر مستقلة | FK station؛ UQ source + identifier |
-| `station_locations` | تاريخ الإحداثيات والارتفاع والمنطقة الزمنية والتحقق | FK station؛ فترات صلاحية |
-| `station_capabilities` | قدرات الرصد المدعومة وفتراتها | FK station + parameter/capability reference |
-| `station_operating_periods` | فترات التشغيل والتوقف | FK station؛ interval |
-| `station_reviews` | قرارات اعتماد سجل المحطة | FK station + reviewer؛ سجل تاريخي |
+| station_types | فئات المحطات | stations |
+| stations | الهوية الثابتة للمحطة، مستقلة عن حالة الاعتماد والتشغيل | organization + station_type |
+| station_identifiers | رموز خارجية متعددة للمحطة | station |
+| station_locations | إحداثيات وارتفاع ومنطقة زمنية ذات تاريخ صلاحية | station |
+| station_capabilities | قدرات الرصد وفتراتها | station + capability reference |
+| station_operating_periods | تاريخ التشغيل والتوقف | station |
+| station_reviews | قرارات اعتماد الكتالوج وأسبابها | station + reviewer |
 
-### 4.3 قاموس الأرصاد `ref`
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### Reference — `ref` (MVP)
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `units` | وحدات القياس المعتمدة وتعريف التحويل | UQ code؛ التحويلات المعقدة TBD |
-| `meteorological_parameters` | تعريف البارامترات العلمية وإصداراتها | UQ code + version؛ FK canonical unit |
-| `observation_types` | أنواع/دوريات نماذج الرصد | UQ code |
+| units | وحدات القياس المعتمدة | parameter definitions, values |
+| meteorological_parameters | قاموس البارامترات وإصداراته ووحدته القياسية | units |
+| observation_types | أنواع/دوريات نماذج الرصد | submissions |
 
-### 4.4 الرصد اليدوي والمراجعة `observations`
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### Observations — `observations` (MVP)
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `submissions` | غلاف إرسال الرصد وحالته ومصدره ومفتاح منع التكرار | FK station + author + observation type |
-| `values` | قيمة واحدة typed لبارامتر محدد ضمن إرسال | FK submission + parameter + unit |
-| `revisions` | لقطات إصدار غير قابلة للتعديل للرصد | FK submission؛ UQ submission + revision number |
-| `review_decisions` | قرارات الإرسال/الإرجاع/الاعتماد/الرفض | FK submission + reviewer |
-| `quality_flags` | نتائج قواعد الجودة وإصداراتها | FK submission أو value؛ أحدهما فقط |
-| `attachments` | ربط أدلة الملفات بالرصد | FK submission + file object |
+| submissions | غلاف الإرسال: المحطة، المؤلف، الوقت، الحالة، idempotency | station + author + type |
+| values | قيم typed للبارامترات | submission + parameter + unit |
+| revisions | تاريخ نسخ الرصد غير القابل للمحو | submission |
+| review_decisions | قرارات المراجعة وملاحظاتها | submission + reviewer |
+| quality_flags | أعلام QC على الإرسال أو القيمة | submission XOR value |
+| attachments | ربط أدلة الملفات بالرصد | submission + file object |
 
-### 4.5 التنبؤات الخارجية `weather` (مرحلي)
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### Weather — `weather` (مرحلي)
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `providers` | سجل مزودي التنبؤ ومراجع المنتجات | UQ code |
-| `ingestion_runs` | عملية جلب/استيراد واحدة ونتيجتها | FK provider؛ correlation/idempotency |
-| `forecast_runs` | دورة إصدار نموذج/تنبؤ من مزود | FK provider + ingestion run |
-| `forecast_points` | قيمة تنبؤ مكانية/زمنية typed | FK run + parameter + unit |
-| `forecast_parameter_mappings` | ترجمة معرّف مزود إلى بارامتر معياري | FK provider + parameter |
-| `provider_payload_references` | مرجع آمن ومقيد لحمولة المزود الخام | FK ingestion run + file object |
+| providers | مزودو بيانات الطقس والتنبؤ | ingestion/forecast |
+| ingestion_runs | عمليات جلب/استيراد ونتائجها | provider |
+| forecast_runs | دورة إصدار نموذج/تنبؤ | provider + ingestion run |
+| forecast_points | قيمة تنبؤ مكانية/زمنية typed | run + parameter + unit |
+| forecast_parameter_mappings | ترجمة رموز المزود إلى المعايير | provider + parameter |
+| provider_payload_references | مرجع آمن لحمولة خام عند السماح | ingestion + file object |
 
-### 4.6 الملفات والتكامل والتدقيق
-
-| الجدول | الغرض | المفتاح/العلاقات الأساسية |
+### Shared infrastructure
+| الجدول | الغرض | العلاقات |
 |---|---|---|
-| `files.objects` | بيانات وصفية لملفات التخزين فقط | PK id؛ UQ bucket + object key |
-| `integration.sources` | تعريف موصل/مصدر خارجي بلا أسرار | UQ code |
-| `integration.execution_runs` | تشغيل تكامل مستقل عن جلب الطقس عند الحاجة | FK source |
-| `audit.events` | سجل أحداث أمني وتجاري append-only | actor اختياري + scope اختياري |
+| files.objects | metadata لملفات Storage فقط | owner + domain link tables |
+| integration.sources | سجل مصادر التكامل بلا أسرار | execution_runs |
+| integration.execution_runs | نتائج تشغيل التكاملات | source |
+| audit.events | سجل تدقيق append-only | actor/scope optional |
 
 ## 5. قواعد العلاقات والتعددية
 
-1. الجهة الواحدة تملك صفراً أو أكثر من المحطات والعضويات والوحدات.
-2. المستخدم قد يمتلك عضويات متعددة، لكن لا يُمنح دوراً خارج عضوية صالحة إلا بتفويض مباشر صريح.
-3. الدور يضم عدة صلاحيات، والصلاحية قد تظهر في عدة أدوار؛ جدول الربط يمنع التكرار.
-4. تعيين الدور مرتبط بعضوية واحدة ونطاق واحد واضح؛ لا يسمح بنطاق station دون station_id، ولا بنطاق organization دون organization_id.
-5. المحطة لها هويات خارجية متعددة ومواقع وقدرات وفترات تشغيل متعددة عبر الزمن.
-6. لا يسمح بتداخل فترات الموقع المعتمدة للمحطة نفسها إلا إذا أقر المجال أكثر من موضع متزامن (TBD).
-7. إرسال الرصد يتبع محطة واحدة ومؤلفاً واحداً ونوع رصد واحداً، ويحتوي قيماً متعددة.
-8. قرار المراجعة سجل جديد؛ لا يتم تحديث قرار سابق لمحو أثره. تصحيح البيانات ينشئ revision جديدة.
-9. كل قيمة رصد تشير إلى parameter وunit محددين. لا تُقبل قيمة بلا تعريف علمي معتمد.
-10. كل نقطة تنبؤ تتبع forecast run واحداً ووقت صلاحية وموقعاً/خلية مكانية وفق عقد المزود.
-11. ملفات التخزين لا ترتبط بكيان عبر نص حر؛ روابطها عبر جداول وصل محددة.
-12. أحداث التدقيق لا تُستخدم بديلاً عن جداول تاريخ المجال.
+1. الجهة تملك عدة محطات ووحدات وعضويات.
+2. المستخدم يملك عدة عضويات؛ الدور الفعلي يأتي من تعيين scoped وفعال زمنياً، وليس من حقل role واحد.
+3. الدور والصلاحية علاقة N:M عبر role_permissions مع منع التكرار.
+4. تعيين الدور يتبع عضوية واحدة ونطاقاً واحداً واضحاً.
+5. المحطة لها معرفات خارجية ومواقع وقدرات وفترات تشغيل متعددة عبر الزمن.
+6. إرسال الرصد يتبع محطة ومؤلفاً ونوعاً واحداً، ويحتوي عدة قيم.
+7. كل قيمة ترتبط ببارامتر ووحدة معرفين؛ لا قيم علمية غير معرّفة.
+8. قرارات المراجعة revisions أحداث تاريخية؛ لا يتم محو قرار سابق.
+9. كل forecast point يتبع run ومزوداً ووقت صلاحية وموقعاً/خلية وفق عقد المصدر.
+10. ملفات التخزين ترتبط بمراجع صريحة، لا بنصوص حرة.
+11. audit لا يحل محل تاريخ المجال.
 
-## 6. ضوابط على مستوى قاعدة البيانات
+## 6. القيود الحرجة
 
-- PK على كل جدول تشغيلي، FK لكل علاقة موضحة، وفهارس على جميع مفاتيح FK المستخدمة في الاستعلامات.
-- UQ على الأكواد الثابتة، ومفاتيح المصدر الخارجية، ومفاتيح idempotency ضمن نطاقها.
-- CHECK لحالات lifecycle، القيم الموجبة للأحجام، سلامة الإحداثيات، واتساق حقول النطاق.
-- CHECK XOR في `quality_flags`: إما observation_value_id أو submission_id، وليس كليهما أو لا شيء.
-- CHECK XOR في `access_reviews`: إما role_assignment_id أو permission_grant_id.
-- CHECK على الفترات: `valid_from < valid_to` عند وجود نهاية.
-- لا تُخزن الحالة التشغيلية للمحطة في حقل اعتماد الكتالوج؛ لكل مفهوم حالة مستقلة.
-- لا تُخزن قيم الطقس أو الرصد في JSONB بوصفه المصدر القانوني؛ JSONB مقتصر على metadata مصدرية مسموحة.
-- RLS وGRANTs حسب نموذج وصول مُراجع؛ لا يُفتح أي schema داخلي للـ Data API افتراضياً.
-- كل وظيفة ذات امتياز تتحقق من هوية المنفذ ونطاقه في الخادم/المعاملة، ولا تثق بمعرّف actor القادم من العميل.
+- PK وFK لكل العلاقات، مع فهرس لكل FK مستخدم.
+- UQ للأكواد والمفاتيح الخارجية ومفاتيح idempotency ضمن نطاقها.
+- CHECK لحالات lifecycle والإحداثيات والفترات وتوافق نطاقات الصلاحيات.
+- XOR في quality_flags: submission أو value فقط.
+- XOR في access_reviews: role_assignment أو permission_grant فقط.
+- valid_from < valid_to عند وجود نهاية.
+- منع تداخل فترات المواقع/التعيينات حيث يقتضي العقد ذلك.
+- فصل approval_status عن operational_status.
+- لا تجعل JSONB بديلاً عن typed scientific values.
+- RLS وGRANTs وفق نموذج وصول معتمد، وعدم تعريض schemas الداخلية للـ Data API.
+- جميع العمليات الحساسة تشتق actor من JWT موثوق وتتحقق من نطاقه.
 
-## 7. قرارات لا يجوز تحويلها إلى قيود نهائية قبل اعتمادها
+## 7. قرارات تتطلب اعتماداً
 
 | القرار | الحالة |
 |---|---|
-| دليل المحطات الجديد ومصدر كل سجل | يحتاج مصدر معتمد |
-| أسماء الجهات والوحدات الهرمية | يحتاج قرار مالك المنتج |
-| قاموس الأدوار والصلاحيات النهائي | يحتاج مصفوفة اعتماد |
-| قائمة parameters والوحدات والدقة والمدى العلمي | TBD — اعتماد مختص أرصاد |
-| نماذج الرصد ودورياتها وتوقيتاتها | TBD — اعتماد مختص أرصاد |
-| آلية تمثيل المواقع (نقطة/خلية/هندسة) | حسب احتياج المنتج ومزود البيانات |
-| PostGIS والتقسيم partitioning | قرار تنفيذي بعد قياس الاستخدام |
-| مدة الاحتفاظ بالرصد والحمولات والملفات وسجل التدقيق | قرار حوكمة وخصوصية |
-| نطاق forecast ingestion ومزودوه | عقد تكامل ومفاتيح معتمدة |
-| نطاق alerts/climate/AI | خارج MVP حتى اعتماد العقود العلمية |
+| مصدر دليل المحطات الجديد | يحتاج مصدر موثق |
+| هيكل الجهات والوحدات | يحتاج اعتماد |
+| قائمة الأدوار والصلاحيات | تحتاج مصفوفة نهائية |
+| parameters والوحدات والدقة والمدى | TBD — مختص أرصاد |
+| نماذج الرصد ودورياتها وتوقيتها | TBD — مختص أرصاد |
+| مزود التنبؤ وعقده | يحتاج عقد تكامل |
+| PostGIS/partitioning | قرار تنفيذي بعد قياس |
+| الاحتفاظ بالملفات والحمولات والتدقيق | يحتاج سياسة حوكمة |
 
 ## 8. بوابة الانتقال إلى DDL
 
-لا يبدأ إنشاء migrations إلا بعد:
-1. اعتماد هذا الـ ERD أو إرجاع ملاحظات محددة.
-2. اعتماد قاموس البيانات والحقول الإلزامية والاختيارية.
-3. اعتماد قاموس parameters والوحدات ونماذج الرصد من مختص.
-4. اعتماد مصفوفة الصلاحيات ونطاقات الجهات والمحطات.
-5. تحديد آلية فصل baseline الاختبار عن migrations الحالية المستخدمة في التطبيق.
+لا تنشأ migrations قبل اعتماد ERD والقاموس ومصفوفة الصلاحيات والمواصفات العلمية. يجب أن يكون baseline الاختبار مستقلاً عن سلسلة migrations الحالية في المستودع.
