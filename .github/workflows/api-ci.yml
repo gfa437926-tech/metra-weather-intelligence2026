@@ -92,6 +92,8 @@ jobs:
           IFS='|' read -r DB_HOST DB_PORT DB_NAME <<< "$DB_PARTS"
           export METRA_TEST_DATABASE_CONNECTION_STRING="Host=$DB_HOST;Port=$DB_PORT;Database=$DB_NAME;Username=metra_api_test_login;Password=metra-local-test-only;Pooling=false;"
           export SUPABASE_URL="https://integration-test.supabase.co"
+          export METRA_DATABASE_CONNECTION_STRING="$METRA_TEST_DATABASE_CONNECTION_STRING"
+          export MetraDatabase__AllowInsecureLocalhost="true"
           dotnet test src/Metra.Api.Tests/Metra.Api.Tests.csproj \
             --configuration Release --no-restore \
             --filter FullyQualifiedName~MetraApiIntegrationTests
