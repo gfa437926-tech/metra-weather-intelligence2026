@@ -320,8 +320,10 @@ public sealed class ObservationService(
             request.ObservationTypeCode.Trim().Length > 80 ||
             string.IsNullOrWhiteSpace(request.IdempotencyKey) ||
             request.IdempotencyKey.Trim().Length is < 8 or > 128 ||
+            request.ObservedAt == default ||
             request.Values is null ||
-            request.Values.Count is < 1 or > 100)
+            request.Values.Count is < 1 or > 100 ||
+            request.Values.Any(v => v is null || string.IsNullOrWhiteSpace(v.ParameterCode)))
         {
             throw new ObservationValidationException("بيانات الرصد غير مكتملة أو غير صالحة.");
         }
