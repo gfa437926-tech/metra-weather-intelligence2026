@@ -155,4 +155,3 @@ REVOKE ALL ON FUNCTION public.get_station_system_registration_audit(uuid,integer
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_station_system_registration_audit(uuid,integer,uuid)
   TO service_role;
-
