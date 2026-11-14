@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - work/database-architecture-fresh-design-2026-11-14
-    paths-ignore:
-      - 'android/**'
-      - 'ios/**'
+    paths:
+      - '.github/workflows/flutter-platform-generator.yml'
 
 permissions:
   contents: write
