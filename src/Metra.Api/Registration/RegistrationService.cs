@@ -15,7 +15,7 @@ public interface IRegistrationService
         RegistrationSubmissionRequest request,
         CancellationToken cancellationToken);
     Task<RegistrationApprovalQueueResponse> GetApprovalQueueAsync(
-        Guid userId, CancellationToken cancellationToken);
+        Guid userId, int page, int pageSize, CancellationToken cancellationToken);
     Task<RegistrationApprovalDecisionResponse> DecideAsync(
         Guid userId, Guid requestId, RegistrationApprovalDecisionRequest request,
         CancellationToken cancellationToken);
@@ -29,6 +29,8 @@ public sealed class RegistrationService(
 
     public async Task<RegistrationApprovalQueueResponse> GetApprovalQueueAsync(
         Guid userId,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken)
     {
         var user = await currentUserService.GetAsync(userId, cancellationToken);
@@ -41,6 +43,26 @@ public sealed class RegistrationService(
             throw new RegistrationApprovalAccessDeniedException();
 
         await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        const string filter = """
+            from iam.registration_requests rr
+            where (
+                rr.request_state = 'pending_station_review'
+                and (@station_global or rr.requested_station_id = any(@station_ids))
+            ) or (
+                rr.request_state = 'pending_system_review'
+                and (@organization_global or rr.organization_id = any(@organization_ids))
+            )
+            """;
+        long total;
+        await using (var countCommand = new NpgsqlCommand($"select count(*) {filter}", connection))
+        {
+            countCommand.Parameters.AddWithValue("station_global", scopes.StationGlobal);
+            countCommand.Parameters.AddWithValue("station_ids", scopes.StationIds);
+            countCommand.Parameters.AddWithValue("organization_global", scopes.OrganizationGlobal);
+            countCommand.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+            total = Convert.ToInt64(await countCommand.ExecuteScalarAsync(cancellationToken));
+        }
+
         const string sql = """
             select rr.id, rr.request_state,
                    p.given_name, p.father_name, p.family_name,
@@ -57,7 +79,7 @@ public sealed class RegistrationService(
                 and (@organization_global or rr.organization_id = any(@organization_ids))
             )
             order by rr.submitted_at, rr.id
-            limit 500;
+            limit @page_size offset @offset;
             """;
 
         await using var command = new NpgsqlCommand(sql, connection);
@@ -65,6 +87,8 @@ public sealed class RegistrationService(
         command.Parameters.AddWithValue("station_ids", scopes.StationIds);
         command.Parameters.AddWithValue("organization_global", scopes.OrganizationGlobal);
         command.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+        command.Parameters.AddWithValue("page_size", pageSize);
+        command.Parameters.AddWithValue("offset", checked((page - 1) * pageSize));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var items = new List<RegistrationApprovalItem>();
         while (await reader.ReadAsync(cancellationToken))
@@ -86,7 +110,7 @@ public sealed class RegistrationService(
                 reader.GetFieldValue<DateTimeOffset>(9)));
         }
 
-        return new RegistrationApprovalQueueResponse(items);
+        return new RegistrationApprovalQueueResponse(items, total, page, pageSize);
     }
 
     public async Task<RegistrationApprovalDecisionResponse> DecideAsync(
