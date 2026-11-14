@@ -76,7 +76,11 @@ class _ShellState extends State<Shell> {
  int page=0;
  final titles=['الرئيسية','الخريطة','المحطات','الرصد','اعتماد المحطات','مراكز التنبؤ','التنبيهات','الإعدادات'];
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
- body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),ForecastCentersPage(client: metraSupabaseClient),AlertsPage(client: metraSupabaseClient),const SettingsPage()]),
+ body:IndexedStack(index:page,children: [HomePage(
+   onOpenMap: () => setState(() => page = 1),
+   onOpenStations: () => setState(() => page = 2),
+   onOpenAlerts: () => setState(() => page = 6),
+ ),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),ForecastCentersPage(client: metraSupabaseClient),AlertsPage(client: metraSupabaseClient),const SettingsPage()]),
  bottomNavigationBar:NavigationBar(height:72,selectedIndex:page,onDestinationSelected:(i)=>setState(()=>page=i),destinations:const [
  NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'الرئيسية'),
  NavigationDestination(icon:Icon(Icons.map_outlined),selectedIcon:Icon(Icons.map),label:'الخريطة'),
@@ -87,15 +91,17 @@ class _ShellState extends State<Shell> {
  NavigationDestination(icon:Icon(Icons.notifications_none),selectedIcon:Icon(Icons.notifications),label:'التنبيهات'),
  NavigationDestination(icon:Icon(Icons.settings_outlined),selectedIcon:Icon(Icons.settings),label:'الإعدادات')]))); }
 
-class HomePage extends StatelessWidget { const HomePage({super.key});
+class HomePage extends StatelessWidget {
+ const HomePage({super.key, required this.onOpenMap, required this.onOpenStations, required this.onOpenAlerts});
+ final VoidCallback onOpenMap, onOpenStations, onOpenAlerts;
  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.fromLTRB(18,18,18,28),children:[
  const Header(),const SizedBox(height:12),Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),decoration:BoxDecoration(color:const Color(0xFFFFF3D8),borderRadius:BorderRadius.circular(12)),child:const Row(children:[Icon(Icons.info_outline,color:Color(0xFF9A6700),size:16),SizedBox(width:7),Expanded(child:Text('الطقس الحالي والتوقعات من Open-Meteo؛ دليل المحطات والتنبيهات وبعض بطاقات العرض لم تُربط بمصادر تشغيلية بعد',style:TextStyle(color:Color(0xFF855B00),fontSize:11,fontWeight:FontWeight.w600)))])),const SizedBox(height:20),const WeatherHero(),const SizedBox(height:20),
  const SectionTitle('توقعات الساعات القادمة','24 ساعة'),
  const HourlyForecastStrip(),
  const SizedBox(height:22),const SectionTitle('مؤشرات الطقس','تفاصيل'),
  const GridMetric(),const SizedBox(height:20),const SectionTitle('نظرة على الخريطة','فتح'),
- const MapPreview(),const SizedBox(height:20),const SectionTitle('المحطات القريبة','عرض المحطات'),
- const StationStrip(),const SizedBox(height:20),const AlertBanner()]);
+ MapPreview(onTap: onOpenMap),const SizedBox(height:20),const SectionTitle('المحطات القريبة','عرض المحطات'),
+ StationStrip(onTap: onOpenStations),const SizedBox(height:20),AlertBanner(onTap: onOpenAlerts)]);
 }
 class Header extends StatelessWidget { const Header({super.key}); @override Widget build(BuildContext context)=>Row(children:[
  Container(width:48,height:48,decoration:BoxDecoration(color:navy,borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.cloud_queue,color:Colors.white,size:29)),
@@ -183,33 +189,82 @@ class _GridMetricState extends State<GridMetric> {
 }
 class MetricTile extends StatelessWidget {const MetricTile(this.icon,this.title,this.value,this.note,this.color,{super.key});final IconData icon;final String title,value,note;final Color color;@override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Row(children:[CircleAvatar(radius:15,backgroundColor:color.withOpacity(.12),child:Icon(icon,color:color,size:17)),const SizedBox(width:7),Expanded(child:Text(title,style:const TextStyle(color:Colors.blueGrey,fontSize:11)))]),Text(value,style:const TextStyle(color:ink,fontSize:18,fontWeight:FontWeight.bold)),Text(note,style:const TextStyle(color:Colors.blueGrey,fontSize:9))]));}
 class MapPreview extends StatelessWidget {
- const MapPreview({super.key});
- @override Widget build(BuildContext context)=>Container(
-  width:double.infinity,padding:const EdgeInsets.all(18),
-  decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),
-  child:Row(children:[
-   Container(width:54,height:54,decoration:BoxDecoration(color:const Color(0xFFE7F1FF),borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.map_outlined,color:blue,size:28)),
-   const SizedBox(width:12),
-   const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    Text('خريطة مواقع المحطات',style:TextStyle(color:ink,fontWeight:FontWeight.bold)),
-    SizedBox(height:5),
-    Text('تعرض الخريطة الرئيسية المحطات المسجلة ذات الإحداثيات الموثقة. طبقة الرادار لم تُربط بعد.',style:TextStyle(color:Colors.blueGrey,fontSize:11)),
-   ])),
-  ]),
+ const MapPreview({super.key, required this.onTap});
+ final VoidCallback onTap;
+
+ @override
+ Widget build(BuildContext context) => Material(
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(22),
+  clipBehavior: Clip.antiAlias,
+  child: InkWell(
+   onTap: onTap,
+   child: Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    child: Row(children:[
+     Container(width:54,height:54,decoration:BoxDecoration(color:const Color(0xFFE7F1FF),borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.map_outlined,color:blue,size:28)),
+     const SizedBox(width:12),
+     const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text('خريطة مواقع المحطات',style:TextStyle(color:ink,fontWeight:FontWeight.bold)),
+      SizedBox(height:5),
+      Text('افتح الخريطة لرؤية مواقع المحطات المسجلة ذات الإحداثيات الموثقة.',style:TextStyle(color:Colors.blueGrey,fontSize:11)),
+     ])),
+     const Icon(Icons.chevron_left,color:blue),
+    ]),
+   ),
+  ),
  );
 }
 class StationStrip extends StatelessWidget {
- const StationStrip({super.key});
- @override Widget build(BuildContext context)=>Container(
-  width:double.infinity,padding:const EdgeInsets.all(17),
-  decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),
-  child:const Row(children:[
-   Icon(Icons.sensors_outlined,color:blue,size:27),SizedBox(width:11),
-   Expanded(child:Text('يُعرض الدليل الموحد للمحطات الكلاسيكية والآلية في صفحة المحطات من قاعدة البيانات، دون إدراج أسماء أو مواقع تجريبية هنا.',style:TextStyle(color:Colors.blueGrey,fontSize:11))),
-  ]),
+ const StationStrip({super.key, required this.onTap});
+ final VoidCallback onTap;
+
+ @override
+ Widget build(BuildContext context)=>Material(
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(20),
+  clipBehavior: Clip.antiAlias,
+  child: InkWell(
+   onTap: onTap,
+   child: Container(
+    width:double.infinity,padding:const EdgeInsets.all(17),
+    child:const Row(children:[
+     Icon(Icons.sensors_outlined,color:blue,size:27),SizedBox(width:11),
+     Expanded(child:Text('افتح دليل المحطات الموحد للمحطات الكلاسيكية والآلية وحالات اعتمادها.',style:TextStyle(color:Colors.blueGrey,fontSize:11))),
+     Icon(Icons.chevron_left,color:blue),
+    ]),
+   ),
+  ),
  );
 }
-class AlertBanner extends StatelessWidget {const AlertBanner({super.key});@override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(borderRadius:BorderRadius.circular(22),gradient:const LinearGradient(colors:[navy,Color(0xFF174C98)])),child:const Row(children:[Icon(Icons.notifications_active_outlined,color:Color(0xFFFFD66B),size:28),SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('التنبيهات الذكية',style:TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),Text('ابقَ على اطلاع بتغيرات الطقس',style:TextStyle(color:Color(0xFFBFD7FA),fontSize:11))])),Icon(Icons.chevron_left,color:Colors.white)]));}
+class AlertBanner extends StatelessWidget {
+ const AlertBanner({super.key, required this.onTap});
+ final VoidCallback onTap;
+
+ @override
+ Widget build(BuildContext context)=>Material(
+  borderRadius:BorderRadius.circular(22),
+  clipBehavior:Clip.antiAlias,
+  child:InkWell(
+   onTap:onTap,
+   child:Container(
+    padding:const EdgeInsets.all(17),
+    decoration:const BoxDecoration(gradient:LinearGradient(colors:[navy,Color(0xFF174C98)])),
+    child:const Row(children:[
+     Icon(Icons.notifications_active_outlined,color:Color(0xFFFFD66B),size:28),
+     SizedBox(width:12),
+     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text('مركز التنبيهات',style:TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
+      Text('عرض أحداث التنبيه المسجلة ضمن صلاحيات حسابك',style:TextStyle(color:Color(0xFFBFD7FA),fontSize:11)),
+     ])),
+     Icon(Icons.chevron_left,color:Colors.white),
+    ]),
+   ),
+  ),
+ );
+}
+
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
