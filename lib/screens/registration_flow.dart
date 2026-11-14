@@ -1,6 +1,7 @@
 import 'package:metra_weather_intelligence/utils/registration_eligibility.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../data/metra_api_client.dart';
 
 class RegistrationGate extends StatefulWidget {
   const RegistrationGate({super.key, required this.homeBuilder});
@@ -19,13 +20,8 @@ class _RegistrationGateState extends State<RegistrationGate> {
   }
 
   Future<Map<String, dynamic>> loadStatus() async {
-    final response = await Supabase.instance.client.functions.invoke(
-      'registration', body: const {'action': 'status'},
-    );
-    if (response.status != 200 || response.data is! Map) {
-      throw Exception('تعذر التحقق من حالة الحساب.');
-    }
-    return Map<String, dynamic>.from(response.data as Map);
+    return MetraApiClient(Supabase.instance.client)
+        .get('/api/v1/registration/status');
   }
 
   void refresh() => setState(() => status = loadStatus());
@@ -183,13 +179,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Future<Map<String, dynamic>> loadCatalog() async {
-    final response = await Supabase.instance.client.functions.invoke(
-      'registration', body: const {'action': 'catalog'},
-    );
-    if (response.status != 200 || response.data is! Map) {
-      throw Exception('تعذر تحميل قائمة الأدوار والمحطات.');
-    }
-    return Map<String, dynamic>.from(response.data as Map);
+    return MetraApiClient(Supabase.instance.client)
+        .get('/api/v1/registration/catalog');
   }
 
   Future<void> submit(List<dynamic> stations) async {
@@ -204,10 +195,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
     setState(() { busy = true; error = null; success = null; });
     try {
-      final response = await Supabase.instance.client.functions.invoke(
-        'registration',
+      final data = await MetraApiClient(Supabase.instance.client).post(
+        '/api/v1/registration',
         body: {
-          'action': 'submit',
           'first_name': first.text.trim(),
           'father_name': father.text.trim(),
           'last_name': last.text.trim(),
@@ -218,12 +208,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           'idempotency_key': idempotencyKey,
         },
       );
-      if (response.status != 200 || response.data is! Map) {
-        throw Exception('تعذر إرسال طلب الانتساب.');
-      }
-      final data = Map<String, dynamic>.from(response.data as Map);
-      final result = data['result'];
-      final status = result is Map ? result['result_status']?.toString() : null;
+      final status = data['result_status']?.toString();
       if (status == 'created' || status == 'already_created') {
         setState(() => success = 'تم إرسال طلب الانتساب بنجاح، وهو بانتظار مراجعة الجهة المختصة.');
       } else if (status == 'existing_pending') {
