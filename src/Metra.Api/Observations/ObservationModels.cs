@@ -48,3 +48,11 @@ public sealed class ObservationAccessDeniedException : Exception
 }
 public sealed class ObservationValidationException(string message) : Exception(message);
 public sealed class ObservationConflictException(string message) : Exception(message);
+
+public sealed record ObservationReviewDecisionRequest(
+    [property: JsonPropertyName("decision")] string Decision,
+    [property: JsonPropertyName("reason")] string Reason);
+
+public sealed record ObservationReviewDecisionResponse(
+    [property: JsonPropertyName("id")] Guid Id,
+    [property: JsonPropertyName("status")] string Status);
