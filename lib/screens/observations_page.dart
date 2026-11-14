@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/metra_api_client.dart';
+import '../data/metra_operations_service.dart';
 
 class ObservationsPage extends StatefulWidget {
   const ObservationsPage({super.key, required this.client});
@@ -44,54 +45,23 @@ class _ObservationsPageState extends State<ObservationsPage> {
     return '$userId-${DateTime.now().microsecondsSinceEpoch}';
   }
 
-  Future<List<Map<String, dynamic>>> _loadPaged(
-    MetraApiClient api,
-    String path, {
-    String listKey = 'items',
-    int pageSize = 200,
-  }) async {
-    var page = 1;
-    var total = 0;
-    final items = <Map<String, dynamic>>[];
-    do {
-      final response = await api.get(
-        path,
-        query: {'page': '$page', 'page_size': '$pageSize'},
-      );
-      final rows = response[listKey];
-      if (rows is! List) throw Exception('استجابة القائمة غير صالحة.');
-      items.addAll(rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)));
-      total = (response['total'] as num?)?.toInt() ?? items.length;
-      if (rows.isEmpty) break;
-      page++;
-    } while (items.length < total);
-    return List<Map<String, dynamic>>.unmodifiable(items);
-  }
-
   Future<Map<String, dynamic>> loadData() async {
     final client = widget.client;
     if (client == null) {
       throw Exception('يلزم إعداد المصادقة وخدمة METRA API.');
     }
-    final api = MetraApiClient(client);
-    final stations = await _loadPaged(
-      api,
-      '/api/v1/observations/stations',
-      listKey: 'stations',
-    );
-    final own = await _loadPaged(api, '/api/v1/observations/mine');
+    final operations = MetraOperationsService.fromSupabase(client);
+    final stations = await operations.fetchObservationStations();
+    final own = await operations.fetchOwnObservations();
     List<Map<String, dynamic>> review = [];
     try {
-      review = await _loadPaged(
-        api,
-        '/api/v1/observations/review-queue',
-      );
+      review = await operations.fetchObservationReviewQueue();
     } on MetraApiException catch (exception) {
       if (exception.statusCode != 403) rethrow;
     }
 
-    final typeResponse = await api.get('/api/v1/reference/observation-types');
-    final parameterResponse = await api.get('/api/v1/reference/parameters');
+    final typeResponse = await operations.fetchObservationTypes();
+    final parameterResponse = await operations.fetchObservationParameters();
     final types = (typeResponse['items'] as List? ?? const [])
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
@@ -238,10 +208,8 @@ class _ObservationsPageState extends State<ObservationsPage> {
       busy = true;
     });
     try {
-      final result = await MetraApiClient(widget.client!).post(
-        '/api/v1/observations',
-        body: {...requestBody, 'idempotency_key': idempotencyKey},
-      );
+      final result = await MetraOperationsService.fromSupabase(widget.client!)
+          .submitObservation({...requestBody, 'idempotency_key': idempotencyKey});
       final id = result['id']?.toString() ?? '';
       final status = result['status']?.toString() ?? '';
       if (id.isEmpty || !const {'draft', 'submitted'}.contains(status)) {
@@ -309,9 +277,9 @@ class _ObservationsPageState extends State<ObservationsPage> {
     if (reason == null || !mounted || widget.client == null || busy) return;
     setState(() => busy = true);
     try {
-      await MetraApiClient(widget.client!).post(
-        '/api/v1/observations/${item['id']}/decisions',
-        body: {'decision': decision, 'reason': reason},
+      await MetraOperationsService.fromSupabase(widget.client!).decideObservation(
+        item['id']?.toString() ?? '',
+        {'decision': decision, 'reason': reason},
       );
       if (!mounted) return;
       _toast(decision == 'approved' ? 'تم اعتماد الرصد.' : 'أعيد الرصد للتصحيح.');
