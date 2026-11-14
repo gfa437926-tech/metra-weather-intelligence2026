@@ -44,3 +44,44 @@ public sealed record RegistrationSubmissionResponse(
 
 public sealed class RegistrationValidationException(string message) : Exception(message);
 public sealed class RegistrationConflictException(string message) : Exception(message);
+
+public sealed record RegistrationApprovalApplicant(
+    [property: JsonPropertyName("first_name")] string? FirstName,
+    [property: JsonPropertyName("father_name")] string? FatherName,
+    [property: JsonPropertyName("last_name")] string? LastName);
+
+public sealed record RegistrationApprovalStation(
+    [property: JsonPropertyName("name_ar")] string NameAr,
+    [property: JsonPropertyName("local_station_code")] string LocalStationCode);
+
+public sealed record RegistrationApprovalRole(
+    [property: JsonPropertyName("name_ar")] string NameAr);
+
+public sealed record RegistrationApprovalItem(
+    [property: JsonPropertyName("id")] Guid Id,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("review_stage")] string ReviewStage,
+    [property: JsonPropertyName("applicant")] RegistrationApprovalApplicant Applicant,
+    [property: JsonPropertyName("station")] RegistrationApprovalStation Station,
+    [property: JsonPropertyName("requested_role")] RegistrationApprovalRole RequestedRole,
+    [property: JsonPropertyName("requested_role_code")] string RequestedRoleCode,
+    [property: JsonPropertyName("submitted_at")] DateTimeOffset SubmittedAt);
+
+public sealed record RegistrationApprovalQueueResponse(
+    [property: JsonPropertyName("items")] IReadOnlyList<RegistrationApprovalItem> Items);
+
+public sealed record RegistrationApprovalDecisionRequest(
+    [property: JsonPropertyName("expected_status")] string ExpectedStatus,
+    [property: JsonPropertyName("decision")] string Decision,
+    [property: JsonPropertyName("note")] string? Note);
+
+public sealed record RegistrationApprovalDecisionResponse(
+    [property: JsonPropertyName("result_status")] string ResultStatus,
+    [property: JsonPropertyName("resulting_status")] string ResultingStatus);
+
+public sealed class RegistrationApprovalAccessDeniedException : Exception
+{
+    public RegistrationApprovalAccessDeniedException() : base("The current user cannot review this registration request.") { }
+}
+public sealed class RegistrationApprovalConflictException(string message) : Exception(message);
+public sealed class RegistrationApprovalValidationException(string message) : Exception(message);
