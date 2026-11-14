@@ -4,10 +4,15 @@ import '../domain/station_record.dart';
 import 'metra_api_client.dart';
 
 class StationDirectoryService {
-  StationDirectoryService(this._client);
-  final SupabaseClient _client;
+  StationDirectoryService(
+    this._client, {
+    MetraApiClient? apiClient,
+  }) : _apiClient = apiClient;
 
-  MetraApiClient get _api => MetraApiClient(_client);
+  final SupabaseClient _client;
+  final MetraApiClient? _apiClient;
+
+  MetraApiClient get _api => _apiClient ?? MetraApiClient(_client);
 
   Future<List<StationRecord>> fetchStations() async {
     const pageSize = 200;
