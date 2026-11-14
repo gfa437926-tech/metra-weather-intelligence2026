@@ -1,4 +1,7 @@
--- Initial registration workflow persistence for the NEW METRA project.
+
+-- Registration persistence foundation for the NEW METRA project only.
+-- Existing legacy database is not referenced by this migration.
+
 alter table public.metra_user_profiles
   add column phone text,
   add constraint metra_user_profiles_phone_check
@@ -21,6 +24,7 @@ create table public.metra_role_catalogue (
   constraint metra_role_catalogue_name_en_check check (length(trim(name_en)) between 1 and 160),
   constraint metra_role_catalogue_display_order_check check (display_order between 0 and 10000)
 );
+
 create trigger metra_role_catalogue_set_updated_at
   before update on public.metra_role_catalogue
   for each row execute function private.set_updated_at();
@@ -52,12 +56,16 @@ create table public.registration_requests (
     check (length(trim(terms_version)) between 1 and 64 and terms_version = trim(terms_version)),
   constraint registration_requests_idempotency_key_check
     check (length(trim(idempotency_key)) between 1 and 128 and idempotency_key = trim(idempotency_key)),
-  constraint registration_requests_payload_hash_check check (octet_length(payload_hash) = 32),
+  constraint registration_requests_payload_hash_check
+    check (octet_length(payload_hash) = 32),
   constraint registration_requests_phone_check
     check (phone_snapshot is null or (length(trim(phone_snapshot)) between 1 and 40 and phone_snapshot = trim(phone_snapshot))),
-  constraint registration_requests_review_consistency check ((reviewed_by is null) = (reviewed_at is null)),
-  constraint registration_requests_review_note_check check (review_note is null or length(review_note) <= 2000)
+  constraint registration_requests_review_consistency
+    check ((reviewed_by is null) = (reviewed_at is null)),
+  constraint registration_requests_review_note_check
+    check (review_note is null or length(review_note) <= 2000)
 );
+
 create unique index registration_requests_user_idempotency_uq
   on public.registration_requests(user_id, idempotency_key);
 create unique index registration_requests_one_open_per_user_uq
@@ -69,6 +77,7 @@ create index registration_requests_queue_system_idx
   on public.registration_requests(status, submitted_at desc, id desc);
 create index registration_requests_user_history_idx
   on public.registration_requests(user_id, submitted_at desc, id desc);
+
 create trigger registration_requests_set_updated_at
   before update on public.registration_requests
   for each row execute function private.set_updated_at();
@@ -84,8 +93,10 @@ create table public.registration_audit_events (
   occurred_at timestamptz not null default now(),
   constraint registration_audit_event_type_check
     check (event_type in ('registration_submitted','station_approved','station_rejected','system_approved','system_rejected')),
-  constraint registration_audit_terms_version_check check (length(trim(terms_version)) between 1 and 64),
-  constraint registration_audit_correlation_id_check check (correlation_id is null or length(correlation_id) <= 128)
+  constraint registration_audit_terms_version_check
+    check (length(trim(terms_version)) between 1 and 64),
+  constraint registration_audit_correlation_id_check
+    check (correlation_id is null or length(correlation_id) <= 128)
 );
 create index registration_audit_request_history_idx
   on public.registration_audit_events(request_id, occurred_at desc, id desc);
@@ -93,24 +104,33 @@ create index registration_audit_user_history_idx
   on public.registration_audit_events(user_id, occurred_at desc, id desc);
 
 create or replace function private.reject_registration_audit_mutation()
-returns trigger language plpgsql set search_path = pg_catalog
+returns trigger
+language plpgsql
+set search_path = pg_catalog
 as $$
 begin
-  raise exception 'registration audit events are append-only' using errcode = '55000';
+  raise exception 'registration audit events are append-only'
+    using errcode = '55000';
 end;
 $$;
 revoke all on function private.reject_registration_audit_mutation() from public, anon, authenticated;
+
 create trigger registration_audit_events_append_only
   before update or delete on public.registration_audit_events
   for each row execute function private.reject_registration_audit_mutation();
 
 create or replace function private.validate_registration_request_catalogue()
-returns trigger language plpgsql set search_path = pg_catalog, public
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
 as $$
-declare station_ok boolean; role_ok boolean;
+declare
+  station_ok boolean;
+  role_ok boolean;
 begin
   select exists (
-    select 1 from public.station_catalogue s
+    select 1
+    from public.station_catalogue s
     join public.meteorological_authorities a on a.id = s.owner_authority_id
     where s.id = new.requested_station_id
       and s.owner_authority_id = new.requested_authority_id
@@ -120,24 +140,31 @@ begin
       and a.is_active = true
     for share of s, a
   ) into station_ok;
+
   select exists (
-    select 1 from public.metra_role_catalogue r
+    select 1
+    from public.metra_role_catalogue r
     where r.role_code = new.requested_role_code
-      and r.is_active = true and r.is_requestable = true
+      and r.is_active = true
+      and r.is_requestable = true
     for share
   ) into role_ok;
+
   if not station_ok then
     raise exception 'requested station is not selectable'
       using errcode = '23514', constraint = 'registration_requests_station_selectable';
   end if;
+
   if not role_ok then
     raise exception 'requested role is not requestable'
       using errcode = '23514', constraint = 'registration_requests_role_requestable';
   end if;
+
   return new;
 end;
 $$;
 revoke all on function private.validate_registration_request_catalogue() from public, anon, authenticated;
+
 create trigger registration_requests_validate_catalogue
   before insert on public.registration_requests
   for each row execute function private.validate_registration_request_catalogue();
@@ -145,12 +172,14 @@ create trigger registration_requests_validate_catalogue
 alter table public.metra_role_catalogue enable row level security;
 alter table public.registration_requests enable row level security;
 alter table public.registration_audit_events enable row level security;
+
 create policy metra_role_catalogue_deny_clients on public.metra_role_catalogue
   for all to anon, authenticated using (false) with check (false);
 create policy registration_requests_deny_clients on public.registration_requests
   for all to anon, authenticated using (false) with check (false);
 create policy registration_audit_events_deny_clients on public.registration_audit_events
   for all to anon, authenticated using (false) with check (false);
+
 revoke all on table public.metra_role_catalogue, public.registration_requests,
   public.registration_audit_events from anon, authenticated;
 grant all on table public.metra_role_catalogue, public.registration_requests,
@@ -158,8 +187,8 @@ grant all on table public.metra_role_catalogue, public.registration_requests,
 grant usage, select on sequence public.registration_audit_events_id_seq to service_role;
 
 comment on table public.metra_role_catalogue is
-  'Canonical METRA role codes; empty until domain owners approve role definitions.';
+  'Canonical METRA role codes and requestability; empty catalogue is intentionally fail-closed until domain owners approve role definitions.';
 comment on table public.registration_requests is
-  'Initial METRA registration workflow. Requested role/station are not effective grants until approval completes.';
+  'Initial METRA registration workflow. Auth UUID is the one-to-one account key in the current schema; requested role/station are not effective grants until both approval stages complete.';
 comment on table public.registration_audit_events is
-  'Append-only registration and approval audit events.';
+  'Append-only registration approval and submission audit events. No client access; UPDATE and DELETE are rejected by trigger.';
