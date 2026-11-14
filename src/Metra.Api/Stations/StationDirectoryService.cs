@@ -10,7 +10,8 @@ public interface IStationDirectoryService
         Guid userId,
         int page,
         int pageSize,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string requiredPermissionCode = "stations.read");
 }
 
 public sealed class StationDirectoryService(
@@ -21,7 +22,8 @@ public sealed class StationDirectoryService(
         Guid userId,
         int page,
         int pageSize,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string requiredPermissionCode = "stations.read")
     {
         var currentUser = await currentUserService.GetAsync(userId, cancellationToken);
         if (currentUser is null ||
@@ -31,7 +33,7 @@ public sealed class StationDirectoryService(
         }
 
         var stationPermissions = currentUser.Permissions
-            .Where(p => string.Equals(p.PermissionCode, "stations.read", StringComparison.Ordinal))
+            .Where(p => string.Equals(p.PermissionCode, requiredPermissionCode, StringComparison.Ordinal))
             .ToArray();
 
         var isGlobal = stationPermissions.Any(p =>
