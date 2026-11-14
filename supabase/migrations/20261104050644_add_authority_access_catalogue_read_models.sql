@@ -53,4 +53,3 @@ REVOKE ALL ON FUNCTION public.get_authority_membership_roles(uuid) FROM PUBLIC,a
 REVOKE ALL ON FUNCTION public.get_authority_permission_options(uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_authority_membership_roles(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_authority_permission_options(uuid,uuid) TO service_role;
-
