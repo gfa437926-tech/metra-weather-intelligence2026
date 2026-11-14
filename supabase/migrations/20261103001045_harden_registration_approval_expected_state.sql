@@ -1,6 +1,4 @@
--- Extend the decision RPC with an expected state so stale application-layer
--- reads can never be reinterpreted as a decision at a later approval stage.
--- Also revalidate the station and requestable role before station-stage approval.
+
 do $migration$
 declare
   v_definition text;
@@ -54,6 +52,7 @@ begin
      or position('select s.owner_authority_id into v_authority_id' in v_definition)=0 then
     raise exception 'approval RPC hardening transformation failed';
   end if;
+
   execute v_definition;
 end
 $migration$;
