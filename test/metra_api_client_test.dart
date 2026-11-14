@@ -78,6 +78,11 @@ void main() {
         '/api/../admin',
         '/api/v1/stations?token=secret',
         '/api/v1/stations#fragment',
+        '/%2e%2e/admin',
+        '/%252e%252e/admin',
+        '/api/%2fadmin',
+        r'/api\\admin',
+        '/api/%5cadmin',
       ]) {
         expect(
           () => buildMetraApiUri(base, path, const {}),
