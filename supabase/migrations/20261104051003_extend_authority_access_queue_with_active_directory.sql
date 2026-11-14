@@ -37,4 +37,3 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.get_authority_access_queue(uuid,text,uuid,integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_authority_access_queue(uuid,text,uuid,integer) TO service_role;
-
