@@ -199,4 +199,3 @@ revoke all on table public.metra_equipment_faults from public, anon, authenticat
 revoke all on table public.metra_equipment_fault_audit_events from public, anon, authenticated;
 grant select, insert, update on table public.metra_equipment_faults to service_role;
 grant select, insert on table public.metra_equipment_fault_audit_events to service_role;
-
