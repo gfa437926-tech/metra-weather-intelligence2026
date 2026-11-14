@@ -1,5 +1,3 @@
--- Pin the accepted terms version and use database time for registration audit timestamps.
--- The client timestamp parameter is retained for RPC signature compatibility but is not trusted.
 create or replace function public.submit_metra_registration(
   p_auth_user_id uuid,
   p_first_name text,
@@ -23,10 +21,12 @@ begin
   if auth.uid() is null or auth.uid() <> p_auth_user_id then
     raise exception 'registration_user_mismatch' using errcode = '42501';
   end if;
+
   if p_terms_version is distinct from 'metra-terms-2026-11' then
     return query select 'terms_version_invalid'::text, null::uuid, null::uuid;
     return;
   end if;
+
   if not exists (
     select 1 from public.metra_role_catalogue r
      where r.role_code = trim(p_role_code)
@@ -35,14 +35,17 @@ begin
     return query select 'role_not_requestable'::text, null::uuid, null::uuid;
     return;
   end if;
+
   select s.owner_authority_id into v_authority_id
     from public.station_catalogue s
     join public.meteorological_authorities a on a.id = s.owner_authority_id
    where s.id = p_station_id and s.is_demo = false and a.is_active = true;
+
   if v_authority_id is null then
     return query select 'station_not_available'::text, null::uuid, null::uuid;
     return;
   end if;
+
   return query
     select r.result_status, r.account_id, r.request_id
       from private.submit_metra_registration(
