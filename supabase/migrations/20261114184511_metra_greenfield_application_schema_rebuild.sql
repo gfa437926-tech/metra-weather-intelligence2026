@@ -1025,4 +1025,3 @@ grant execute on all functions in schema private to service_role;
 revoke all on all functions in schema private from public, anon, authenticated;
 
 -- No application tables are exposed through public/PostgREST. Auth and Storage remain intact.
-
