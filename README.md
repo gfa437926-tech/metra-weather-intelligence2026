@@ -66,6 +66,7 @@ flutter build web --release
 - [تتبع المتطلبات](docs/DATABASE-REQUIREMENTS-TRACEABILITY.md)
 - [تقرير التنفيذ والتحقق](docs/DATABASE-REBUILD-EXECUTION-2026-11-14.md)
 - [جاهزية التنفيذ والخطوات المتبقية](docs/DATABASE-IMPLEMENTATION-READINESS.md)
+- [عقد ترحيل .NET API الآمن](docs/API-MIGRATION-CONTRACT.md)
 
 ## ملاحظات إعادة البناء
 
