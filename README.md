@@ -89,3 +89,24 @@ flutter build web --release
 سجل migrations للتغييرات الأخيرة موجود في مشروع Supabase، لكن ملفات SQL المصدرية المطابقة لم تُلتزم في Git بعد بسبب عدم توفر Supabase CLI في بيئة التنفيذ. يجب حفظ ملفات migrations المصدرية في المستودع قبل اعتبار إعادة البناء من Git مكتملة.
 
 لا تعدّل قاعدة METRA القديمة أو مستودعها، ولا تستورد منها أي بيانات.
+
+## Current implementation status (2026-11-14)
+
+The development branch now contains:
+
+- Database-backed .NET 10 endpoints for identity, station directory/review, registration submission/two-stage approval, meteorological reference catalogues, and typed observation submission/history/review.
+- Flutter station, registration, station-review, observation and approval screens now call the .NET API rather than the legacy Supabase Edge Function endpoints.
+- Flutter observation fields are generated from `ref.parameters`; while that scientific catalogue is empty, measurement submission is intentionally disabled rather than showing invented weather fields or limits.
+- A structured `father_name` profile field and explicit station/organization registration-review permissions were added by the new additive migration `20261114203913_metra_registration_review_permissions_and_father_name`.
+- CI currently builds .NET, runs scoped-authorization unit tests, type-checks/tests retained Edge Function source, analyzes Flutter, runs Flutter tests and builds the Web release.
+
+### Verified boundaries and remaining blockers
+
+- The new database schema remains the 46-table greenfield design; no legacy data was imported.
+- The .NET code builds, but live database-backed execution is not yet verified: `METRA_DATABASE_CONNECTION_STRING`, a least-privilege runtime login/grants and a hosting target are not configured.
+- The three earlier greenfield rebuild migrations are recorded in the remote Supabase history, but their matching SQL source files are still absent from Git. The newly added additive migration source is present and version-aligned.
+- No organization/station/user seed data has been added. The reference observation types exist, but scientific parameter and unit definitions remain empty pending approved meteorological definitions.
+- Station creation/update, user administration, forecast ingestion, alerts, operations, file access, exports, full observation revisions and disposable-database integration/security tests remain incomplete.
+- Legacy Edge Functions are no longer called by the migrated Flutter screens, but their deployed copies have not yet been retired.
+
+The repository is not yet a deployable final release. Do not treat successful compilation as proof of live database integration.
