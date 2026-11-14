@@ -332,7 +332,7 @@ app.MapGet("/api/v1/reference/observation-types", async (
     {
         var user = await currentUserService.GetAsync(userId, cancellationToken);
         if (user is null || user.ProfileState != "active") return Results.Forbid();
-        return Results.Ok(await referenceData.GetObservationTypesAsync(cancellationToken));
+        return Results.Ok(new { items = await referenceData.GetObservationTypesAsync(cancellationToken) });
     }
     catch (DatabaseNotConfiguredException)
     {
@@ -357,7 +357,7 @@ app.MapGet("/api/v1/reference/parameters", async (
     {
         var user = await currentUserService.GetAsync(userId, cancellationToken);
         if (user is null || user.ProfileState != "active") return Results.Forbid();
-        return Results.Ok(await referenceData.GetParametersAsync(cancellationToken));
+        return Results.Ok(new { items = await referenceData.GetParametersAsync(cancellationToken) });
     }
     catch (DatabaseNotConfiguredException)
     {
