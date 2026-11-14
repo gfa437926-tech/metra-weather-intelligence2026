@@ -1,0 +1,13 @@
+.git
+.github
+**/bin
+**/obj
+**/.dart_tool
+**/build
+**/node_modules
+.env
+.env.*
+*.pfx
+*.pem
+*.key
+secrets/
