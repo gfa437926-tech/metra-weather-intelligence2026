@@ -18,7 +18,7 @@ public sealed class CurrentUserService(MetraDatabase database) : ICurrentUserSer
         await using var connection = await database.OpenConnectionAsync(cancellationToken);
 
         const string profileSql = """
-            select user_id, email, display_name, given_name, family_name, profile_state
+            select user_id, email, display_name, given_name, father_name, family_name, profile_state
             from iam.user_profiles
             where user_id = @user_id
             limit 1;
@@ -28,6 +28,7 @@ public sealed class CurrentUserService(MetraDatabase database) : ICurrentUserSer
         string? email;
         string? displayName;
         string? givenName;
+        string? fatherName;
         string? familyName;
         string profileState;
 
@@ -44,14 +45,15 @@ public sealed class CurrentUserService(MetraDatabase database) : ICurrentUserSer
             email = reader.IsDBNull(1) ? null : reader.GetString(1);
             displayName = reader.IsDBNull(2) ? null : reader.GetString(2);
             givenName = reader.IsDBNull(3) ? null : reader.GetString(3);
-            familyName = reader.IsDBNull(4) ? null : reader.GetString(4);
-            profileState = reader.GetString(5);
+            fatherName = reader.IsDBNull(4) ? null : reader.GetString(4);
+            familyName = reader.IsDBNull(5) ? null : reader.GetString(5);
+            profileState = reader.GetString(6);
         }
 
         if (!string.Equals(profileState, "active", StringComparison.Ordinal))
         {
             return new CurrentUserResponse(
-                profileUserId, email, displayName, givenName, familyName,
+                profileUserId, email, displayName, givenName, fatherName, familyName,
                 profileState, [], []);
         }
 
@@ -209,6 +211,7 @@ public sealed class CurrentUserService(MetraDatabase database) : ICurrentUserSer
             email,
             displayName,
             givenName,
+            fatherName,
             familyName,
             profileState,
             memberships.Values.Select(m => m.Build()).ToArray(),
