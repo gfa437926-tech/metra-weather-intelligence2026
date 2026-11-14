@@ -167,4 +167,23 @@ void main() {
     expect(requestCount, 0);
     client.close();
   });
+  test('parseStationRows rejects invalid collection and malformed rows', () {
+    expect(() => parseStationRows(null), throwsA(isA<StationDirectoryException>()));
+    expect(() => parseStationRows({'id': 'station-1'}), throwsA(isA<StationDirectoryException>()));
+    expect(
+      () => parseStationRows([station('one001'), 'corrupt-row']),
+      throwsA(isA<StationDirectoryException>()),
+    );
+    expect(
+      () => parseStationRows([{'id': '  '}]),
+      throwsA(isA<StationDirectoryException>()),
+    );
+  });
+
+  test('parseStationRows returns an immutable station list', () {
+    final parsed = parseStationRows([station('one001')]);
+    expect(parsed, hasLength(1));
+    expect(() => (parsed as List).add('invalid'), throwsUnsupportedError);
+  });
+
 }
