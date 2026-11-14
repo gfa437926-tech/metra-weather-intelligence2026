@@ -309,8 +309,8 @@ public sealed class RegistrationService(
                 : roleCode is "observer" or "station_manager" or "data_reviewer" or "maintenance_technician"
                     ? "station"
                     : "organization";
-            var assignmentUnitId = scopeType == "unit" ? unitId : null;
-            var assignmentStationId = scopeType == "station" ? stationId : null;
+            Guid? assignmentUnitId = scopeType == "unit" ? unitId : null;
+            Guid? assignmentStationId = scopeType == "station" ? stationId : null;
 
             const string assignmentSql = """
                 insert into iam.role_assignments (
