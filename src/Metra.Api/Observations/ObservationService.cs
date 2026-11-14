@@ -76,6 +76,14 @@ public sealed class ObservationService(
                 reader.GetFieldValue<DateTimeOffset>(8)));
         }
 
+        await reader.CloseAsync();
+        var valuesBySubmission = await LoadValuesAsync(
+            connection, items.Select(item => item.Id).ToArray(), cancellationToken);
+        items = items.Select(item => item with
+        {
+            Values = valuesBySubmission.GetValueOrDefault(item.Id, [])
+        }).ToList();
+
         return new ObservationListResponse(items, total, page, pageSize);
     }
 
@@ -524,6 +532,52 @@ public sealed class ObservationService(
 
         await transaction.CommitAsync(cancellationToken);
         return new ObservationSubmissionResponse(submissionId, submissionState, false);
+    }
+
+    private static async Task<Dictionary<Guid, IReadOnlyList<ObservationValueResponse>>> LoadValuesAsync(
+        NpgsqlConnection connection,
+        Guid[] submissionIds,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<Guid, List<ObservationValueResponse>>();
+        if (submissionIds.Length == 0) return [];
+
+        const string sql = """
+            select v.submission_id, p.parameter_code, p.name_ar, v.value_kind,
+                   v.value_decimal, v.value_integer, v.value_text, v.value_boolean,
+                   u.symbol
+            from observations."values" v
+            join ref.parameters p on p.id = v.parameter_id
+            left join ref.units u on u.id = v.unit_id
+            where v.submission_id = any(@submission_ids)
+            order by v.submission_id, p.parameter_code, v.sequence_number;
+            """;
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("submission_ids", submissionIds);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var submissionId = reader.GetGuid(0);
+            if (!result.TryGetValue(submissionId, out var values))
+            {
+                values = [];
+                result.Add(submissionId, values);
+            }
+
+            values.Add(new ObservationValueResponse(
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetDecimal(4),
+                reader.IsDBNull(5) ? null : reader.GetInt64(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6),
+                reader.IsDBNull(7) ? null : reader.GetBoolean(7),
+                reader.IsDBNull(8) ? null : reader.GetString(8)));
+        }
+
+        return result.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<ObservationValueResponse>)pair.Value);
     }
 
     private static void Validate(ObservationSubmissionRequest request)
