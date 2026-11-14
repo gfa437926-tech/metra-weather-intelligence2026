@@ -1,4 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:metra_weather_intelligence/data/metra_api_client.dart';
 
 void main() {
@@ -92,4 +95,82 @@ void main() {
       }
     });
   });
+  group('MetraApiClient HTTP behavior', () {
+    SupabaseClient authClient() =>
+        SupabaseClient('https://auth.example.test', 'public-test-key');
+
+    test('does not send a request when the access token is missing', () async {
+      var requests = 0;
+      final transport = MockClient((_) async {
+        requests++;
+        return http.Response('{}', 200);
+      });
+      final api = MetraApiClient(
+        authClient(),
+        baseUrl: 'https://api.example.test',
+        httpClient: transport,
+        accessTokenProvider: () => null,
+      );
+
+      await expectLater(
+        api.get('/api/v1/me'),
+        throwsA(isA<MetraApiException>().having((e) => e.statusCode, 'statusCode', 401)),
+      );
+      expect(requests, 0);
+      transport.close();
+    });
+
+    test('preserves server status while returning a safe message', () async {
+      final transport = MockClient((_) async => http.Response('private server detail', 503));
+      final api = MetraApiClient(
+        authClient(),
+        baseUrl: 'https://api.example.test',
+        httpClient: transport,
+        accessTokenProvider: () => 'test-token',
+      );
+
+      await expectLater(
+        api.get('/api/v1/me'),
+        throwsA(isA<MetraApiException>()
+            .having((e) => e.statusCode, 'statusCode', 503)
+            .having((e) => e.message, 'message', isNot(contains('private server detail')))),
+      );
+      transport.close();
+    });
+
+    test('rejects malformed JSON from a successful API response', () async {
+      final transport = MockClient((_) async => http.Response('<html>proxy error</html>', 200));
+      final api = MetraApiClient(
+        authClient(),
+        baseUrl: 'https://api.example.test',
+        httpClient: transport,
+        accessTokenProvider: () => 'test-token',
+      );
+
+      await expectLater(
+        api.get('/api/v1/me'),
+        throwsA(isA<MetraApiException>().having((e) => e.statusCode, 'statusCode', 502)),
+      );
+      transport.close();
+    });
+
+    test('normalizes transport exceptions to a retryable service error', () async {
+      final transport = MockClient((_) async => throw Exception('socket details'));
+      final api = MetraApiClient(
+        authClient(),
+        baseUrl: 'https://api.example.test',
+        httpClient: transport,
+        accessTokenProvider: () => 'test-token',
+      );
+
+      await expectLater(
+        api.get('/api/v1/me'),
+        throwsA(isA<MetraApiException>()
+            .having((e) => e.statusCode, 'statusCode', 503)
+            .having((e) => e.message, 'message', isNot(contains('socket details')))),
+      );
+      transport.close();
+    });
+  });
+
 }
