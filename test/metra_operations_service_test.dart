@@ -138,8 +138,8 @@ void main() {
     final api = service(transport);
 
     for (final id in ['', '  ', '../other', 'id?x=1', 'id#fragment', r'id\other']) {
-      await expectLater(
-        api.decideObservation(id, {'decision': 'approved', 'reason': 'checked'}),
+      expect(
+        () => api.decideObservation(id, {'decision': 'approved', 'reason': 'checked'}),
         throwsArgumentError,
       );
     }
