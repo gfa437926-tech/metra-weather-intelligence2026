@@ -1,5 +1,4 @@
--- Harden account replay classification; this replaces the same RPC body
--- while retaining its one-statement atomic transaction and least-privilege grant.
+
 create or replace function public.submit_metra_registration(
   p_auth_user_id uuid,
   p_first_name text,
@@ -13,7 +12,8 @@ create or replace function public.submit_metra_registration(
   p_idempotency_key text
 )
 returns table (result_status text, account_id uuid, request_id uuid)
-language plpgsql security definer
+language plpgsql
+security definer
 set search_path = pg_catalog, public, extensions
 as $$
 declare
@@ -36,15 +36,25 @@ begin
     raise exception 'invalid registration submission' using errcode = '22023';
   end if;
 
-  v_payload_hash := extensions.digest(convert_to(jsonb_build_object(
-    'version', 1, 'first_name', trim(p_first_name),
-    'father_name', trim(p_father_name), 'last_name', trim(p_last_name),
-    'phone', nullif(trim(p_phone), ''), 'role_code', trim(p_role_code),
-    'station_id', p_station_id::text, 'terms_version', trim(p_terms_version)
-  )::text, 'UTF8'), 'sha256');
+  v_payload_hash := extensions.digest(
+    convert_to(jsonb_build_object(
+      'version', 1,
+      'first_name', trim(p_first_name),
+      'father_name', trim(p_father_name),
+      'last_name', trim(p_last_name),
+      'phone', nullif(trim(p_phone), ''),
+      'role_code', trim(p_role_code),
+      'station_id', p_station_id::text,
+      'terms_version', trim(p_terms_version)
+    )::text, 'UTF8'),
+    'sha256'
+  );
 
-  select r.* into v_existing from public.registration_requests r
-   where r.user_id = p_auth_user_id and r.idempotency_key = trim(p_idempotency_key);
+  select r.* into v_existing
+    from public.registration_requests r
+   where r.user_id = p_auth_user_id
+     and r.idempotency_key = trim(p_idempotency_key);
+
   if found then
     if v_existing.payload_hash = v_payload_hash then
       return query select 'already_created'::text, p_auth_user_id, v_existing.id;
@@ -59,23 +69,32 @@ begin
     return query select 'auth_user_already_linked'::text, null::uuid, null::uuid;
     return;
   end if;
-  if exists (select 1 from public.registration_requests r where r.user_id = p_auth_user_id
-      and r.status in ('pending_station_approval','pending_system_approval')) then
+
+  if exists (
+    select 1 from public.registration_requests r
+     where r.user_id = p_auth_user_id
+       and r.status in ('pending_station_approval','pending_system_approval')
+  ) then
     return query select 'existing_pending'::text, null::uuid, null::uuid;
     return;
   end if;
 
   select s.owner_authority_id into v_authority_id
-    from public.station_catalogue s where s.id = p_station_id;
+    from public.station_catalogue s
+   where s.id = p_station_id;
+
   if v_authority_id is null then
     return query select 'station_not_available'::text, null::uuid, null::uuid;
     return;
   end if;
 
   insert into public.metra_user_profiles(user_id, first_name, father_name, last_name, phone)
-  values (p_auth_user_id, trim(p_first_name), trim(p_father_name), trim(p_last_name), nullif(trim(p_phone), ''));
+  values (p_auth_user_id, trim(p_first_name), trim(p_father_name),
+          trim(p_last_name), nullif(trim(p_phone), ''));
+
   insert into public.metra_account_states(user_id, account_state, requested_by)
   values (p_auth_user_id, 'pending_station_approval', p_auth_user_id);
+
   insert into public.registration_requests(
     user_id, requested_station_id, requested_authority_id, requested_role_code,
     status, phone_snapshot, terms_version, terms_accepted_at, submitted_at,
@@ -85,14 +104,21 @@ begin
     'pending_station_approval', nullif(trim(p_phone), ''), trim(p_terms_version),
     p_submitted_at, p_submitted_at, trim(p_idempotency_key), v_payload_hash
   ) returning id into v_request_id;
+
   insert into public.registration_audit_events(
     request_id, user_id, actor_user_id, event_type, terms_version, occurred_at
-  ) values (v_request_id, p_auth_user_id, p_auth_user_id,
-            'registration_submitted', trim(p_terms_version), p_submitted_at);
+  ) values (
+    v_request_id, p_auth_user_id, p_auth_user_id,
+    'registration_submitted', trim(p_terms_version), p_submitted_at
+  );
+
   return query select 'created'::text, p_auth_user_id, v_request_id;
 end;
 $$;
-revoke all on function public.submit_metra_registration(uuid,text,text,text,text,text,uuid,text,timestamptz,text)
-  from public, anon, authenticated;
-grant execute on function public.submit_metra_registration(uuid,text,text,text,text,text,uuid,text,timestamptz,text)
-  to service_role;
+
+revoke all on function public.submit_metra_registration(
+  uuid, text, text, text, text, text, uuid, text, timestamptz, text
+) from public, anon, authenticated;
+grant execute on function public.submit_metra_registration(
+  uuid, text, text, text, text, text, uuid, text, timestamptz, text
+) to service_role;
