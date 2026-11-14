@@ -12,6 +12,10 @@ on:
       - "scripts/verify_migration_source.py"
       - ".github/workflows/migration-source-generator.yml"
 
+concurrency:
+  group: metra-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
