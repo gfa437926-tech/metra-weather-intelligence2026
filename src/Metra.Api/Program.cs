@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Metra.Api.Data;
 using Metra.Api.Identity;
 using Metra.Api.Stations;
+using Metra.Api.Registration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +26,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddSingleton<MetraDatabase>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStationDirectoryService, StationDirectoryService>();
+builder.Services.AddScoped<IRegistrationService, RegistrationService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -195,6 +197,118 @@ app.MapGet("/api/v1/stations", async (
     {
         return Results.Problem(
             title: "The station directory is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.RequireAuthorization();
+
+
+app.MapGet("/api/v1/registration/status", async (
+    ClaimsPrincipal principal,
+    IRegistrationService registrationService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        return Results.Ok(await registrationService.GetStatusAsync(userId, cancellationToken));
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "Registration status is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(
+            title: "Registration status is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.RequireAuthorization();
+
+app.MapGet("/api/v1/registration/catalog", async (
+    ClaimsPrincipal principal,
+    ICurrentUserService currentUserService,
+    IRegistrationService registrationService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var currentUser = await currentUserService.GetAsync(userId, cancellationToken);
+        if (currentUser is null || currentUser.ProfileState != "active")
+        {
+            return Results.Forbid();
+        }
+
+        return Results.Ok(await registrationService.GetCatalogAsync(cancellationToken));
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "Registration catalogue is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(
+            title: "Registration catalogue is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.RequireAuthorization();
+
+app.MapPost("/api/v1/registration", async (
+    RegistrationSubmissionRequest request,
+    ClaimsPrincipal principal,
+    IRegistrationService registrationService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        return Results.Ok(await registrationService.SubmitAsync(userId, request, cancellationToken));
+    }
+    catch (RegistrationValidationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["registration"] = [exception.Message]
+        });
+    }
+    catch (RegistrationConflictException exception)
+    {
+        return Results.Problem(
+            title: exception.Message,
+            statusCode: StatusCodes.Status409Conflict);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "Registration service is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(
+            title: "Registration service is temporarily unavailable",
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 })
