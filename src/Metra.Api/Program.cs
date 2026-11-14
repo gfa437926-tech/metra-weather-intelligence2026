@@ -2,9 +2,11 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Metra.Api.Data;
 using Metra.Api.Identity;
+using Metra.Api.Stations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
 builder.Services.AddSingleton<MetraDatabase>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IStationDirectoryService, StationDirectoryService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -100,7 +103,7 @@ app.MapGet("/health/ready", async (MetraDatabase database, CancellationToken can
                 title: "Database is not configured or unavailable",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-    catch (Npgsql.NpgsqlException)
+    catch (NpgsqlException)
     {
         return Results.Problem(
             title: "Database is not configured or unavailable",
@@ -142,10 +145,56 @@ app.MapGet("/api/v1/me", async (
             title: "The identity service is temporarily unavailable",
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-    catch (Npgsql.NpgsqlException)
+    catch (NpgsqlException)
     {
         return Results.Problem(
             title: "The identity service is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.RequireAuthorization();
+
+app.MapGet("/api/v1/stations", async (
+    HttpRequest request,
+    ClaimsPrincipal principal,
+    IStationDirectoryService stationDirectory,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!int.TryParse(request.Query["page"], out var page)) page = 1;
+    if (!int.TryParse(request.Query["page_size"], out var pageSize)) pageSize = 100;
+    if (page < 1 || pageSize is < 1 or > 200)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["pagination"] = ["page must be positive and page_size must be between 1 and 200."]
+        });
+    }
+
+    try
+    {
+        return Results.Ok(await stationDirectory.GetAsync(
+            userId, page, pageSize, cancellationToken));
+    }
+    catch (StationDirectoryAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "The station directory is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(
+            title: "The station directory is temporarily unavailable",
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 })
