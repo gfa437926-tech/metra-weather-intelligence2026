@@ -21,8 +21,9 @@ public sealed class MetraDatabase : IAsyncDisposable
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
         var allowInsecureLocalhost = configuration.GetValue<bool>(
             "MetraDatabase:AllowInsecureLocalhost");
-        var isLoopbackHost = builder.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || (IPAddress.TryParse(builder.Host, out var address) && IPAddress.IsLoopback(address));
+        var host = builder.Host ?? string.Empty;
+        var isLoopbackHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || (IPAddress.TryParse(host, out var address) && IPAddress.IsLoopback(address));
 
         builder.SslMode = allowInsecureLocalhost && isLoopbackHost
             ? SslMode.Disable
