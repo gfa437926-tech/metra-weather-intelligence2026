@@ -35,6 +35,9 @@ jobs:
           if ! find supabase/migrations -maxdepth 1 -type f -name '*_metra_registration_review_permissions_and_father_name.sql' | grep -q .; then
             supabase migration new metra_registration_review_permissions_and_father_name
           fi
+          if ! find supabase/migrations -maxdepth 1 -type f -name '*_metra_api_runtime_privileges.sql' | grep -q .; then
+            supabase migration new metra_api_runtime_privileges
+          fi
 
       - name: Commit generated migration source
         shell: bash
