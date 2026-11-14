@@ -150,7 +150,7 @@ Uri buildMetraApiUri(
     return decoded == '.' ||
         decoded == '..' ||
         decoded.contains('/') ||
-        decoded.contains('\\\\');
+        decoded.contains(String.fromCharCode(92));
   });
   final route = Uri.tryParse(path);
   if (route == null ||
@@ -160,7 +160,7 @@ Uri buildMetraApiUri(
       route.hasFragment ||
       !path.startsWith('/') ||
       path.startsWith('//') ||
-      path.contains('\\\\') ||
+      path.contains(String.fromCharCode(92)) ||
       path.contains('?') ||
       path.contains('#') ||
       hasUnsafeSegment) {
