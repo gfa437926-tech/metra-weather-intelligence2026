@@ -1,3 +1,4 @@
+
 create extension if not exists btree_gist with schema extensions;
 
 drop index if exists public.station_access_grants_one_pending_or_active;
