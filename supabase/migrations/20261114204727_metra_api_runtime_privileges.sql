@@ -11,9 +11,6 @@ begin
 end
 $$;
 
-alter role metra_api_runtime
-  nologin nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
-
 comment on role metra_api_runtime is
   'Non-login, non-BYPASSRLS least-privilege role for the METRA ASP.NET API. A separate managed login must be granted membership; never connect as postgres or service_role.';
 
