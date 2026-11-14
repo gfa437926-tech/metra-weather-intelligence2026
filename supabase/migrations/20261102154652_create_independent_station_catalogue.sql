@@ -1,3 +1,4 @@
+
 create extension if not exists pg_trgm with schema extensions;
 
 create table public.countries (
@@ -99,8 +100,7 @@ create table public.station_coordinates (
   constraint station_coordinates_accuracy_check check (accuracy_m is null or accuracy_m >= 0),
   constraint station_coordinates_validity_check check (valid_to is null or valid_to > valid_from)
 );
-create unique index station_coordinates_one_current_per_station
-  on public.station_coordinates(station_id) where valid_to is null;
+create unique index station_coordinates_one_current_per_station on public.station_coordinates(station_id) where valid_to is null;
 create index station_coordinates_location_idx on public.station_coordinates(latitude, longitude);
 
 create table public.station_access_grants (
@@ -136,8 +136,7 @@ create table public.station_audit_log (
   constraint station_audit_entity_type_check check (entity_type in ('country','authority','station','coordinate','access_grant')),
   constraint station_audit_action_nonempty check (length(trim(action)) > 0)
 );
-create index station_audit_entity_history_idx
-  on public.station_audit_log(entity_type, entity_id, occurred_at desc);
+create index station_audit_entity_history_idx on public.station_audit_log(entity_type, entity_id, occurred_at desc);
 create index station_audit_occurred_at_idx on public.station_audit_log(occurred_at desc);
 
 alter table public.countries enable row level security;
