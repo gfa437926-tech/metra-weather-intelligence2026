@@ -12,6 +12,10 @@ public interface IObservationService
         Guid userId, int page, int pageSize, CancellationToken cancellationToken);
     Task<ObservationSubmissionResponse> SubmitAsync(
         Guid userId, ObservationSubmissionRequest request, CancellationToken cancellationToken);
+    Task<ObservationListResponse> GetReviewQueueAsync(
+        Guid userId, int page, int pageSize, CancellationToken cancellationToken);
+    Task<ObservationReviewDecisionResponse> DecideAsync(
+        Guid userId, Guid submissionId, ObservationReviewDecisionRequest request, CancellationToken cancellationToken);
 }
 
 public sealed class ObservationService(
@@ -73,6 +77,215 @@ public sealed class ObservationService(
         }
 
         return new ObservationListResponse(items, total, page, pageSize);
+    }
+
+    public async Task<ObservationListResponse> GetReviewQueueAsync(
+        Guid userId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active")
+            throw new ObservationAccessDeniedException();
+
+        var scopes = ResolveScopes(user.Permissions, "observations.review");
+        if (!scopes.IsGlobal && scopes.OrganizationIds.Length == 0 && scopes.StationIds.Length == 0)
+            throw new ObservationAccessDeniedException();
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        const string filter = """
+            from observations.submissions s
+            join catalog.stations st on st.id = s.station_id
+            where s.submission_state in ('submitted', 'under_review')
+              and (
+                @is_global
+                or st.owner_organization_id = any(@organization_ids)
+                or s.station_id = any(@station_ids)
+              )
+            """;
+        long total;
+        await using (var command = new NpgsqlCommand($"select count(*) {filter}", connection))
+        {
+            command.Parameters.AddWithValue("is_global", scopes.IsGlobal);
+            command.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+            command.Parameters.AddWithValue("station_ids", scopes.StationIds);
+            total = Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken));
+        }
+
+        const string sql = """
+            select s.id, s.station_id, st.station_code, st.name_ar,
+                   ot.type_code, s.observed_at, s.submission_state,
+                   s.revision_number, s.created_at
+            from observations.submissions s
+            join catalog.stations st on st.id = s.station_id
+            join ref.observation_types ot on ot.id = s.observation_type_id
+            where s.submission_state in ('submitted', 'under_review')
+              and (
+                @is_global
+                or st.owner_organization_id = any(@organization_ids)
+                or s.station_id = any(@station_ids)
+              )
+            order by s.submitted_at, s.id
+            limit @page_size offset @offset;
+            """;
+        await using var listCommand = new NpgsqlCommand(sql, connection);
+        listCommand.Parameters.AddWithValue("is_global", scopes.IsGlobal);
+        listCommand.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+        listCommand.Parameters.AddWithValue("station_ids", scopes.StationIds);
+        listCommand.Parameters.AddWithValue("page_size", pageSize);
+        listCommand.Parameters.AddWithValue("offset", checked((page - 1) * pageSize));
+        await using var reader = await listCommand.ExecuteReaderAsync(cancellationToken);
+        var items = new List<ObservationListItem>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new ObservationListItem(
+                reader.GetGuid(0),
+                reader.GetGuid(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.GetString(4),
+                reader.GetFieldValue<DateTimeOffset>(5),
+                reader.GetString(6),
+                reader.GetInt32(7),
+                reader.GetFieldValue<DateTimeOffset>(8)));
+        }
+
+        return new ObservationListResponse(items, total, page, pageSize);
+    }
+
+    public async Task<ObservationReviewDecisionResponse> DecideAsync(
+        Guid userId,
+        Guid submissionId,
+        ObservationReviewDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateDecision(request);
+        var user = await currentUserService.GetAsync(userId, cancellationToken);
+        if (user is null || user.ProfileState != "active")
+            throw new ObservationAccessDeniedException();
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string lockSql = """
+            select s.station_id, s.author_user_id, s.submission_state, st.owner_organization_id
+            from observations.submissions s
+            join catalog.stations st on st.id = s.station_id
+            where s.id = @submission_id
+            for update of s;
+            """;
+        Guid stationId;
+        Guid authorUserId;
+        string previousState;
+        Guid organizationId;
+        await using (var command = new NpgsqlCommand(lockSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("submission_id", submissionId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+                throw new ObservationConflictException("سجل الرصد غير موجود أو لم يعد متاحاً.");
+            stationId = reader.GetGuid(0);
+            authorUserId = reader.GetGuid(1);
+            previousState = reader.GetString(2);
+            organizationId = reader.GetGuid(3);
+        }
+
+        if (authorUserId == userId ||
+            !PermissionScopeEvaluator.Allows(
+                user.Permissions, "observations.review", organizationId, null, stationId))
+            throw new ObservationAccessDeniedException();
+
+        if (previousState is not ("submitted" or "under_review"))
+            throw new ObservationConflictException("تغيرت حالة الرصد؛ حدّث قائمة المراجعة قبل اتخاذ القرار.");
+
+        const string updateSql = """
+            update observations.submissions
+            set submission_state = @decision,
+                updated_at = now()
+            where id = @submission_id
+              and submission_state = @expected_state;
+            """;
+        await using (var command = new NpgsqlCommand(updateSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("decision", request.Decision.Trim());
+            command.Parameters.AddWithValue("submission_id", submissionId);
+            command.Parameters.AddWithValue("expected_state", previousState);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+                throw new ObservationConflictException("تغيرت حالة الرصد أثناء المراجعة.");
+        }
+
+        const string reviewSql = """
+            insert into observations.review_decisions (
+                submission_id, reviewer_user_id, decision, reason, decided_at
+            )
+            values (@submission_id, @reviewer_id, @decision, @reason, now());
+            """;
+        await using (var command = new NpgsqlCommand(reviewSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("submission_id", submissionId);
+            command.Parameters.AddWithValue("reviewer_id", userId);
+            command.Parameters.AddWithValue("decision", request.Decision.Trim());
+            command.Parameters.AddWithValue("reason", request.Reason.Trim());
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        var metadata = JsonSerializer.Serialize(new
+        {
+            previous_state = previousState,
+            resulting_state = request.Decision.Trim()
+        });
+        const string auditSql = """
+            insert into audit.events (
+                occurred_at, actor_user_id, action_code, entity_schema, entity_table,
+                entity_id, organization_id, station_id, outcome, correlation_id, metadata
+            )
+            values (
+                now(), @actor_user_id, 'observation.review_decided', 'observations', 'submissions',
+                @entity_id, @organization_id, @station_id, 'success', @correlation_id, @metadata
+            );
+            """;
+        await using (var command = new NpgsqlCommand(auditSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("actor_user_id", userId);
+            command.Parameters.AddWithValue("entity_id", submissionId);
+            command.Parameters.AddWithValue("organization_id", organizationId);
+            command.Parameters.AddWithValue("station_id", stationId);
+            command.Parameters.AddWithValue("correlation_id", Guid.NewGuid());
+            command.Parameters.Add(new NpgsqlParameter("metadata", NpgsqlDbType.Jsonb) { Value = metadata });
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return new ObservationReviewDecisionResponse(submissionId, request.Decision.Trim());
+    }
+
+    private static (bool IsGlobal, Guid[] OrganizationIds, Guid[] StationIds) ResolveScopes(
+        IEnumerable<PermissionScopeResponse> permissions,
+        string permissionCode)
+    {
+        var scopes = permissions.Where(p =>
+            string.Equals(p.PermissionCode, permissionCode, StringComparison.Ordinal)).ToArray();
+        var global = scopes.Any(p => p.ScopeType == "global" &&
+            p.OrganizationId is null && p.UnitId is null && p.StationId is null);
+        var organizations = scopes
+            .Where(p => p.ScopeType == "organization" && p.OrganizationId is not null
+                && p.UnitId is null && p.StationId is null)
+            .Select(p => p.OrganizationId!.Value).Distinct().ToArray();
+        var stations = scopes
+            .Where(p => p.ScopeType == "station" && p.StationId is not null
+                && p.OrganizationId is not null && p.UnitId is null)
+            .Select(p => p.StationId!.Value).Distinct().ToArray();
+        return (global, organizations, stations);
+    }
+
+    private static void ValidateDecision(ObservationReviewDecisionRequest request)
+    {
+        if (request.Decision is not ("approved" or "returned" or "rejected"))
+            throw new ObservationValidationException("قرار مراجعة الرصد غير مدعوم.");
+        if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length < 3 ||
+            request.Reason.Trim().Length > 2000)
+            throw new ObservationValidationException("سبب القرار يجب أن يكون بين 3 و2000 محرف.");
     }
 
     public async Task<ObservationSubmissionResponse> SubmitAsync(
