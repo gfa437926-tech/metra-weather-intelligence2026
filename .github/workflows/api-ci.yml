@@ -1,0 +1,30 @@
+name: METRA API CI
+
+on:
+  push:
+    branches:
+      - work/database-architecture-fresh-design-2026-11-14
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore src/Metra.Api/Metra.Api.csproj
+
+      - name: Build
+        run: dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release --no-restore
