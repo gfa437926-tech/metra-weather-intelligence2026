@@ -36,7 +36,7 @@ class SetupRequiredPage extends StatelessWidget {
   const SetupRequiredPage({super.key});
 
   @override
-  Widget build(BuildContext context) => const Directionality(
+  Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: Scaffold(
       body: Center(
