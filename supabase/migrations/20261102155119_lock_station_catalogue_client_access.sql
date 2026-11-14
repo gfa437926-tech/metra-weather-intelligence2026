@@ -1,3 +1,4 @@
+
 do $$
 declare
   t text;
@@ -26,4 +27,5 @@ begin
   end loop;
 end
 $$;
+
 revoke all on schema private from public, anon, authenticated;
