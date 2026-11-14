@@ -48,13 +48,13 @@ class MetraApiClient {
       );
     }
 
-    final base = _baseUrl.replaceFirst(RegExp(r'/+$'), '');
-    final uri = Uri.parse('$base$path').replace(queryParameters: query.isEmpty ? null : query);
     final headers = <String, String>{
       'Accept': 'application/json',
       'Authorization': 'Bearer $token',
     };
     try {
+      final baseUri = parseMetraApiBaseUri(_baseUrl);
+      final uri = buildMetraApiUri(baseUri, path, query);
       final response = method == 'GET'
           ? await _httpClient.get(uri, headers: headers).timeout(const Duration(seconds: 15))
           : await _httpClient
@@ -72,7 +72,15 @@ class MetraApiClient {
         );
       }
 
-      final decoded = jsonDecode(response.body);
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } on FormatException {
+        throw const MetraApiException(
+          statusCode: 502,
+          message: 'استجابة خدمة METRA غير صالحة.',
+        );
+      }
       if (decoded is Map<String, dynamic>) return decoded;
       throw const MetraApiException(
         statusCode: 502,
@@ -98,6 +106,48 @@ class MetraApiClient {
         >= 500 => 'خدمة METRA غير متاحة مؤقتاً.',
         _ => 'تعذر تنفيذ الطلب إلى خدمة METRA.',
       };
+}
+
+Uri parseMetraApiBaseUri(String value) {
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null ||
+      uri.scheme.toLowerCase() != 'https' ||
+      uri.host.isEmpty ||
+      uri.userInfo.isNotEmpty ||
+      uri.hasQuery ||
+      uri.hasFragment) {
+    throw const MetraApiException(
+      statusCode: 0,
+      message: 'يجب ضبط عنوان خدمة METRA API بعنوان HTTPS صالح وآمن.',
+    );
+  }
+
+  return uri.replace(path: uri.path.replaceFirst(RegExp(r'/+$'), ''));
+}
+
+Uri buildMetraApiUri(
+  Uri baseUri,
+  String path,
+  Map<String, String> query,
+) {
+  final route = Uri.tryParse(path);
+  if (route == null ||
+      route.hasScheme ||
+      route.hasAuthority ||
+      route.hasQuery ||
+      route.hasFragment ||
+      !route.path.startsWith('/') ||
+      route.path.split('/').any((segment) => segment == '.' || segment == '..')) {
+    throw const MetraApiException(
+      statusCode: 0,
+      message: 'مسار طلب METRA API غير صالح.',
+    );
+  }
+
+  return baseUri.replace(
+    path: '${baseUri.path}${route.path}',
+    queryParameters: query.isEmpty ? null : query,
+  );
 }
 
 class MetraApiException implements Exception {
