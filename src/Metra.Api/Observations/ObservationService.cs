@@ -29,7 +29,9 @@ public sealed class ObservationService(
         CancellationToken cancellationToken)
     {
         var user = await currentUserService.GetAsync(userId, cancellationToken);
-        if (user is null || user.ProfileState != "active")
+        if (user is null || user.ProfileState != "active" ||
+            !user.Permissions.Any(permission =>
+                permission.PermissionCode is "observations.read_own" or "observations.read_station"))
             throw new ObservationAccessDeniedException();
 
         await using var connection = await database.OpenConnectionAsync(cancellationToken);
