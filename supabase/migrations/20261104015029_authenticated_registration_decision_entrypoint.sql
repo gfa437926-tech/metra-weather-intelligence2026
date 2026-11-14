@@ -1,5 +1,3 @@
--- Authenticated wrapper for the private two-stage approval transaction.
--- The actor is bound to auth.uid(); the database clock is authoritative.
 create or replace function public.decide_metra_registration(
   p_request_id uuid,
   p_expected_status text,
