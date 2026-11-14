@@ -173,4 +173,3 @@ revoke all on table public.metra_support_incidents from public, anon, authentica
 revoke all on table public.metra_support_incident_audit_events from public, anon, authenticated;
 grant select, insert, update on table public.metra_support_incidents to service_role;
 grant select, insert on table public.metra_support_incident_audit_events to service_role;
-
