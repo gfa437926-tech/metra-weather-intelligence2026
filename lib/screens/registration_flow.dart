@@ -414,14 +414,9 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
   }
 
   Future<List<Map<String, dynamic>>> loadQueue() async {
-    final response = await Supabase.instance.client.functions.invoke(
-      'registration-approvals', body: const {'action': 'queue'},
-    );
-    if (response.status != 200 || response.data is! Map) {
-      throw Exception('تعذر تحميل قائمة الاعتمادات أو لا توجد صلاحية للمراجعة.');
-    }
-    final data = Map<String, dynamic>.from(response.data as Map);
-    return (data['items'] as List? ?? const [])
+    final response = await MetraApiClient(Supabase.instance.client)
+        .get('/api/v1/registration/approvals');
+    return (response['items'] as List? ?? const [])
       .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
   }
 
@@ -463,17 +458,6 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
     return result;
   }
 
-  String decisionError(dynamic data) {
-    final code = data is Map ? data['error']?.toString() : null;
-    const messages = {
-      'permission_denied': 'لا تملك صلاحية تنفيذ هذا القرار.',
-      'account_not_active': 'الحساب غير نشط.',
-      'registration_state_conflict': 'تغيرت حالة الطلب بواسطة مراجع آخر. حدّث القائمة.',
-      'registration_request_not_found': 'الطلب غير موجود أو لم يعد متاحاً.',
-      'invalid_decision_payload': 'بيانات القرار غير مكتملة أو غير صالحة.',
-    };
-    return messages[code] ?? 'تعذر تنفيذ قرار الاعتماد. تحقق من الاتصال والصلاحيات.';
-  }
 
   String? expectedResultingStatus(String stage, String decision) {
     if (decision == 'reject' &&
@@ -501,27 +485,16 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
       if (expectedResult == null) {
         throw Exception('مرحلة الطلب أو القرار غير صالحين. حدّث القائمة.');
       }
-      final response = await Supabase.instance.client.functions.invoke(
-        'registration-approvals',
+      final result = await MetraApiClient(Supabase.instance.client).post(
+        '/api/v1/registration/$requestId/decisions',
         body: {
-          'action': 'decide',
-          'request_id': requestId,
           'expected_status': expected,
           'decision': decision,
           'note': note,
         },
       );
-      if (response.status != 200 || response.data is! Map) {
-        throw Exception(decisionError(response.data));
-      }
-      final body = Map<String, dynamic>.from(response.data as Map);
-      final result = body['result'];
-      if (result is! Map ||
-          result['result_status'] != 'committed' ||
+      if (result['result_status'] != 'committed' ||
           result['resulting_status'] != expectedResult) {
-        if (result is Map && result['result_status'] == 'conflict') {
-          throw Exception('تغيرت حالة الطلب. تم تحديث القائمة.');
-        }
         throw Exception('لم يؤكد الخادم حفظ الحالة الناتجة المتوقعة للقرار.');
       }
       if (!mounted) return;
