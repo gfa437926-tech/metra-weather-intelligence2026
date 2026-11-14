@@ -8,7 +8,8 @@ namespace Metra.Api.Stations;
 
 public interface IStationReviewService
 {
-    Task<StationReviewQueueResponse> GetQueueAsync(Guid userId, CancellationToken cancellationToken);
+    Task<StationReviewQueueResponse> GetQueueAsync(
+        Guid userId, int page, int pageSize, CancellationToken cancellationToken);
     Task<StationReviewDecisionResponse> DecideAsync(
         Guid userId,
         Guid stationId,
@@ -22,6 +23,8 @@ public sealed class StationReviewService(
 {
     public async Task<StationReviewQueueResponse> GetQueueAsync(
         Guid userId,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken)
     {
         var user = await currentUserService.GetAsync(userId, cancellationToken);
@@ -33,6 +36,25 @@ public sealed class StationReviewService(
             throw new StationReviewAccessDeniedException();
 
         await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        const string filterSql = """
+            from catalog.stations s
+            where s.approval_status in ('pending', 'changes_requested')
+              and (
+                @is_global
+                or s.owner_organization_id = any(@organization_ids)
+                or s.id = any(@station_ids)
+              )
+            """;
+
+        long total;
+        await using (var countCommand = new NpgsqlCommand($"select count(*) {filterSql}", connection))
+        {
+            countCommand.Parameters.AddWithValue("is_global", scopes.IsGlobal);
+            countCommand.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
+            countCommand.Parameters.AddWithValue("station_ids", scopes.StationIds);
+            total = Convert.ToInt64(await countCommand.ExecuteScalarAsync(cancellationToken));
+        }
+
         const string sql = """
             select s.id, s.station_code, s.name_ar, s.name_en, st.type_code,
                    s.operational_status, s.approval_status, s.owner_organization_id,
@@ -56,13 +78,15 @@ public sealed class StationReviewService(
                 or s.id = any(@station_ids)
               )
             order by s.created_at, s.id
-            limit 500;
+            limit @page_size offset @offset;
             """;
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("is_global", scopes.IsGlobal);
         command.Parameters.AddWithValue("organization_ids", scopes.OrganizationIds);
         command.Parameters.AddWithValue("station_ids", scopes.StationIds);
+        command.Parameters.AddWithValue("page_size", pageSize);
+        command.Parameters.AddWithValue("offset", checked((page - 1) * pageSize));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var stations = new List<StationReviewItem>();
         while (await reader.ReadAsync(cancellationToken))
@@ -89,7 +113,7 @@ public sealed class StationReviewService(
                 coordinate));
         }
 
-        return new StationReviewQueueResponse(stations);
+        return new StationReviewQueueResponse(stations, total, page, pageSize);
     }
 
     public async Task<StationReviewDecisionResponse> DecideAsync(
