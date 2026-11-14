@@ -29,4 +29,3 @@ create policy metra_observation_records_deny_all
  using(false) with check(false);
 comment on table public.metra_observation_records is
  'Normalized immutable import envelope for legacy meteorological observations. Raw meteorological payload excludes user identity/contact/authentication fields. Pending backend-only access.';
-
