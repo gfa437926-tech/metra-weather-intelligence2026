@@ -31,3 +31,6 @@ jobs:
 
       - name: Build API
         run: dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release --no-restore
+
+      - name: Build API container
+        run: docker build --tag metra-api:ci .
