@@ -94,7 +94,7 @@ public sealed class CurrentUserService(MetraDatabase database) : ICurrentUserSer
         if (memberships.Count == 0)
         {
             return new CurrentUserResponse(
-                profileUserId, email, displayName, givenName, familyName,
+                profileUserId, email, displayName, givenName, fatherName, familyName,
                 profileState, [], []);
         }
 
