@@ -1,39 +1,40 @@
-name: Flutter CI
+name: METRA application CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - work/database-architecture-fresh-design-2026-11-14
+      - main
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  analyze-test-build:
+  flutter:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check Supabase Edge Functions
-        run: deno check --no-lock supabase/functions/station-directory/index.ts
-      - name: Type-check registration Edge Function
-        run: deno check --no-lock supabase/functions/registration/index.ts
-      - name: Type-check registration approvals Edge Function
-        run: deno check --no-lock supabase/functions/registration-approvals/index.ts
-      - name: Test registration approval transaction response validation
-        run: deno test --no-lock supabase/functions/registration-approvals/validation_test.ts
-      - name: Test registration approval query batching
-        run: deno test --no-lock supabase/functions/registration-approvals/batching_test.ts
-      - name: Type-check observations Edge Function
-        run: deno check --no-lock supabase/functions/observations/index.ts
-      - name: Test Supabase Edge Function permission rules
-        run: deno test --no-lock supabase/functions/station-directory/permissions_test.ts
-      - name: Test operational observation payload validation
-        run: deno test --no-lock supabase/functions/observations/validation_test.ts
-      - name: Type-check station catalogue review Edge Function
-        run: deno check --no-lock supabase/functions/station-review/index.ts
-      - name: Test station catalogue review validation
-        run: deno test --no-lock supabase/functions/station-review/validation_test.ts
+      # These checks validate the retained Edge Function source only.
+      # The deployed functions are not compatible with the greenfield schema yet.
+      - name: Type-check retained Edge Functions
+        run: |
+          deno check --no-lock supabase/functions/station-directory/index.ts
+          deno check --no-lock supabase/functions/registration/index.ts
+          deno check --no-lock supabase/functions/registration-approvals/index.ts
+          deno check --no-lock supabase/functions/observations/index.ts
+          deno check --no-lock supabase/functions/station-review/index.ts
+      - name: Test Edge Function validation and authorization helpers
+        run: |
+          deno test --no-lock supabase/functions/registration-approvals/validation_test.ts
+          deno test --no-lock supabase/functions/registration-approvals/batching_test.ts
+          deno test --no-lock supabase/functions/station-directory/permissions_test.ts
+          deno test --no-lock supabase/functions/observations/validation_test.ts
+          deno test --no-lock supabase/functions/station-review/validation_test.ts
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -55,3 +56,15 @@ jobs:
           path: build/web
           if-no-files-found: error
           retention-days: 14
+
+  dotnet-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore API
+        run: dotnet restore src/Metra.Api/Metra.Api.csproj
+      - name: Build API
+        run: dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release --no-restore
