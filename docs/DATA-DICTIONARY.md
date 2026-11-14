@@ -1,481 +1,631 @@
-# METRA Weather Intelligence — Data Dictionary
+# METRA Weather Intelligence — قاموس البيانات والقيود
 
-**Status:** Draft for review; not a production schema contract  
-**Related ERD:** [DATABASE-ERD.md](DATABASE-ERD.md)  
-**Design mode:** Greenfield only; no legacy schema/data import.  
-**Type notation:** PostgreSQL types are proposed physical types unless marked TBD. All IDs are UUID. All timestamps are `timestamptz`. All constraints below are logical proposals; SQL is deferred until approval.
+**الحالة:** مسودة تفصيلية للمراجعة؛ ليست DDL مطبقة.  
+**المبدأ:** تصميم جديد؛ لا نقل بيانات ولا استنساخ مخطط قديم.  
+**الأنواع:** PostgreSQL مقترحة. PK مفتاح أساسي، FK أجنبي، UQ تفرد، NN إلزامي، CK تحقق، IDX فهرس.
 
-## 1. Conventions
+## 1. قواعد مشتركة
 
-- `PK`: primary key; `FK`: foreign key; `UQ`: unique; `NN`: NOT NULL.
-- `created_at` / `updated_at` are UTC instants maintained by the trusted server/database. Append-only records omit `updated_at`.
-- `valid_from` inclusive and `valid_to` exclusive; NULL `valid_to` means open-ended.
-- Status values shown are provisional workflow labels observed in current application code, not an approved global enum.
-- Scientific parameters, valid ranges, precision, units, formulas and QC thresholds are TBD until approved by the meteorological domain owner.
-- “Synthetic” means explicitly marked test fixture data; it must never be confused with operational observations.
+- UUID للمعرفات؛ `timestamptz` للأوقات المطلقة.
+- كل جدول تشغيلي يملك PK، وحقول created_at/updated_at حسب قابلية التعديل.
+- الفترات: valid_from < valid_to، مع منع التداخل حيث يلزم.
+- actor يشتق من JWT/سياق API موثوق، لا من client.
+- لا كلمات مرور أو مفاتيح API أو service-role أو أسرار في الجداول.
+- كل حالات lifecycle مضبوطة بقيم معروفة.
+- لا تُحذف سجلات الرصد والقرارات والتدقيق لإخفاء التاريخ.
+- الحدود والدقة العلمية **TBD** حتى اعتماد مختص الأرصاد.
 
-## 2. IAM schema
+## 2. IAM — schema `iam`
 
-### 2.1 `iam.user_profiles` — MVP
-
-**Purpose:** App profile linked 1:1 to the immutable identity-provider subject. Passwords, access tokens and secrets are never stored here.
-
-| Column | Type | Null | Default | Constraints / meaning |
+### user_profiles
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| auth_subject | uuid | No | — | UQ; immutable external Auth user UUID |
-| display_name | text | Yes | — | Display-only; not an authorization input |
-| preferred_language | varchar(16) | No | 'ar' | Locale code; allowed values TBD |
-| account_state | varchar(32) | No | 'pending' | CHECK from approved account lifecycle (e.g. pending, active, blocked, rejected) |
-| state_reason | text | Yes | — | Administrative explanation; access restricted |
-| created_at | timestamptz | No | now() | Creation instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
+| id | uuid | لا | PK | معرف الملف |
+| auth_subject | uuid | لا | UQ | subject خارجي من Auth |
+| display_name | text | نعم | CK غير فارغ عند وجوده | الاسم المعروض |
+| preferred_locale | text | لا | CK قائمة لغات معتمدة | اللغة |
+| profile_state | text | لا | CK active/disabled/pending_review | حالة الملف |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| updated_at | timestamptz | نعم | — | التحديث |
 
-**Indexes:** unique(auth_subject); index(account_state).  
-**Relationships:** 1:N memberships, role_assignments, permission_grants as subject/grantor, station_reviews, observation_submissions, observation_revisions, observation_review_decisions, audit events.  
-**Open issue:** profile display name source and retention.
-
-### 2.2 `iam.organizations` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### organizations
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(64) | No | — | UQ; stable organization code |
-| name_ar | text | No | — | Arabic display name |
-| name_en | text | Yes | — | English display name |
-| organization_state | varchar(24) | No | 'active' | CHECK; active/suspended/closed pending approval |
-| created_at | timestamptz | No | now() | Creation instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | رمز الجهة |
+| name_ar | text | لا | CK غير فارغ | الاسم العربي |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| organization_state | text | لا | CK active/suspended/closed | الحالة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| updated_at | timestamptz | نعم | — | التحديث |
 
-**Relationships:** 1:N organization_units, memberships, stations, and organization-scoped role assignments/grants.  
-**Open issue:** official organization taxonomy and owner are TBD.
-
-### 2.3 `iam.organization_units` — MVP (optional hierarchy)
-
-| Column | Type | Null | Default | Constraints / meaning |
+### organization_units
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| organization_id | uuid | No | — | FK → organizations.id |
-| parent_unit_id | uuid | Yes | — | Self-FK; parent must belong to same organization |
-| code | varchar(64) | No | — | UQ within organization |
-| name_ar | text | No | — | Arabic label |
-| name_en | text | Yes | — | English label |
-| created_at | timestamptz | No | now() | Creation instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
+| id | uuid | لا | PK | المعرف |
+| organization_id | uuid | لا | FK organizations؛ IDX | الجهة |
+| parent_unit_id | uuid | نعم | FK self؛ IDX | الوحدة الأم |
+| code | text | لا | UQ(organization_id,code) | رمز داخل الجهة |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| unit_state | text | لا | CK active/inactive | الحالة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** unique(organization_id, code); no self-parent; prevent hierarchy cycles in trusted transaction.  
-**Relationships:** N:1 organization; 1:N child units, memberships and stations.
-
-### 2.4 `iam.memberships` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### memberships
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| user_id | uuid | No | — | FK → user_profiles.id |
-| organization_id | uuid | No | — | FK → organizations.id |
-| organization_unit_id | uuid | Yes | — | FK → organization_units.id; same organization |
-| membership_state | varchar(24) | No | 'pending' | CHECK; pending/active/suspended/rejected/ended TBD |
-| requested_at | timestamptz | No | now() | Request time |
-| approved_at | timestamptz | Yes | — | Approval time |
-| approved_by | uuid | Yes | — | FK → user_profiles.id |
-| valid_from | timestamptz | No | now() | Inclusive |
-| valid_to | timestamptz | Yes | — | Exclusive; must exceed valid_from |
-| created_at | timestamptz | No | now() | Creation instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
+| id | uuid | لا | PK | المعرف |
+| user_id | uuid | لا | FK user_profiles؛ IDX | المستخدم |
+| organization_id | uuid | لا | FK organizations؛ IDX | الجهة |
+| organization_unit_id | uuid | نعم | FK organization_units؛ IDX | الوحدة |
+| membership_state | text | لا | CK requested/active/suspended/ended | الحالة |
+| valid_from | timestamptz | نعم | CK مع valid_to | بداية السريان |
+| valid_to | timestamptz | نعم | CK valid_from < valid_to | النهاية |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| created_by | uuid | نعم | FK user_profiles | منشئ العضوية |
 
-**Indexes:** (user_id, membership_state), (organization_id, membership_state), FK indexes.  
-**Constraints:** valid_from < valid_to; unit belongs to organization; approval actor required when state=active.  
-**Open issue:** whether repeated membership creates a new row or reactivates a historical row.
-
-### 2.5 `iam.roles` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### roles
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(80) | No | — | UQ immutable role code |
-| name_ar | text | No | — | Arabic label |
-| name_en | text | Yes | — | English label |
-| is_requestable | boolean | No | false | Whether user may request this role |
-| is_system_role | boolean | No | false | Reserved/system-controlled role |
-| is_active | boolean | No | true | Registry lifecycle |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ؛ صيغة code معتمدة | رمز ثابت |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| description | text | نعم | — | الوصف |
+| is_requestable | boolean | لا | default false | قابل للطلب |
+| is_system | boolean | لا | default false | دور محمي |
+| role_state | text | لا | CK active/retired | الحالة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** code format TBD; inactive roles cannot receive new assignments. Exact role set requires approval.
-
-### 2.6 `iam.permissions` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### permissions
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(120) | No | — | UQ immutable permission code |
-| description | text | No | — | Precise action/resource semantics |
-| is_sensitive | boolean | No | false | Requires privileged review |
-| is_active | boolean | No | true | Registry lifecycle |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | رمز domain.action |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| description | text | نعم | — | الوصف |
+| risk_level | text | لا | CK low/medium/high/critical | الخطورة |
+| permission_state | text | لا | CK active/retired | الحالة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** permission code is namespaced (e.g. resource.action); exact catalogue TBD.
-
-### 2.7 `iam.role_permissions` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### role_permissions
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| role_id | uuid | No | — | PK part; FK → roles.id |
-| permission_id | uuid | No | — | PK part; FK → permissions.id |
-| created_at | timestamptz | No | now() | Mapping creation |
+| role_id | uuid | لا | PK جزء + FK roles | الدور |
+| permission_id | uuid | لا | PK جزء + FK permissions | الصلاحية |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| created_by | uuid | نعم | FK user_profiles | المعتمد |
 
-**Constraints:** PK(role_id, permission_id); only active registry entries can be assigned by administrative transaction.
+PK(role_id, permission_id).
 
-### 2.8 `iam.role_assignments` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### role_assignments
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| user_id | uuid | No | — | FK → user_profiles.id |
-| membership_id | uuid | Yes | — | FK → memberships.id; required for organization/station scopes if policy says so |
-| role_id | uuid | No | — | FK → roles.id |
-| scope_type | varchar(16) | No | — | CHECK: global / organization / station |
-| organization_id | uuid | Conditional | — | FK → organizations.id; required only for organization scope |
-| station_id | uuid | Conditional | — | FK → catalog.stations.id; required only for station scope |
-| assigned_by | uuid | No | — | FK → user_profiles.id |
-| valid_from | timestamptz | No | now() | Inclusive |
-| valid_to | timestamptz | Yes | — | Exclusive |
-| revoked_at | timestamptz | Yes | — | Revocation instant |
-| revocation_reason | text | Yes | — | Required when revoked |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| membership_id | uuid | لا | FK memberships؛ IDX | العضوية |
+| role_id | uuid | لا | FK roles؛ IDX | الدور |
+| scope_type | text | لا | CK global/organization/unit/station | النطاق |
+| organization_id | uuid | نعم | FK organizations | نطاق الجهة |
+| organization_unit_id | uuid | نعم | FK organization_units | نطاق الوحدة |
+| station_id | uuid | نعم | FK catalog.stations | نطاق المحطة |
+| valid_from | timestamptz | لا | CK | البداية |
+| valid_to | timestamptz | نعم | CK valid_from < valid_to | النهاية |
+| assignment_state | text | لا | CK active/suspended/revoked/expired | الحالة |
+| assigned_by | uuid | لا | FK user_profiles | المعيّن |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** exactly one scope target consistent with scope_type; valid_from < valid_to; revocation fields paired; actor cannot be client asserted.  
-**Indexes:** (user_id, valid_from, valid_to), (organization_id), (station_id), (role_id).  
-**Open issue:** whether assignments attach to membership or can be independent at global scope.
+CK يطابق scope_type مع معرفات النطاق. تطابق organization/unit/station يحتاج FK مركب أو trigger معتمد.
 
-### 2.9 `iam.permission_grants` — MVP, privileged
-
-| Column | Type | Null | Default | Constraints / meaning |
+### permission_grants
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| subject_user_id | uuid | No | — | FK → user_profiles.id |
-| permission_id | uuid | No | — | FK → permissions.id |
-| scope_type | varchar(16) | No | — | CHECK: global / organization / station |
-| organization_id | uuid | Conditional | — | FK → organizations.id |
-| station_id | uuid | Conditional | — | FK → catalog.stations.id |
-| granted_by | uuid | No | — | FK → user_profiles.id |
-| valid_from | timestamptz | No | now() | Inclusive |
-| valid_to | timestamptz | Yes | — | Exclusive |
-| revoked_at | timestamptz | Yes | — | Revocation instant |
-| reason | text | No | — | Audit rationale |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| user_id | uuid | لا | FK user_profiles؛ IDX | المستفيد |
+| permission_id | uuid | لا | FK permissions؛ IDX | الصلاحية |
+| scope_type | text | لا | CK كما في role_assignments | النطاق |
+| organization_id | uuid | نعم | FK organizations | الجهة |
+| organization_unit_id | uuid | نعم | FK organization_units | الوحدة |
+| station_id | uuid | نعم | FK catalog.stations | المحطة |
+| valid_from | timestamptz | لا | CK | البداية |
+| valid_to | timestamptz | لا | CK valid_from < valid_to | نهاية إلزامية |
+| grant_state | text | لا | CK active/revoked/expired | الحالة |
+| granted_by | uuid | لا | FK user_profiles | المانح |
+| reason | text | لا | CK غير فارغ | المبرر |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** exactly one scope target; valid interval; subject != grantor by default; revocation cannot precede grant.  
-**Indexes:** subject + permission + scope; expiry/revocation lookup.  
-**Open issue:** delegation ceiling and approval workflow.
-
-## 3. Catalog schema
-
-### 3.1 `catalog.station_types` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### access_reviews
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(40) | No | — | UQ stable code |
-| name_ar | text | No | — | Arabic label |
-| name_en | text | Yes | — | English label |
-| is_active | boolean | No | true | Registry lifecycle |
+| id | uuid | لا | PK | المعرف |
+| role_assignment_id | uuid | نعم | FK role_assignments | التعيين محل المراجعة |
+| permission_grant_id | uuid | نعم | FK permission_grants | التفويض محل المراجعة |
+| reviewer_user_id | uuid | لا | FK user_profiles | المراجع |
+| decision | text | لا | CK retain/revoke/expire | القرار |
+| reason | text | لا | CK غير فارغ | السبب |
+| decided_at | timestamptz | لا | default now() | الوقت |
+| next_review_at | timestamptz | نعم | CK > decided_at | الموعد التالي |
 
-**Open issue:** exact type catalogue (classic/automatic are visible in UI; do not assume exhaustive).
+CK XOR: أحد مرجعي التعيين أو التفويض فقط.
 
-### 3.2 `catalog.stations` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### registration_requests
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| organization_id | uuid | No | — | FK → iam.organizations.id; owner |
-| operating_unit_id | uuid | Yes | — | FK → iam.organization_units.id; same organization |
-| station_type_id | uuid | Yes | — | FK → station_types.id; nullable only until classified |
-| local_station_code | varchar(80) | No | — | Authority-scoped unique code |
-| name_ar | text | No | — | Arabic name |
-| name_en | text | Yes | — | English name |
-| approval_status | varchar(24) | No | 'pending' | CHECK: pending/approved/rejected/changes_requested |
-| operational_status | varchar(24) | No | 'unverified' | CHECK: unverified/active/inactive/suspended/decommissioned |
-| timezone_name | varchar(64) | Yes | — | IANA zone; TBD source/requirement |
-| created_at | timestamptz | No | now() | Creation instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
-| archived_at | timestamptz | Yes | — | Archive only; not hard delete |
+| id | uuid | لا | PK | المعرف |
+| applicant_user_id | uuid | لا | FK user_profiles؛ IDX | مقدم الطلب |
+| requested_role_id | uuid | لا | FK roles؛ IDX | الدور المطلوب |
+| requested_station_id | uuid | لا | FK catalog.stations؛ IDX | المحطة |
+| first_name | text | لا | CK غير فارغ | الاسم الأول |
+| father_name | text | لا | CK غير فارغ | اسم الأب |
+| last_name | text | لا | CK غير فارغ | اسم العائلة |
+| contact_phone | text | نعم | صيغة معيارية TBD | الهاتف |
+| terms_version | text | لا | مرجع إصدار شروط معتمد | النسخة المقبولة |
+| terms_accepted_at | timestamptz | لا | — | وقت الموافقة |
+| idempotency_key | text | لا | UQ(applicant_user_id,key) | منع التكرار |
+| request_state | text | لا | CK pending_station/pending_system/approved/rejected/withdrawn | الحالة |
+| submitted_at | timestamptz | لا | default now() | الإرسال |
+| updated_at | timestamptz | نعم | — | التحديث |
 
-**Constraints:** unique(organization_id, local_station_code); organization unit belongs to organization; approved/active are separate.  
-**Indexes:** (organization_id, approval_status), (operational_status), FK indexes.  
-**Relationships:** 1:N identifiers, locations, reviews, observation submissions; 1:N station-scoped role assignments/grants.  
-**Open issue:** code reuse policy after decommissioning; whether station timezone is mandatory.
-
-### 3.3 `catalog.station_identifiers` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### registration_decisions
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| station_id | uuid | No | — | FK → stations.id |
-| namespace | varchar(64) | No | — | Identifier issuing namespace |
-| identifier_value | varchar(128) | No | — | Original identifier |
-| normalized_value | varchar(128) | No | — | Normalized for uniqueness |
-| source_name | text | Yes | — | Registry/provider label |
-| valid_from | timestamptz | No | now() | Inclusive |
-| valid_to | timestamptz | Yes | — | Exclusive |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| request_id | uuid | لا | FK registration_requests؛ IDX | الطلب |
+| stage | text | لا | CK station/system | المرحلة |
+| decision | text | لا | CK approved/rejected/changes_requested | النتيجة |
+| actor_user_id | uuid | لا | FK user_profiles | صاحب القرار |
+| reason | text | لا | CK مطلوب للرفض/التعديل | السبب |
+| decided_at | timestamptz | لا | default now() | الوقت |
+| correlation_id | uuid | نعم | IDX | ربط العملية |
 
-**Constraints:** positive validity interval; uniqueness across namespace/value and overlapping effective intervals according to namespace contract.  
-**Open issue:** approved namespaces and normalization rules.
+يمنع أن يكون مقدم الطلب هو صاحب القرار. سياسة إعادة المحاولة/attempt_no تُحسم قبل DDL.
 
-### 3.4 `catalog.station_locations` — MVP
+## 3. دليل المحطات — schema `catalog`
 
-| Column | Type | Null | Default | Constraints / meaning |
+### station_types
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| station_id | uuid | No | — | FK → stations.id |
-| latitude | numeric(9,6) | No | — | CHECK -90..90 |
-| longitude | numeric(9,6) | No | — | CHECK -180..180 |
-| elevation_m | numeric(8,2) | Yes | — | Unit fixed to metres; source required if supplied |
-| coordinate_source | varchar(80) | No | — | Source registry/code; controlled values TBD |
-| source_reference | text | Yes | — | Source record/reference |
-| verification_state | varchar(24) | No | 'unverified' | CHECK: unverified/pending/verified/rejected |
-| verified_by | uuid | Yes | — | FK → iam.user_profiles.id |
-| verified_at | timestamptz | Yes | — | Required iff verification_state=verified |
-| valid_from | timestamptz | No | now() | Inclusive |
-| valid_to | timestamptz | Yes | — | Exclusive |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | الرمز |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| state | text | لا | CK active/retired | الحالة |
 
-**Constraints:** valid_from < valid_to; verified actor/time pairing; no overlapping active location periods per station; at most one current verified location per station.  
-**Indexes:** station_id + valid_from desc; optional PostGIS point index only if extension and spatial use approved.  
-**Open issue:** coordinate reference system is WGS84 (EPSG:4326) proposal; source accuracy metadata and elevation provenance require approval.
-
-### 3.5 `catalog.station_reviews` — MVP, append-only
-
-| Column | Type | Null | Default | Constraints / meaning |
+### stations
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| station_id | uuid | No | — | FK → stations.id |
-| reviewer_user_id | uuid | No | — | FK → iam.user_profiles.id |
-| decision | varchar(24) | No | — | CHECK approved/rejected/changes_requested |
-| reason | text | No | — | Non-empty; current UI requires at least 5 chars; final policy TBD |
-| prior_approval_status | varchar(24) | No | — | Snapshot before decision |
-| resulting_approval_status | varchar(24) | No | — | Snapshot after decision |
-| decided_at | timestamptz | No | now() | Decision instant |
-| request_id | uuid | Yes | — | Correlation/idempotency link; exact API contract TBD |
+| id | uuid | لا | PK | المعرف |
+| organization_id | uuid | لا | FK iam.organizations؛ IDX | المالك |
+| station_type_id | uuid | لا | FK station_types؛ IDX | النوع |
+| local_station_code | text | لا | UQ(organization_id,code) | رمز محلي جديد |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| approval_status | text | لا | CK pending/approved/rejected/changes_requested | اعتماد الكتالوج |
+| operational_status | text | لا | CK unverified/active/inactive/suspended/decommissioned | حالة التشغيل |
+| catalogue_source_id | uuid | نعم | FK integration.sources؛ IDX | المصدر |
+| source_record_key | text | نعم | UQ(source,key) partial | مفتاح المصدر |
+| is_demo | boolean | لا | default false | بيانات اصطناعية معلّمة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| created_by | uuid | نعم | FK iam.user_profiles | المنشئ |
+| updated_at | timestamptz | نعم | — | التحديث |
 
-**Constraints:** append-only; no UPDATE/DELETE to ordinary roles; decision and resulting state consistent; concurrency uses expected-state check.  
-**Indexes:** (station_id, decided_at desc), (reviewer_user_id, decided_at desc).
-
-## 4. Reference and observation schemas
-
-### 4.1 `ref.units` — MVP foundation
-
-| Column | Type | Null | Default | Constraints / meaning |
+### station_identifiers
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(48) | No | — | UQ stable unit code |
-| symbol | varchar(32) | No | — | Display symbol |
-| quantity_kind | varchar(64) | No | — | E.g. temperature, pressure; controlled vocabulary TBD |
-| is_canonical | boolean | No | false | Canonical unit for quantity kind |
-| is_active | boolean | No | true | Registry lifecycle |
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK stations؛ IDX | المحطة |
+| namespace | text | لا | — | مصدر الرمز |
+| identifier | text | لا | UQ(namespace,identifier) | الرمز الخارجي |
+| valid_from | timestamptz | نعم | CK | البداية |
+| valid_to | timestamptz | نعم | CK | النهاية |
+| verified_at | timestamptz | نعم | — | التحقق |
+| verification_source | text | نعم | — | مرجع التحقق |
 
-**Open issue:** unit registry, conversion factors/algorithms, affine conversions, precision and rounding policy must be approved; no conversion logic is implied by this table.
-
-### 4.2 `ref.meteorological_parameters` — MVP foundation
-
-| Column | Type | Null | Default | Constraints / meaning |
+### station_locations
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(80) | No | — | UQ stable parameter code |
-| name_ar | text | No | — | Arabic display name |
-| name_en | text | Yes | — | English display name |
-| quantity_kind | varchar(64) | No | — | Controlled quantity category |
-| value_kind | varchar(16) | No | — | CHECK numeric/text/boolean/code; final set TBD |
-| canonical_unit_id | uuid | Yes | — | FK → units.id; required for dimensional numeric parameters |
-| precision_scale | smallint | Yes | — | TBD until scientific contract; >=0 if defined |
-| valid_min | numeric | Yes | — | TBD; only populate from approved specification |
-| valid_max | numeric | Yes | — | TBD; only populate from approved specification |
-| effective_from | timestamptz | No | now() | Definition validity start |
-| effective_to | timestamptz | Yes | — | Definition validity end |
-| definition_source | text | Yes | — | Approved source/specification reference |
-| definition_version | varchar(80) | Yes | — | Source version |
-| is_active | boolean | No | true | Registry lifecycle |
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK stations؛ IDX | المحطة |
+| latitude | numeric(9,6) | نعم | CK -90..90 | خط العرض |
+| longitude | numeric(9,6) | نعم | CK -180..180 | خط الطول |
+| elevation_m | numeric(9,2) | نعم | المدى TBD | الارتفاع |
+| elevation_datum | text | نعم | — | مرجع الارتفاع |
+| timezone_id | text | نعم | IANA validation at API | المنطقة الزمنية |
+| valid_from | timestamptz | لا | CK | بداية صلاحية الموقع |
+| valid_to | timestamptz | نعم | CK valid_from < valid_to | نهاية الصلاحية |
+| verification_state | text | لا | CK unverified/pending/verified/rejected | التحقق |
+| source_reference | text | نعم | — | المصدر |
+| verified_by | uuid | نعم | FK iam.user_profiles | المتحقق |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-**Constraints:** valid_min <= valid_max when both exist; precision_scale >= 0; effective_from < effective_to; unit quantity_kind compatible.  
-**Critical gate:** no parameter rows or scientific limits are seeded until domain-owner approval.
+الإحداثيات اختيارية حتى ترد من مصدر موثق؛ يمنع تداخل المواقع السارية للمحطة وفق السياسة.
 
-### 4.3 `observations.observation_types` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### station_capabilities
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| code | varchar(40) | No | — | UQ; candidate labels visible in UI include daily and phenomenon; complete list TBD |
-| name_ar | text | No | — | Arabic label |
-| name_en | text | Yes | — | English label |
-| requires_measurement | boolean | No | true | Form-level rule; exact semantics TBD |
-| is_active | boolean | No | true | Registry lifecycle |
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK stations؛ IDX | المحطة |
+| capability_code | text | لا | قاموس معتمد TBD | القدرة |
+| valid_from | timestamptz | لا | CK | البداية |
+| valid_to | timestamptz | نعم | CK | النهاية |
+| capability_state | text | لا | CK active/inactive/maintenance | الحالة |
+| source_reference | text | نعم | — | المصدر |
 
-**Open issue:** cadence, scheduled local observation times and form-specific required fields are not yet defined.
-
-### 4.4 `observations.submissions` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### station_operating_periods
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| station_id | uuid | No | — | FK → catalog.stations.id |
-| author_user_id | uuid | No | — | FK → iam.user_profiles.id; derived from verified identity |
-| observation_type_id | uuid | No | — | FK → observation_types.id |
-| status | varchar(24) | No | 'draft' | CHECK draft/submitted/approved/returned/rejected |
-| observed_at | timestamptz | No | — | Actual observation instant, not insertion time |
-| submitted_at | timestamptz | Yes | — | First/last submission semantics TBD |
-| idempotency_key | varchar(160) | No | — | Client-generated request key; unique per author |
-| request_fingerprint | char(64) | No | — | Server-calculated hash of canonical request |
-| source_kind | varchar(24) | No | 'manual' | CHECK manual/imported/sensor/system |
-| source_reference | text | Yes | — | Provenance reference; no secret |
-| note | text | Yes | — | General observation note |
-| created_at | timestamptz | No | now() | Insertion instant |
-| updated_at | timestamptz | No | now() | Server-maintained |
-| created_revision_no | integer | No | 1 | Current accepted revision pointer/sequence; transactionally maintained |
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK stations؛ IDX | المحطة |
+| operating_state | text | لا | CK active/inactive/suspended/decommissioned | حالة التشغيل |
+| valid_from | timestamptz | لا | CK | البداية |
+| valid_to | timestamptz | نعم | CK | النهاية |
+| reason_code | text | نعم | قاموس TBD | السبب |
+| notes | text | نعم | — | ملاحظات |
+| recorded_by | uuid | نعم | FK iam.user_profiles | المسجل |
 
-**Constraints:** unique(author_user_id, idempotency_key); revision_no > 0; status transition only through guarded server transaction; station eligible and author assigned/authorized at submission time.  
-**Indexes:** (station_id, observed_at desc), (author_user_id, created_at desc), (status, submitted_at), FK indexes.  
-**Open issue:** retention, whether drafts may be deleted, and how station assignment is evaluated historically.
-
-### 4.5 `observations.values` — MVP
-
-| Column | Type | Null | Default | Constraints / meaning |
+### station_reviews
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| submission_id | uuid | No | — | FK → submissions.id |
-| parameter_id | uuid | No | — | FK → ref.meteorological_parameters.id |
-| unit_id | uuid | Yes | — | FK → ref.units.id; required for dimensional numeric values |
-| numeric_value | numeric | Conditional | — | Used only for numeric parameters |
-| text_value | text | Conditional | — | Used only for text/code parameters |
-| boolean_value | boolean | Conditional | — | Used only for boolean parameters |
-| reported_value_text | text | Yes | — | Original submitted representation if normalization is performed |
-| value_observed_at | timestamptz | Yes | — | NULL means inherit submission.observed_at; confirm policy |
-| value_qualifier | varchar(32) | Yes | — | Missing/trace/estimated/etc. only after controlled vocabulary approval |
-| created_at | timestamptz | No | now() | Creation instant |
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK stations؛ IDX | المحطة |
+| reviewer_user_id | uuid | لا | FK iam.user_profiles | المراجع |
+| decision | text | لا | CK approved/rejected/changes_requested | القرار |
+| reason | text | لا | CK غير فارغ | السبب |
+| evidence_file_id | uuid | نعم | FK files.objects | الدليل |
+| decided_at | timestamptz | لا | default now() | الوقت |
+| review_version | integer | لا | UQ(station_id,version); CK > 0 | الإصدار |
 
-**Constraints:** exactly one typed value column populated; populated type matches parameter.value_kind; parameter/unit quantity compatibility; no NaN/Infinity; one parameter per submission unless repeatable parameter contract explicitly allows multiple readings (then add sequence/level key).  
-**Indexes:** (submission_id), (parameter_id), (parameter_id, value_observed_at).  
-**Scientific gate:** units, ranges, precision, qualifiers and repeatability rules are TBD.
+## 4. القواميس العلمية — schema `ref`
 
-### 4.6 `observations.revisions` — MVP, append-only
-
-| Column | Type | Null | Default | Constraints / meaning |
+### units
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| submission_id | uuid | No | — | FK → submissions.id |
-| revision_no | integer | No | — | Sequence starting at 1 |
-| changed_by | uuid | No | — | FK → iam.user_profiles.id |
-| change_reason | text | No | — | Required reason |
-| snapshot | jsonb | No | — | Canonical typed snapshot of submission and values; schema versioned |
-| snapshot_schema_version | varchar(32) | No | — | Version of snapshot contract |
-| created_at | timestamptz | No | now() | Revision instant |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | رمز الوحدة |
+| symbol | text | لا | — | الرمز |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| quantity_kind | text | لا | قاموس معتمد TBD | نوع الكمية |
+| is_canonical | boolean | لا | default false | وحدة معيارية |
+| unit_state | text | لا | CK active/retired | الحالة |
+| definition_version | text | لا | — | إصدار التعريف |
 
-**Constraints:** unique(submission_id, revision_no); revision_no > 0; append-only; JSON schema validated by API/DB contract. Snapshot is history, not a substitute for normalized current values.
-
-### 4.7 `observations.review_decisions` — MVP, append-only
-
-| Column | Type | Null | Default | Constraints / meaning |
+### meteorological_parameters
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| submission_id | uuid | No | — | FK → submissions.id |
-| reviewer_user_id | uuid | No | — | FK → iam.user_profiles.id |
-| decision | varchar(32) | No | — | CHECK approve/return_for_correction/reject |
-| note | text | Yes | — | Required for return/reject; exact minimum length TBD |
-| expected_status | varchar(24) | No | — | Optimistic concurrency guard |
-| resulting_status | varchar(24) | No | — | Resulting lifecycle state |
-| decided_at | timestamptz | No | now() | Decision instant |
-| request_id | uuid | Yes | — | Correlation/idempotency reference |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ(code,definition_version) | رمز البارامتر |
+| name_ar | text | لا | CK غير فارغ | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| quantity_kind | text | لا | قاموس TBD | نوع الكمية |
+| canonical_unit_id | uuid | نعم | FK units | الوحدة القياسية |
+| value_kind | text | لا | CK decimal/integer/text/boolean/code | نوع القيمة |
+| precision_scale | smallint | نعم | TBD | الدقة |
+| valid_min | numeric | نعم | TBD؛ CK min<=max | الحد الأدنى |
+| valid_max | numeric | نعم | TBD؛ CK max>=min | الحد الأعلى |
+| definition_version | text | لا | — | الإصدار |
+| valid_from | timestamptz | لا | — | بداية الاعتماد |
+| valid_to | timestamptz | نعم | CK | نهاية الاعتماد |
+| parameter_state | text | لا | CK active/retired | الحالة |
+| specification_reference | text | نعم | — | وثيقة الاعتماد العلمي |
 
-**Constraints:** append-only; reviewer != author when separation-of-duties applies; expected state must match current state; only authorized station-scoped reviewer may decide.  
-**Indexes:** (submission_id, decided_at desc), (reviewer_user_id, decided_at desc).
+**لا تضع أرقاماً في valid_min/valid_max أو precision_scale قبل اعتماد المرجع العلمي.**
 
-## 5. Audit schema
-
-### 5.1 `audit.events` — MVP, append-only
-
-| Column | Type | Null | Default | Constraints / meaning |
+### observation_types
+| العمود | النوع | Null | القيود | المعنى |
 |---|---|---:|---|---|
-| id | uuid | No | generated | PK |
-| occurred_at | timestamptz | No | now() | Database/server timestamp |
-| actor_user_id | uuid | Yes | — | FK → iam.user_profiles.id; NULL for system |
-| actor_kind | varchar(16) | No | 'user' | CHECK user/system/service |
-| action_code | varchar(120) | No | — | Controlled event code |
-| resource_schema | varchar(63) | No | — | Logical schema |
-| resource_type | varchar(80) | No | — | Entity type |
-| resource_id | uuid | Yes | — | Resource UUID when applicable |
-| organization_id | uuid | Yes | — | Scope snapshot |
-| station_id | uuid | Yes | — | Scope snapshot |
-| correlation_id | uuid | Yes | — | Request/trace correlation |
-| outcome | varchar(16) | No | — | CHECK success/denied/failure |
-| details | jsonb | No | '{}' | Allow-listed non-secret metadata only |
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | الرمز |
+| name_ar | text | لا | — | الاسم |
+| name_en | text | نعم | — | الاسم الإنجليزي |
+| cadence_code | text | نعم | TBD | الدورية |
+| form_version | text | لا | — | إصدار النموذج |
+| type_state | text | لا | CK active/retired | الحالة |
 
-**Constraints:** INSERT only for application roles; no UPDATE/DELETE; payload must exclude credentials, tokens, secrets and unnecessary personal data.  
-**Indexes:** (occurred_at desc), (actor_user_id, occurred_at desc), (resource_type, resource_id, occurred_at desc), (correlation_id).
+## 5. الرصد — schema `observations`
 
-## 6. Future weather-provider schema (not MVP DDL)
+### submissions
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| station_id | uuid | لا | FK catalog.stations؛ IDX | المحطة |
+| author_user_id | uuid | لا | FK iam.user_profiles؛ IDX | مقدم الرصد |
+| observation_type_id | uuid | لا | FK ref.observation_types | النوع |
+| observed_at | timestamptz | لا | IDX | وقت الرصد |
+| source_local_time | timestamp | نعم | — | الوقت المحلي الأصلي |
+| source_timezone_id | text | نعم | — | المنطقة الزمنية الأصلية |
+| submission_state | text | لا | CK draft/submitted/returned/approved/rejected/withdrawn | الحالة |
+| idempotency_key | text | لا | UQ(author,idempotency_key) | منع التكرار |
+| request_fingerprint | text | نعم | — | بصمة الطلب |
+| submitted_at | timestamptz | نعم | required after submit | وقت الإرسال |
+| current_revision_no | integer | لا | default 1؛ CK > 0 | الإصدار الحالي |
+| created_at | timestamptz | لا | default now() | الإنشاء |
+| updated_at | timestamptz | نعم | — | التحديث |
+| source_kind | text | لا | CK manual/instrument/imported | المصدر |
+| source_reference | text | نعم | — | معرف المصدر |
 
-These are logical entities only. Do not generate their migration until a provider contract and product requirements are approved.
+### values
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| submission_id | uuid | لا | FK submissions؛ IDX | الإرسال |
+| parameter_id | uuid | لا | FK ref.meteorological_parameters؛ IDX | البارامتر |
+| value_decimal | numeric | نعم | typed XOR | قيمة عشرية |
+| value_integer | bigint | نعم | typed XOR | قيمة صحيحة |
+| value_text | text | نعم | typed XOR | قيمة نصية/رمزية |
+| value_boolean | boolean | نعم | typed XOR | قيمة منطقية |
+| reported_unit_id | uuid | نعم | FK ref.units | الوحدة المبلّغ بها |
+| normalized_value_decimal | numeric | نعم | — | القيمة المحولة |
+| normalized_unit_id | uuid | نعم | FK ref.units | الوحدة القياسية |
+| reported_value_text | text | نعم | — | النص الأصلي |
+| measurement_method | text | نعم | قاموس TBD | طريقة القياس |
+| quality_state | text | لا | CK unassessed/valid/suspect/invalid | حالة الجودة |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-### 6.1 `weather.providers`
-Proposed columns: `id uuid PK`, `code varchar UQ`, `display_name text`, `provider_kind varchar`, `terms_reference text`, `is_active boolean`, `created_at timestamptz`. No credentials/secrets.
+يلزم تطابق العمود typed الوحيد مع value_kind في تعريف البارامتر. التكرار للبارامتر الواحد يتطلب تعريفاً صريحاً للأبعاد/المستوى/replicate.
 
-### 6.2 `weather.ingestion_runs`
-Proposed columns: `id uuid PK`, `provider_id uuid FK`, `started_at timestamptz`, `finished_at timestamptz NULL`, `outcome varchar`, `correlation_id uuid`, `records_received integer`, `error_code varchar NULL`, `safe_error_summary text NULL`. Never store bearer tokens or secret payloads.
+### revisions
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| submission_id | uuid | لا | FK submissions؛ IDX | الإرسال |
+| revision_no | integer | لا | UQ(submission,revision_no); CK > 0 | الإصدار |
+| snapshot | jsonb | لا | object only | لقطة إصدار |
+| schema_version | text | لا | — | إصدار المخطط |
+| change_reason | text | لا | CK غير فارغ | السبب |
+| created_by | uuid | لا | FK iam.user_profiles | المنشئ |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-### 6.3 `weather.forecast_runs`
-Proposed columns: `id uuid PK`, `provider_id uuid FK`, `ingestion_run_id uuid FK`, `provider_run_ref text NULL`, `issued_at timestamptz`, `model_name varchar NULL`, `model_version varchar NULL`, `payload_hash char(64) NULL`, `created_at timestamptz`.
+### review_decisions
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| submission_id | uuid | لا | FK submissions؛ IDX | الإرسال |
+| reviewer_user_id | uuid | لا | FK iam.user_profiles؛ IDX | المراجع |
+| decision | text | لا | CK approved/return_for_correction/rejected | القرار |
+| note | text | نعم | required on return/reject | الملاحظة |
+| expected_revision_no | integer | لا | CK > 0 | optimistic concurrency |
+| decided_at | timestamptz | لا | default now() | الوقت |
+| correlation_id | uuid | نعم | IDX | ربط الطلب |
 
-### 6.4 `weather.forecast_points`
-Proposed columns: `id uuid PK`, `forecast_run_id uuid FK`, `location_kind varchar`, `station_id uuid NULL FK`, `latitude numeric NULL`, `longitude numeric NULL`, `valid_at timestamptz`, `lead_duration_seconds integer NULL`. Exactly one of station_id or coordinate pair according to location_kind.
+يمنع self-review، ويجب تحقق station scope، وتمنع القرارات على نسخة قديمة.
 
-### 6.5 `weather.forecast_values`
-Proposed columns: `id uuid PK`, `forecast_point_id uuid FK`, `parameter_id uuid FK`, `unit_id uuid NULL FK`, `numeric_value numeric NULL`, `text_value text NULL`, `provider_parameter_code varchar`. Typed-value and unit rules align with approved parameter definitions.
+### quality_flags
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| submission_id | uuid | نعم | FK submissions | مستوى الإرسال |
+| observation_value_id | uuid | نعم | FK values | مستوى القيمة |
+| rule_code | text | لا | — | رمز القاعدة |
+| rule_version | text | لا | — | إصدارها |
+| severity | text | لا | CK info/warning/error/critical | الشدة |
+| result | text | لا | CK pass/suspect/fail/manual_review | النتيجة |
+| explanation | text | نعم | — | السبب |
+| evaluated_at | timestamptz | لا | default now() | وقت التقييم |
+| resolved_by | uuid | نعم | FK iam.user_profiles | المعالج |
+| resolved_at | timestamptz | نعم | CK مع resolved_by | وقت المعالجة |
 
-## 7. Explicitly deferred entities
+CK XOR: submission_id أو observation_value_id فقط.
 
-| Domain | Candidate entities | Why deferred |
-|---|---|---|
-| alerts | warning_products, warning_versions, warning_areas, warning_station_links | Official source/API, lifecycle, geometry, severity taxonomy and legal attribution are not yet approved |
-| climate | datasets, dataset_versions, analysis_jobs, analysis_results, quality_reports | Scientific methods, input lineage, reproducibility and validation specifications required |
-| files | objects, attachment_links | Current workflow does not yet establish a required attachment feature; storage provider and retention policy needed |
-| integration | provider_registry, integration_runs | Can be folded into weather.providers/ingestion_runs for MVP; avoid duplicate registries until integration scope is confirmed |
+### attachments
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| submission_id | uuid | لا | FK submissions؛ IDX | الإرسال |
+| file_object_id | uuid | لا | FK files.objects؛ IDX | الملف |
+| attachment_kind | text | لا | قاموس TBD | النوع |
+| caption | text | نعم | — | الوصف |
+| attached_by | uuid | لا | FK iam.user_profiles | الرافع |
+| attached_at | timestamptz | لا | default now() | الوقت |
+| is_restricted | boolean | لا | default true | التصنيف |
 
-## 8. Cross-table FK and index plan
+## 6. التنبؤات الخارجية — schema `weather` (مرحلي)
 
-- Every FK receives an index unless a leading composite index already covers the FK access pattern.
-- Use restrictive FK deletion for identity, station, observation, review and audit history. Hard-delete cascades are not permitted for approved operational records.
-- Use unique indexes for immutable codes and idempotency keys.
-- Use partial unique indexes for “current” rows only where the approved lifecycle defines current unambiguously.
-- Use exclusion constraints for non-overlapping temporal location/identifier periods only after PostgreSQL extension/constraint strategy is validated on the target version.
-- Avoid premature partitioning; measure data volume and query patterns first.
+### providers
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | الرمز |
+| name | text | لا | CK غير فارغ | الاسم |
+| provider_kind | text | لا | CK forecast/observation/alert | النوع |
+| documentation_url | text | نعم | — | الوثائق |
+| contract_version | text | نعم | — | إصدار العقد |
+| provider_state | text | لا | CK planned/active/suspended/retired | الحالة |
+| terms_reference | text | نعم | — | شروط الاستخدام |
 
-## 9. Data ownership, provenance and retention
+### ingestion_runs
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| provider_id | uuid | لا | FK providers؛ IDX | المزود |
+| idempotency_key | text | لا | UQ(provider,key) | منع التكرار |
+| started_at | timestamptz | لا | — | البداية |
+| completed_at | timestamptz | نعم | CK >= start | النهاية |
+| run_state | text | لا | CK queued/running/succeeded/partial/failed/cancelled | الحالة |
+| records_received | bigint | نعم | CK >= 0 | المستلم |
+| records_accepted | bigint | نعم | CK >= 0 | المقبول |
+| error_code | text | نعم | — | الخطأ |
+| correlation_id | uuid | نعم | IDX | ربط العملية |
 
-| Data family | Authoritative writer | Provenance required | Retention |
-|---|---|---|---|
-| Identity profile | Auth + trusted .NET API | external subject, account lifecycle actor/time | TBD legal/privacy policy |
-| Membership/access | trusted .NET API/admin workflow | requester, approver/grantor, validity and reason | TBD; privileged audit retention |
-| Station catalogue | approved catalogue authority | source system/reference, reviewer, coordinate verification | Historical versions retained; duration TBD |
-| Manual observations | assigned observer via .NET API | author, station, observed_at, submitted_at, revision and decisions | Scientific/archive policy TBD |
-| Forecasts | provider ingestion service | provider, issue time, ingestion run, model/version, payload hash | Provider license and product policy TBD |
-| Audit | database/server | actor, action, resource, outcome, correlation | Security/legal policy TBD |
+### forecast_runs
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| provider_id | uuid | لا | FK providers؛ IDX | المزود |
+| ingestion_run_id | uuid | لا | FK ingestion_runs؛ IDX | عملية الجلب |
+| model_code | text | نعم | — | النموذج |
+| model_version | text | نعم | — | الإصدار |
+| issued_at | timestamptz | لا | IDX | الإصدار |
+| retrieved_at | timestamptz | لا | — | الاسترجاع |
+| coverage_start | timestamptz | نعم | CK | بداية التغطية |
+| coverage_end | timestamptz | نعم | CK | النهاية |
+| run_state | text | لا | CK received/validated/published/withdrawn | الحالة |
+| source_reference | text | نعم | UQ(provider,reference) partial | مرجع المصدر |
 
-## 10. Review checklist before DDL
+### forecast_points
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| forecast_run_id | uuid | لا | FK forecast_runs؛ IDX | الدورة |
+| parameter_id | uuid | لا | FK ref.parameters؛ IDX | البارامتر |
+| valid_at | timestamptz | لا | IDX | وقت الصلاحية |
+| latitude | numeric(9,6) | نعم | CK -90..90 | خط العرض |
+| longitude | numeric(9,6) | نعم | CK -180..180 | خط الطول |
+| grid_cell_reference | text | نعم | — | مرجع خلية |
+| value_decimal | numeric | نعم | حسب value_kind | قيمة عشرية |
+| value_integer | bigint | نعم | حسب value_kind | صحيحة |
+| value_text | text | نعم | حسب value_kind | نصية |
+| unit_id | uuid | نعم | FK ref.units | الوحدة |
+| provider_parameter_code | text | نعم | — | رمز المزود |
+| created_at | timestamptz | لا | default now() | الإنشاء |
 
-- [ ] Confirm organization model and ownership.
-- [ ] Confirm station catalogue source, identifiers, station classes, timezone and coordinate provenance.
-- [ ] Approve roles, permissions, scope rules and reviewer separation.
-- [ ] Approve account/membership states and onboarding/approval workflow.
-- [ ] Approve observation forms, cadence and lifecycle transitions.
-- [ ] Approve parameter catalogue, value kinds, units, ranges, precision, formulas and QC rules.
-- [ ] Decide per-value observation timestamps and repeatable parameters.
-- [ ] Approve audit content, retention, privacy and deletion policy.
-- [ ] Confirm .NET-only trusted writer vs transitional Edge Functions.
-- [ ] Approve exposed schemas, grants, RLS and service runtime role.
-- [ ] Confirm PostgreSQL version, extensions and PostGIS need.
-- [ ] Review every FK, unique/check/exclusion constraint and delete behavior.
+يجب تحديد تمثيل مكاني واحد بعقد المزود؛ لا يسمح بسجل بلا موقع أو خلية.
 
-**No migration files are included in this phase.** After written review/approval of this dictionary and ERD, create a new ordered migration chain, then rebuild it against a disposable empty PostgreSQL database and run schema/security/integration tests. Do not apply it to hosted Supabase as part of that test.
+### forecast_parameter_mappings
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| provider_id | uuid | لا | FK providers | المزود |
+| provider_parameter_code | text | لا | UQ(provider,code,version) | رمز المزود |
+| parameter_id | uuid | لا | FK ref.parameters | البارامتر القياسي |
+| provider_unit_code | text | نعم | — | وحدة المزود |
+| mapping_version | text | لا | — | الإصدار |
+| valid_from | timestamptz | لا | — | البداية |
+| valid_to | timestamptz | نعم | CK | النهاية |
 
-## 11. Migration-chain isolation
+### provider_payload_references
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| ingestion_run_id | uuid | لا | FK ingestion_runs؛ IDX | التشغيل |
+| file_object_id | uuid | لا | FK files.objects؛ IDX | الملف |
+| payload_kind | text | لا | CK response/request/manifest | النوع |
+| captured_at | timestamptz | لا | default now() | الالتقاط |
+| retention_until | timestamptz | نعم | — | الاحتفاظ |
+| content_sha256 | text | لا | CK 64 hex | البصمة |
 
-The repository currently contains a prior `supabase/migrations` history for the running application. It is not automatically the greenfield migration baseline described here. After review approval, create a separately isolated clean migration chain and CLI configuration for the new model, then prove a from-empty rebuild on a disposable PostgreSQL instance. Do not append these proposed DDL changes to the old chain, replay the old chain against the new empty database, or apply anything to hosted Supabase as part of local verification.
+## 7. الملفات والتكامل والتدقيق
+
+### files.objects
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| bucket_name | text | لا | — | bucket خاص |
+| object_key | text | لا | UQ(bucket,key) | المسار |
+| original_filename | text | نعم | sanitization | الاسم الأصلي |
+| content_type | text | لا | allow-list API | MIME |
+| byte_size | bigint | لا | CK >= 0 | الحجم |
+| sha256 | text | لا | CK 64 hex | البصمة |
+| classification | text | لا | CK public/internal/confidential/restricted | التصنيف |
+| owner_user_id | uuid | نعم | FK iam.user_profiles | المالك |
+| uploaded_at | timestamptz | لا | default now() | الرفع |
+| retention_until | timestamptz | نعم | — | موعد الحذف |
+| object_state | text | لا | CK pending/available/quarantined/deleted | الحالة |
+
+### integration.sources
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| code | text | لا | UQ | الرمز |
+| name | text | لا | — | الاسم |
+| source_kind | text | لا | CK station_catalog/forecast/alert/climate/other | النوع |
+| contract_version | text | نعم | — | إصدار العقد |
+| endpoint_reference | text | نعم | بلا أسرار/tokens | مرجع endpoint |
+| source_state | text | لا | CK planned/active/suspended/retired | الحالة |
+| approved_at | timestamptz | نعم | — | الاعتماد |
+
+### integration.execution_runs
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| source_id | uuid | لا | FK integration.sources؛ IDX | المصدر |
+| operation_code | text | لا | — | العملية |
+| idempotency_key | text | لا | UQ(source,key) | منع التكرار |
+| started_at | timestamptz | لا | — | البداية |
+| completed_at | timestamptz | نعم | CK >= start | النهاية |
+| run_state | text | لا | CK queued/running/succeeded/partial/failed/cancelled | الحالة |
+| result_summary | jsonb | نعم | object only; bounded | ملخص غير حساس |
+| error_code | text | نعم | — | رمز الخطأ |
+| correlation_id | uuid | نعم | IDX | الربط |
+
+### audit.events
+| العمود | النوع | Null | القيود | المعنى |
+|---|---|---:|---|---|
+| id | uuid | لا | PK | المعرف |
+| occurred_at | timestamptz | لا | default now(); IDX | وقت الحدث |
+| actor_user_id | uuid | نعم | FK iam.user_profiles؛ IDX | الفاعل |
+| action_code | text | لا | — | الفعل |
+| entity_schema | text | لا | — | schema |
+| entity_table | text | لا | — | الجدول |
+| entity_id | uuid | نعم | — | الكيان |
+| organization_id | uuid | نعم | FK iam.organizations؛ IDX | نطاق الجهة |
+| station_id | uuid | نعم | FK catalog.stations؛ IDX | نطاق المحطة |
+| outcome | text | لا | CK success/denied/failure | النتيجة |
+| correlation_id | uuid | نعم | IDX | ربط الطلب |
+| metadata | jsonb | لا | object only; redacted | metadata منقحة |
+
+audit.events append-only؛ يمنع UPDATE/DELETE عبر أدوار التطبيق.
+
+## 8. مصفوفة العلاقات والمفاتيح الأجنبية
+
+| المصدر | العمود | الهدف | التعددية | الحذف |
+|---|---|---|---|---|
+| organization_units | organization_id / parent_unit_id | organizations / self | N:1 | RESTRICT |
+| memberships | user_id / organization_id / unit_id | profiles / organizations / units | N:1 | RESTRICT |
+| role_permissions | role_id / permission_id | roles / permissions | N:M bridge | RESTRICT |
+| role_assignments | membership_id / role_id / scope IDs | memberships / roles / scope entities | N:1 | RESTRICT |
+| permission_grants | user_id / permission_id | profiles / permissions | N:1 | RESTRICT |
+| registration_requests | applicant / role / station | profiles / roles / stations | N:1 | RESTRICT |
+| registration_decisions | request_id / actor | requests / profiles | N:1 | RESTRICT |
+| stations | organization_id / station_type_id | organizations / station_types | N:1 | RESTRICT |
+| station child tables | station_id | stations | 1:N | RESTRICT |
+| submissions | station / author / type | stations / profiles / observation_types | N:1 | RESTRICT |
+| values | submission / parameter / unit | submissions / parameters / units | N:1 | RESTRICT |
+| revisions | submission_id | submissions | 1:N | RESTRICT |
+| review_decisions | submission / reviewer | submissions / profiles | N:1 | RESTRICT |
+| quality_flags | submission XOR value | submissions / values | N:1 | RESTRICT |
+| attachments | submission / file | submissions / files.objects | N:1 | RESTRICT |
+| forecast_runs | provider / ingestion_run | providers / ingestion_runs | N:1 | RESTRICT |
+| forecast_points | run / parameter / unit | forecast_runs / parameters / units | N:1 | RESTRICT |
+| audit.events | actor / org / station | profiles / organizations / stations | optional N:1 | SET NULL only by approved audit policy |
+
+## 9. الفهارس والقيود الإضافية
+
+- فهرس لكل FK غير مغطى ببداية PK/UQ.
+- memberships(user_id, organization_id, membership_state).
+- role_assignments(membership_id, assignment_state, valid_from, valid_to).
+- permission_grants(user_id, permission_id, grant_state, valid_from, valid_to).
+- stations(organization_id, approval_status, operational_status).
+- station_locations(station_id, valid_from, valid_to).
+- submissions(station_id, observed_at DESC) و(author_user_id, created_at DESC).
+- values(submission_id, parameter_id)، review_decisions(submission_id, decided_at DESC).
+- forecast_runs(provider_id, issued_at DESC)، forecast_points(run_id, valid_at, parameter_id).
+- audit.events(occurred_at DESC).
+- idempotency unique per actor/provider and operation.
+- CHECK ranges للإحداثيات، byte_size، counts، revision numbers، intervals.
+- typed values: exactly one value column matches parameter.value_kind.
+- station status: approval and operation remain separate.
+- RLS on every exposed table; private schemas remain unexposed; views use security_invoker when applicable.
+- sensitive workflows validate actor, scope, active membership, permission, expected state and separation of duties in one transaction.
+
+## 10. ما يبقى TBD قبل DDL
+
+- قائمة البارامترات والوحدات والدقة والمدى وطرق القياس وقواعد QC.
+- النماذج العلمية ودورياتها وتوقيتاتها والحقول المطلوبة.
+- قائمة الأدوار والصلاحيات ونطاقاتها المعتمدة.
+- مصدر المحطات الجديدة، مرجع الإحداثيات والارتفاع والرموز الخارجية.
+- مزود التنبؤ وشروط الاستخدام ومعدل الجلب والاحتفاظ بالحمولات.
+- أنواع الملفات وأحجامها والفحص وسياسة الاحتفاظ.
+- مدة الاحتفاظ بالرصد والقرارات وسجلات التدقيق.
+- هل الإنذارات الرسمية والمناخ والتحليلات خارج MVP أم ضمن نطاق لاحق.
+
+## 11. بوابة المراجعة
+
+يرجى مراجعة:
+1. علاقة الجهة ← الوحدة ← المحطة.
+2. مرحلتي اعتماد طلب الانتساب (محطة ثم نظام) وهل هما ثابتتان.
+3. هل حقول الرصد المعروضة في التطبيق نموذج مؤقت أم عقد علمي نهائي.
+4. المرجع الرسمي لقاموس المعايير والوحدات والحدود.
+5. إدراج weather ضمن أول baseline أم تأجيله.
+6. سياسة الاحتفاظ والتدقيق والملفات.
+
+لن يتم إنشاء migrations قبل اعتماد ERD والقاموس. وستكون baseline الاختبار مستقلة عن سلسلة migrations الحالية المستخدمة في التطبيق.
