@@ -10,11 +10,24 @@ class StationDirectoryService {
   MetraApiClient get _api => MetraApiClient(_client);
 
   Future<List<StationRecord>> fetchStations() async {
-    final data = await _api.get(
-      '/api/v1/stations',
-      query: const {'page': '1', 'page_size': '200'},
-    );
-    return parseStationRows(data['stations']);
+    const pageSize = 200;
+    var page = 1;
+    var total = 0;
+    final stations = <StationRecord>[];
+
+    do {
+      final data = await _api.get(
+        '/api/v1/stations',
+        query: {'page': '$page', 'page_size': '$pageSize'},
+      );
+      final pageRows = parseStationRows(data['stations']);
+      total = (data['total'] as num?)?.toInt() ?? pageRows.length;
+      stations.addAll(pageRows);
+      if (pageRows.isEmpty) break;
+      page++;
+    } while (stations.length < total);
+
+    return List<StationRecord>.unmodifiable(stations);
   }
 
   Future<AccessContext> fetchAccessContext() async {
