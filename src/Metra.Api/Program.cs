@@ -15,6 +15,7 @@ using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 
 var supabaseUrl = builder.Configuration["Supabase:Url"]
+    ?? builder.Configuration["SUPABASE_URL"]
     ?? Environment.GetEnvironmentVariable("SUPABASE_URL");
 if (string.IsNullOrWhiteSpace(supabaseUrl))
 {
