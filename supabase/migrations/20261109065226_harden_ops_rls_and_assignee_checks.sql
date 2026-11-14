@@ -254,4 +254,3 @@ revoke all on function public.metra_transition_equipment_fault(uuid, uuid, uuid,
 revoke all on function public.metra_transition_support_incident(uuid, uuid, uuid, text, text, uuid) from public, anon, authenticated;
 grant execute on function public.metra_transition_equipment_fault(uuid, uuid, uuid, text, text, int, uuid) to service_role;
 grant execute on function public.metra_transition_support_incident(uuid, uuid, uuid, text, text, uuid) to service_role;
-
