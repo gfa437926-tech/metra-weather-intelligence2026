@@ -6,6 +6,7 @@ using Metra.Api.Stations;
 using Metra.Api.Registration;
 using Metra.Api.Reference;
 using Metra.Api.Observations;
+using Metra.Api.Alerts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -32,6 +33,7 @@ builder.Services.AddScoped<IStationReviewService, StationReviewService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
 builder.Services.AddScoped<IReferenceDataService, ReferenceDataService>();
 builder.Services.AddScoped<IObservationService, ObservationService>();
+builder.Services.AddScoped<IAlertService, AlertService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -716,6 +718,45 @@ app.MapPost("/api/v1/registration/{requestId:guid}/decisions", async (
     catch (NpgsqlException)
     {
         return Results.Problem(title: "Registration approval service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+app.MapGet("/api/v1/alerts", async (
+    HttpRequest request,
+    ClaimsPrincipal principal,
+    IAlertService alerts,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+
+    if (!int.TryParse(request.Query["page"], out var page)) page = 1;
+    if (!int.TryParse(request.Query["page_size"], out var pageSize)) pageSize = 50;
+    if (page < 1 || pageSize is < 1 or > 200)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["pagination"] = ["page must be positive and page_size must be between 1 and 200."]
+        });
+    }
+
+    try
+    {
+        return Results.Ok(await alerts.GetForUserAsync(
+            userId, page, pageSize, cancellationToken));
+    }
+    catch (AlertAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Alert service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Alert service unavailable", statusCode: 503);
     }
 })
 .RequireAuthorization();
