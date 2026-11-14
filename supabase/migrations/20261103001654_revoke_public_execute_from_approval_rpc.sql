@@ -1,5 +1,4 @@
--- CREATE OR REPLACE of the six-argument approval RPC created a fresh default
--- PUBLIC EXECUTE ACL. Revoke it explicitly and retain only the trusted runtime grant.
+
 revoke all on function private.decide_metra_registration(
   uuid,text,uuid,text,text,timestamptz
 ) from public,anon,authenticated,service_role;
