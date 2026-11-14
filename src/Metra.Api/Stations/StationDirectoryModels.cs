@@ -19,4 +19,7 @@ public sealed record StationDirectoryItem(
     [property: JsonPropertyName("latitude")] decimal? Latitude,
     [property: JsonPropertyName("longitude")] decimal? Longitude);
 
-public sealed class StationDirectoryAccessDeniedException : Exception;
+public sealed class StationDirectoryAccessDeniedException : Exception
+{
+    public StationDirectoryAccessDeniedException() : base("The current user has no station-directory scope.") { }
+}
