@@ -23,7 +23,6 @@ class _ObservationsPageState extends State<ObservationsPage> {
   bool busy = false;
   String? idempotencyKey;
   String? pendingFingerprint;
-  String? error;
 
   @override
   void initState() {
@@ -237,7 +236,6 @@ class _ObservationsPageState extends State<ObservationsPage> {
 
     setState(() {
       busy = true;
-      error = null;
     });
     try {
       final result = await MetraApiClient(widget.client!).post(
