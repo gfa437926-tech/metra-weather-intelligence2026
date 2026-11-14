@@ -15,6 +15,7 @@
 - `GET /api/v1/observations/stations?page=1&page_size=200`: active approved stations where the caller has `observations.create`.
 - `GET /api/v1/observations/mine?page=1&page_size=50`: caller's own submissions and typed values.
 - `GET /api/v1/observations/review-queue?page=1&page_size=50` and `POST /api/v1/observations/{submissionId}/decisions`: scoped review and append-only decision/audit records.
+- `GET /api/v1/alerts?page=1&page_size=50`: returns alert events addressed to the authenticated user, or to an organization/station covered by the user's `alerts.read` scope.
 - `POST /api/v1/observations`: typed, idempotent observation draft/submission using the active parameter definitions, canonical units and declared precision. No meteorological min/max thresholds are invented in the API.
 
 All domain endpoints require a cryptographically validated Supabase access token. The actor is derived only from the token `sub`; no actor ID is accepted from request bodies.
@@ -34,7 +35,7 @@ Flutter build-time configuration:
 
 The publishable key and API URL are public client configuration. Never put a Supabase secret/service-role key or PostgreSQL password in Flutter, source control, or public build arguments.
 
-The PostgreSQL runtime login and deployment secret are not configured yet. The existing `metra_api_runtime` role currently lacks the required schema/table grants and a login credential. Therefore `/health/ready` and database-backed routes intentionally return 503 until a least-privilege connection is provisioned. No database password has been generated or embedded in source control.
+The `metra_api_runtime` role has been provisioned as `NOLOGIN`, `NOBYPASSRLS`, with schema/table grants and internal RLS policies for the API's current read/write paths. Application-level authorization remains mandatory because these policies intentionally permit the trusted runtime role to access the tables it needs. A separate managed login role that inherits `metra_api_runtime`, its password, a hosting secret and a deployable API host are still not configured. Therefore `/health/ready` and database-backed routes intentionally return 503 until a least-privilege connection is provisioned. No database password is stored in source control.
 
 ## Local build and test
 
@@ -58,8 +59,8 @@ dotnet build src/Metra.Api/Metra.Api.csproj --configuration Release
 
 ## Remaining backend work
 
-- Provision a dedicated database login with explicit grants and RLS-bypass only for that restricted backend role, then store its connection string in a hosting secret manager.
-- Deploy the .NET API and configure the production `METRA_API_URL`.
-- Implement station creation/update, organization bootstrap, full user/role administration, observation revision/edit workflow, file authorization, forecast ingestion, alerts, operations, exports and audit query endpoints.
+- Provision a dedicated managed login role that inherits `metra_api_runtime`, store its connection string in the hosting secret manager, and deploy the .NET API.
+- Configure production `METRA_API_URL` and exact Flutter Web CORS origins.
+- Implement station creation/update, organization bootstrap, full user/role administration, observation revision/edit workflow, file authorization, forecast ingestion, alert ingestion/rule management, operations, exports and audit query endpoints.
 - Add integration tests against a disposable database for transactions, registration state transitions, observation idempotency and BOLA/IDOR boundaries.
 - Reconstruct the source SQL for the three earlier greenfield rebuild migrations. Their remote migration history exists, but their SQL source files are still missing from Git.
