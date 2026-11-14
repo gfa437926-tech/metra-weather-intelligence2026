@@ -1,7 +1,7 @@
 import 'package:metra_weather_intelligence/utils/registration_eligibility.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../data/metra_api_client.dart';
+import '../data/metra_operations_service.dart';
 
 class RegistrationGate extends StatefulWidget {
   const RegistrationGate({super.key, required this.homeBuilder});
@@ -20,8 +20,8 @@ class _RegistrationGateState extends State<RegistrationGate> {
   }
 
   Future<Map<String, dynamic>> loadStatus() async {
-    return MetraApiClient(Supabase.instance.client)
-        .get('/api/v1/registration/status');
+    return MetraOperationsService.fromSupabase(Supabase.instance.client)
+        .fetchRegistrationStatus();
   }
 
   void refresh() => setState(() => status = loadStatus());
@@ -179,8 +179,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Future<Map<String, dynamic>> loadCatalog() async {
-    return MetraApiClient(Supabase.instance.client)
-        .get('/api/v1/registration/catalog');
+    return MetraOperationsService.fromSupabase(Supabase.instance.client)
+        .fetchRegistrationCatalog();
   }
 
   Future<void> submit(List<dynamic> stations) async {
@@ -195,9 +195,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
     setState(() { busy = true; error = null; success = null; });
     try {
-      final data = await MetraApiClient(Supabase.instance.client).post(
-        '/api/v1/registration',
-        body: {
+      final data = await MetraOperationsService.fromSupabase(Supabase.instance.client)
+          .submitRegistration({
           'first_name': first.text.trim(),
           'father_name': father.text.trim(),
           'last_name': last.text.trim(),
@@ -206,8 +205,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           'station_id': station,
           'terms_version': 'metra-terms-2026-11',
           'idempotency_key': idempotencyKey,
-        },
-      );
+        });
       final status = data['result_status']?.toString();
       if (status == 'created' || status == 'already_created') {
         setState(() => success = 'تم إرسال طلب الانتساب بنجاح، وهو بانتظار مراجعة الجهة المختصة.');
@@ -414,24 +412,8 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
   }
 
   Future<List<Map<String, dynamic>>> loadQueue() async {
-    final api = MetraApiClient(Supabase.instance.client);
-    const pageSize = 200;
-    var page = 1;
-    var total = 0;
-    final items = <Map<String, dynamic>>[];
-    do {
-      final response = await api.get(
-        '/api/v1/registration/approvals',
-        query: {'page': '$page', 'page_size': '$pageSize'},
-      );
-      final rows = response['items'];
-      if (rows is! List) throw Exception('استجابة قائمة الاعتمادات غير صالحة.');
-      items.addAll(rows.whereType<Map>().map((item) => Map<String, dynamic>.from(item)));
-      total = (response['total'] as num?)?.toInt() ?? items.length;
-      if (rows.isEmpty) break;
-      page++;
-    } while (items.length < total);
-    return List<Map<String, dynamic>>.unmodifiable(items);
+    return MetraOperationsService.fromSupabase(Supabase.instance.client)
+        .fetchRegistrationApprovals(pageSize: 200);
   }
 
   Future<String?> requestNote({required bool requiredNote}) async {
@@ -499,14 +481,12 @@ class _RegistrationApprovalsPageState extends State<RegistrationApprovalsPage> {
       if (expectedResult == null) {
         throw Exception('مرحلة الطلب أو القرار غير صالحين. حدّث القائمة.');
       }
-      final result = await MetraApiClient(Supabase.instance.client).post(
-        '/api/v1/registration/$requestId/decisions',
-        body: {
-          'expected_status': expected,
-          'decision': decision,
-          'note': note,
-        },
-      );
+      final result = await MetraOperationsService.fromSupabase(Supabase.instance.client)
+          .decideRegistration(requestId, {
+            'expected_status': expected,
+            'decision': decision,
+            'note': note,
+          });
       if (result['result_status'] != 'committed' ||
           result['resulting_status'] != expectedResult) {
         throw Exception('لم يؤكد الخادم حفظ الحالة الناتجة المتوقعة للقرار.');
