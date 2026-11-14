@@ -1,5 +1,4 @@
--- Non-login role for the ASP.NET runtime. Provision a separate managed login
--- and grant membership outside this migration; never use postgres/service_role.
+
 do $$
 begin
   if not exists (select 1 from pg_catalog.pg_roles where rolname = 'metra_api_runtime') then
