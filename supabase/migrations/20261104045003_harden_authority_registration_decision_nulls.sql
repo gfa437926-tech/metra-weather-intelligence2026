@@ -98,4 +98,3 @@ REVOKE ALL ON FUNCTION public.decide_metra_registration_for_station(uuid,uuid,te
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.decide_metra_registration_for_station(uuid,uuid,text,uuid,text,text,timestamptz)
   TO service_role;
-
