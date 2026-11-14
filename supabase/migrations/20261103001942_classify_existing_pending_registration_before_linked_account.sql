@@ -1,7 +1,4 @@
--- Return the correct replay outcome when an Auth user already has a pending
--- registration. Pending-request classification must precede generic linked-account
--- classification because the pending workflow intentionally creates a profile
--- and account-state row in the same transaction.
+
 do $migration$
 declare v_definition text;
 begin
