@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Metra.Api.Data;
+using Metra.Api.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +20,8 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
+builder.Services.AddSingleton<MetraDatabase>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -86,19 +90,67 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health/live").AllowAnonymous();
 
-// This endpoint reports only the cryptographically validated token subject.
-// It deliberately does not claim that an application profile or permissions exist.
-app.MapGet("/api/v1/me", (ClaimsPrincipal principal) =>
+app.MapGet("/health/ready", async (MetraDatabase database, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        return await database.ProbeAsync(cancellationToken)
+            ? Results.Ok(new { status = "ready" })
+            : Results.Problem(
+                title: "Database is not configured or unavailable",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Npgsql.NpgsqlException)
+    {
+        return Results.Problem(
+            title: "Database is not configured or unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "Database is not configured or unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}).AllowAnonymous();
+
+app.MapGet("/api/v1/me", async (
+    ClaimsPrincipal principal,
+    ICurrentUserService currentUserService,
+    CancellationToken cancellationToken) =>
 {
     var subject = principal.FindFirstValue("sub");
-    return string.IsNullOrWhiteSpace(subject)
-        ? Results.Unauthorized()
-        : Results.Ok(new CurrentIdentityResponse(subject));
+    if (!Guid.TryParse(subject, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var currentUser = await currentUserService.GetAsync(userId, cancellationToken);
+        if (currentUser is null || !string.Equals(
+                currentUser.ProfileState, "active", StringComparison.Ordinal))
+        {
+            return Results.Forbid();
+        }
+
+        return Results.Ok(currentUser);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(
+            title: "The identity service is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Npgsql.NpgsqlException)
+    {
+        return Results.Problem(
+            title: "The identity service is temporarily unavailable",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
 })
 .RequireAuthorization();
 
 app.Run();
-
-internal sealed record CurrentIdentityResponse(string UserId);
 
 public partial class Program { }
