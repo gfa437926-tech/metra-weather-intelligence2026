@@ -254,4 +254,3 @@ GRANT EXECUTE ON FUNCTION public.metra_user_has_station_permission(uuid,uuid,tex
 GRANT EXECUTE ON FUNCTION public.request_authority_membership(uuid,uuid,text,uuid,text,timestamptz,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION public.decide_authority_membership(uuid,uuid,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION public.revoke_authority_membership(uuid,uuid,text,timestamptz) TO service_role;
-
