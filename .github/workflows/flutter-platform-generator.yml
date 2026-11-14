@@ -1,0 +1,46 @@
+name: Generate Flutter mobile platforms
+
+on:
+  push:
+    branches:
+      - work/database-architecture-fresh-design-2026-11-14
+    paths-ignore:
+      - 'android/**'
+      - 'ios/**'
+
+permissions:
+  contents: write
+
+jobs:
+  generate-platforms:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/database-architecture-fresh-design-2026-11-14
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android and iOS project scaffolding
+        run: |
+          flutter create --help
+          flutter create --platforms=android,ios --org com.gfa437926tech --project-name metra_weather_intelligence .
+
+      - name: Commit generated mobile platforms
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android ios .metadata
+          if git diff --cached --quiet; then
+            echo "Mobile platform scaffolding is already current."
+            exit 0
+          fi
+          git commit -m "build(flutter): generate Android and iOS platform projects"
+          git push origin HEAD:work/database-architecture-fresh-design-2026-11-14
