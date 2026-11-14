@@ -31,6 +31,9 @@ public sealed record StationReviewDecisionResponse(
     [property: JsonPropertyName("id")] Guid StationId,
     [property: JsonPropertyName("resulting_status")] string ResultingStatus);
 
-public sealed class StationReviewAccessDeniedException : Exception;
+public sealed class StationReviewAccessDeniedException : Exception
+{
+    public StationReviewAccessDeniedException() : base("The current user cannot review this station.") { }
+}
 public sealed class StationReviewConflictException(string message) : Exception(message);
 public sealed class StationReviewValidationException(string message) : Exception(message);
