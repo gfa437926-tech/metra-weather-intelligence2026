@@ -1,4 +1,5 @@
 using Npgsql;
+using System.Net;
 
 namespace Metra.Api.Data;
 
@@ -17,14 +18,19 @@ public sealed class MetraDatabase : IAsyncDisposable
             return;
         }
 
-        var builder = new NpgsqlConnectionStringBuilder(connectionString)
-        {
-            SslMode = SslMode.VerifyFull,
-            Timeout = 15,
-            CommandTimeout = 30,
-            Pooling = true,
-            MaxPoolSize = 20
-        };
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var allowInsecureLocalhost = configuration.GetValue<bool>(
+            "MetraDatabase:AllowInsecureLocalhost");
+        var isLoopbackHost = builder.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || (IPAddress.TryParse(builder.Host, out var address) && IPAddress.IsLoopback(address));
+
+        builder.SslMode = allowInsecureLocalhost && isLoopbackHost
+            ? SslMode.Disable
+            : SslMode.VerifyFull;
+        builder.Timeout = 15;
+        builder.CommandTimeout = 30;
+        builder.Pooling = true;
+        builder.MaxPoolSize = 20;
         _dataSource = NpgsqlDataSource.Create(builder.ConnectionString);
     }
 
