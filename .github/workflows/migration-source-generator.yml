@@ -51,6 +51,12 @@ jobs:
             v_table_count integer;
             v_rls_count integer;
             v_migration_count integer;
+            v_role_count integer;
+            v_permission_count integer;
+            v_role_permission_count integer;
+            v_station_count integer;
+            v_user_count integer;
+            v_observation_count integer;
           begin
             select count(*) into v_table_count
             from pg_tables
@@ -64,6 +70,13 @@ jobs:
             select count(*) into v_migration_count
             from supabase_migrations.schema_migrations;
 
+            select count(*) into v_role_count from iam.roles;
+            select count(*) into v_permission_count from iam.permissions;
+            select count(*) into v_role_permission_count from iam.role_permissions;
+            select count(*) into v_station_count from catalog.stations;
+            select count(*) into v_user_count from iam.user_profiles;
+            select count(*) into v_observation_count from observations.submissions;
+
             if v_table_count <> 46 then
               raise exception 'Expected 46 METRA tables, found %', v_table_count;
             end if;
@@ -72,6 +85,14 @@ jobs:
             end if;
             if v_migration_count <> 86 then
               raise exception 'Expected 86 migration ledger rows, found %', v_migration_count;
+            end if;
+            if v_role_count <> 10 or v_permission_count <> 27 or v_role_permission_count <> 78 then
+              raise exception 'Unexpected IAM seed counts: roles %, permissions %, role_permissions %',
+                v_role_count, v_permission_count, v_role_permission_count;
+            end if;
+            if v_station_count <> 0 or v_user_count <> 0 or v_observation_count <> 0 then
+              raise exception 'Fresh database unexpectedly contains operational data: stations %, users %, observations %',
+                v_station_count, v_user_count, v_observation_count;
             end if;
             if to_regclass('public.station_catalogue') is not null then
               raise exception 'Legacy public.station_catalogue unexpectedly exists in greenfield schema';
