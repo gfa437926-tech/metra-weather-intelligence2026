@@ -1,7 +1,7 @@
--- Correct the registration replay classification order. A pending request already
--- has profile/account-state rows, so pending must be checked before the generic
--- linked-account condition. This patch verifies the exact original block before
--- replacing it, and aborts if the expected definition is not present.
+-- Make the replay classification repair safe after the preceding migration.
+-- 20261103001942 may already have moved the pending-request branch ahead of the
+-- linked-account branch. In that case this migration must verify and no-op,
+-- rather than fail while replaying a clean database.
 do $migration$
 declare
   v_definition text;
@@ -37,17 +37,33 @@ $old$;
     return;
   end if;
 $new$;
+  v_pending_position integer;
+  v_linked_position integer;
 begin
   select pg_get_functiondef(
     'private.submit_metra_registration(uuid,text,text,text,text,text,uuid,text,timestamptz,text)'::regprocedure
   ) into v_definition;
-  if position(v_old in v_definition)=0 then
-    raise exception 'expected registration replay block not found; no function change applied';
+
+  v_pending_position := position('existing_pending' in v_definition);
+  v_linked_position := position('auth_user_already_linked' in v_definition);
+
+  if v_pending_position = 0 or v_linked_position = 0 then
+    raise exception 'registration replay branches not found; no function change applied';
   end if;
-  v_definition := replace(v_definition,v_old,v_new);
-  if position(v_new in v_definition)=0 then
-    raise exception 'registration replay block replacement verification failed';
+
+  if v_pending_position > v_linked_position then
+    if position(v_old in v_definition) = 0 then
+      raise exception 'expected registration replay block not found; no function change applied';
+    end if;
+    v_definition := replace(v_definition, v_old, v_new);
   end if;
+
+  if position('existing_pending' in v_definition) = 0
+     or position('auth_user_already_linked' in v_definition) = 0
+     or position('existing_pending' in v_definition) > position('auth_user_already_linked' in v_definition) then
+    raise exception 'registration replay block ordering verification failed';
+  end if;
+
   execute v_definition;
 end
 $migration$;
