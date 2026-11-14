@@ -19,7 +19,8 @@ public sealed record RegistrationStation(
     [property: JsonPropertyName("station_type")] string StationType,
     [property: JsonPropertyName("operational_status")] string OperationalStatus,
     [property: JsonPropertyName("approval_status")] string ApprovalStatus,
-    [property: JsonPropertyName("owner_organization_id")] Guid OwnerOrganizationId);
+    [property: JsonPropertyName("owner_organization_id")] Guid OwnerOrganizationId,
+    [property: JsonPropertyName("authority_name")] string AuthorityName);
 
 public sealed record RegistrationStatusResponse(
     [property: JsonPropertyName("account_state")] string AccountState,
