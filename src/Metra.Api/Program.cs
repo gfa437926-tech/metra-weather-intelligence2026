@@ -642,6 +642,73 @@ app.MapGet("/api/v1/observations/stations", async (
 })
 .RequireAuthorization();
 
+
+app.MapGet("/api/v1/registration/approvals", async (
+    ClaimsPrincipal principal,
+    IRegistrationService registrationService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(await registrationService.GetApprovalQueueAsync(userId, cancellationToken));
+    }
+    catch (RegistrationApprovalAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Registration approval service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Registration approval service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+app.MapPost("/api/v1/registration/{requestId:guid}/decisions", async (
+    Guid requestId,
+    RegistrationApprovalDecisionRequest request,
+    ClaimsPrincipal principal,
+    IRegistrationService registrationService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(await registrationService.DecideAsync(
+            userId, requestId, request, cancellationToken));
+    }
+    catch (RegistrationApprovalAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (RegistrationApprovalValidationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["decision"] = [exception.Message]
+        });
+    }
+    catch (RegistrationApprovalConflictException exception)
+    {
+        return Results.Problem(title: exception.Message, statusCode: 409);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Registration approval service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Registration approval service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
 app.Run();
 
 public partial class Program { }
