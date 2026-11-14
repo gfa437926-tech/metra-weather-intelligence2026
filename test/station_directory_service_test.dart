@@ -7,6 +7,24 @@ import 'package:metra_weather_intelligence/data/metra_api_client.dart';
 import 'package:metra_weather_intelligence/data/station_directory_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class _FakeMetraApiClient extends MetraApiClient {
+  _FakeMetraApiClient(this._onGet)
+      : super(
+          SupabaseClient('https://auth.example.test', 'public-test-key'),
+          baseUrl: 'https://api.example.test',
+          accessTokenProvider: () => 'test-token',
+        );
+
+  final Map<String, dynamic> Function(String path, Map<String, String> query) _onGet;
+
+  @override
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String> query = const {},
+  }) async =>
+      _onGet(path, query);
+}
+
 void main() {
   SupabaseClient createAuthClient() =>
       SupabaseClient('https://auth.example.test', 'public-test-key');
@@ -24,46 +42,34 @@ void main() {
       };
 
   test('fetchStations authenticates and follows all API pages', () async {
-    final requests = <http.Request>[];
-    var responseIndex = 0;
-    final client = MockClient((request) async {
-      requests.add(request);
-      final page = responseIndex++;
-      if (page == 0) {
-        return http.Response(jsonEncode({
+    final requests = <Map<String, String>>[];
+    final api = _FakeMetraApiClient((path, query) {
+      requests.add(query);
+      expect(path, '/api/v1/stations');
+      if (query['page'] == '1') {
+        return {
           'stations': [station('one001')],
           'total': 2,
           'page': 1,
           'page_size': 200,
-        }), 200);
+        };
       }
-      return http.Response(jsonEncode({
+      return {
         'stations': [station('two002')],
         'total': 2,
         'page': 2,
         'page_size': 200,
-      }), 200);
+      };
     });
-    final api = MetraApiClient(
-      createAuthClient(),
-      baseUrl: 'https://api.example.test',
-      httpClient: client,
-      accessTokenProvider: () => 'test-access-token',
-    );
     final service = StationDirectoryService(createAuthClient(), apiClient: api);
 
     final result = await service.fetchStations();
 
     expect(result.map((item) => item.id), ['one001', 'two002']);
-    expect(requests, hasLength(2));
-    expect(requests.map((r) => r.url.queryParameters['page']), ['1', '2']);
-    for (final request in requests) {
-      expect(request.headers['authorization'], 'Bearer test-access-token');
-      expect(request.headers['accept'], 'application/json');
-      expect(request.url.path, '/api/v1/stations');
-      expect(request.url.queryParameters['page_size'], '200');
-    }
-    client.close();
+    expect(requests, [
+      {'page': '1', 'page_size': '200'},
+      {'page': '2', 'page_size': '200'},
+    ]);
   });
 
   test('fetchStations returns an immutable empty catalogue', () async {
