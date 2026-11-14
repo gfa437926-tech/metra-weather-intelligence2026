@@ -1,34 +1,49 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/access_context.dart';
 import '../domain/station_record.dart';
+import 'metra_api_client.dart';
 
 class StationDirectoryService {
   StationDirectoryService(this._client);
   final SupabaseClient _client;
 
-  Future<Map<String, dynamic>> _fetchPayload() async {
-    final response = await _client.functions.invoke('station-directory');
-    if (response.status != 200 || response.data is! Map) {
-      throw const StationDirectoryException('تعذر تحميل بيانات الحساب ودليل المحطات من الخدمة الآمنة.');
-    }
-    return Map<String, dynamic>.from(response.data as Map);
-  }
+  MetraApiClient get _api => MetraApiClient(_client);
 
   Future<List<StationRecord>> fetchStations() async {
-    final data = await _fetchPayload();
+    final data = await _api.get(
+      '/api/v1/stations',
+      query: const {'page': '1', 'page_size': '200'},
+    );
     return parseStationRows(data['stations']);
   }
 
   Future<AccessContext> fetchAccessContext() async {
-    final response = await _client.functions.invoke(
-      'station-directory',
-      body: const {'include_stations': false},
-    );
-    if (response.status != 200 || response.data is! Map) {
-      throw const StationDirectoryException('تعذر تحميل صلاحيات الحساب من الخدمة الآمنة.');
+    final data = await _api.get('/api/v1/me');
+    final roleCodes = <String>{};
+    final memberships = data['memberships'];
+    if (memberships is List) {
+      for (final membership in memberships.whereType<Map>()) {
+        final roles = membership['roles'];
+        if (roles is! List) continue;
+        for (final role in roles.whereType<Map>()) {
+          final code = role['roleCode']?.toString().trim();
+          if (code != null && code.isNotEmpty) roleCodes.add(code);
+        }
+      }
     }
-    return AccessContext.fromJson(
-      Map<String, dynamic>.from(response.data as Map),
+
+    final permissionCodes = <String>{};
+    final permissions = data['permissions'];
+    if (permissions is List) {
+      for (final permission in permissions.whereType<Map>()) {
+        final code = permission['permissionCode']?.toString().trim();
+        if (code != null && code.isNotEmpty) permissionCodes.add(code);
+      }
+    }
+
+    return AccessContext(
+      roleCodes: roleCodes.toList()..sort(),
+      permissionCodes: permissionCodes.toList()..sort(),
     );
   }
 }
