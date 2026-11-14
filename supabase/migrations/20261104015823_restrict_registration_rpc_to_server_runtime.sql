@@ -1,6 +1,3 @@
--- Only trusted Edge Functions using the service role may execute these SECURITY DEFINER wrappers.
--- Edge Functions verify the user's JWT first; the private transactions then validate
--- the submitted actor against active account state, direct grants and station assignment.
 create or replace function public.submit_metra_registration(
   p_auth_user_id uuid,
   p_first_name text,
