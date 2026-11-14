@@ -7,6 +7,7 @@ import 'domain/station_record.dart';
 import 'domain/station_cluster.dart';
 import 'domain/access_context.dart';
 import 'data/weather_service.dart';
+import 'data/metra_api_client.dart';
 import 'domain/weather_snapshot.dart';
 import 'screens/registration_flow.dart';
 import 'screens/observations_page.dart';
@@ -75,7 +76,7 @@ class _ShellState extends State<Shell> {
  int page=0;
  final titles=['الرئيسية','الخريطة','المحطات','الرصد','اعتماد المحطات','مراكز التنبؤ','التنبيهات','الإعدادات'];
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
- body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),ForecastCentersPage(client: metraSupabaseClient),const AlertsPage(),const SettingsPage()]),
+ body:IndexedStack(index:page,children: [const HomePage(),const MapPage(),const StationsPage(),ObservationsPage(client: metraSupabaseClient),StationReviewPage(client: metraSupabaseClient),ForecastCentersPage(client: metraSupabaseClient),AlertsPage(client: metraSupabaseClient),const SettingsPage()]),
  bottomNavigationBar:NavigationBar(height:72,selectedIndex:page,onDestinationSelected:(i)=>setState(()=>page=i),destinations:const [
  NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'الرئيسية'),
  NavigationDestination(icon:Icon(Icons.map_outlined),selectedIcon:Icon(Icons.map),label:'الخريطة'),
@@ -822,46 +823,209 @@ class _StationMessage extends StatelessWidget {
   );
 }
 
-class AlertsPage extends StatelessWidget {
-  const AlertsPage({super.key});
+class AlertsPage extends StatefulWidget {
+  const AlertsPage({super.key, required this.client});
+  final SupabaseClient? client;
+
+  @override
+  State<AlertsPage> createState() => _AlertsPageState();
+}
+
+class _AlertsPageState extends State<AlertsPage> {
+  late Future<Map<String, dynamic>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = _load();
+  }
+
+  Future<Map<String, dynamic>> _load() {
+    final client = widget.client;
+    if (client == null) {
+      throw StateError('يلزم إعداد اتصال METRA لعرض التنبيهات.');
+    }
+    return MetraApiClient(client).get(
+      '/api/v1/alerts',
+      query: const {'page': '1', 'page_size': '100'},
+    );
+  }
+
+  void _refresh() => setState(() => future = _load());
+
+  String _dateLabel(Object? value) {
+    if (value is! String) return 'الوقت غير محدد';
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return 'الوقت غير محدد';
+    final local = parsed.toLocal();
+    return '${local.year.toString().padLeft(4, '0')}-'
+        '${local.month.toString().padLeft(2, '0')}-'
+        '${local.day.toString().padLeft(2, '0')} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _severityLabel(String value) => switch (value) {
+    'extreme' => 'شديد للغاية',
+    'severe' => 'شديد',
+    'moderate' => 'متوسط',
+    'minor' => 'محدود',
+    _ => 'غير محدد',
+  };
+
+  Color _severityColor(String value) => switch (value) {
+    'extreme' || 'severe' => const Color(0xFFB42318),
+    'moderate' => const Color(0xFFB54708),
+    'minor' => const Color(0xFF1769D2),
+    _ => Colors.blueGrey,
+  };
+
   @override
   Widget build(BuildContext context) => PageFrame(
     title: 'التنبيهات',
-    subtitle: 'مركز التنبيهات الجوية',
-    child: Column(children: [
-      const AlertBanner(),
-      const SizedBox(height: 15),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE6EAF0)),
-        ),
-        child: Column(children: [
-          const Icon(Icons.cloud_off_outlined, color: blue, size: 36),
-          const SizedBox(height: 10),
-          const Text('مصدر التنبيهات غير متصل',
-            style: TextStyle(color: ink, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text(
-            'لم يتم ربط مصدر رسمي للتنبيهات الجوية بعد. لا يمكن تأكيد وجود تنبيهات أو عدم وجودها حالياً.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.blueGrey, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          const Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center,
-            children: [
-              Chip(label: Text('الحرارة')),
-              Chip(label: Text('الرياح')),
-              Chip(label: Text('الأمطار')),
+    subtitle: 'الأحداث المسجلة والموجهة ضمن صلاحيات حسابك',
+    child: FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          final message = snapshot.error is MetraApiException
+              ? (snapshot.error as MetraApiException).message
+              : 'تعذر تحميل التنبيهات من خدمة METRA.';
+          return _AlertPanel(
+            icon: Icons.cloud_off_outlined,
+            title: 'تعذر تحميل التنبيهات',
+            message: message,
+            action: 'إعادة المحاولة',
+            onAction: _refresh,
+          );
+        }
+
+        final raw = snapshot.data?['items'];
+        final items = raw is List
+            ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+            : <Map<String, dynamic>>[];
+        if (items.isEmpty) {
+          return const _AlertPanel(
+            icon: Icons.notifications_none_outlined,
+            title: 'لا توجد تنبيهات مسجلة لحسابك',
+            message: 'لم تُسجل أحداث تنبيه موجهة إلى نطاق صلاحياتك في قاعدة METRA. هذا لا يعني خلو المنطقة من الظواهر الجوية؛ مصدر التنبيهات الجوية الرسمي لم يُربط بعد.',
+          );
+        }
+
+        return Column(
+          children: [
+            Row(children: [
+              Expanded(child: Text(
+                'عدد الأحداث: ${snapshot.data?['total'] ?? items.length}',
+                style: const TextStyle(color: ink, fontWeight: FontWeight.w700),
+              )),
+              IconButton(
+                tooltip: 'تحديث التنبيهات',
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh),
+              ),
             ]),
-        ]),
-      ),
+            for (final item in items)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE6EAF0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Expanded(child: Text(
+                        (item['headline'] ?? 'تنبيه').toString(),
+                        style: const TextStyle(color: ink, fontWeight: FontWeight.bold),
+                      )),
+                      Text(
+                        _severityLabel((item['severity'] ?? '').toString()),
+                        style: TextStyle(
+                          color: _severityColor((item['severity'] ?? '').toString()),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ]),
+                    if ((item['description'] ?? '').toString().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(item['description'].toString(),
+                        style: const TextStyle(color: Colors.blueGrey, height: 1.5)),
+                    ],
+                    if ((item['area_reference'] ?? '').toString().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('النطاق: ${item['area_reference']}',
+                        style: const TextStyle(color: Colors.blueGrey, fontSize: 12)),
+                    ],
+                    const SizedBox(height: 10),
+                    Text(
+                      'البداية: ${_dateLabel(item['starts_at'])} • الحالة: ${item['event_state']}',
+                      style: const TextStyle(color: Colors.blueGrey, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _AlertPanel extends StatelessWidget {
+  const _AlertPanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.action,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFE6EAF0)),
+    ),
+    child: Column(children: [
+      Icon(icon, color: blue, size: 36),
+      const SizedBox(height: 10),
+      Text(title, style: const TextStyle(color: ink, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+      Text(message, textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.blueGrey, fontSize: 12, height: 1.55)),
+      if (action != null && onAction != null) ...[
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onAction,
+          icon: const Icon(Icons.refresh),
+          label: Text(action!),
+        ),
+      ],
     ]),
   );
 }
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
   @override
