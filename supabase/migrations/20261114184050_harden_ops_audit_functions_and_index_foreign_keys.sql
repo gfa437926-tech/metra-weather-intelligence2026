@@ -24,4 +24,3 @@ alter function public.reject_metra_equipment_fault_audit_mutation()
   set search_path = '';
 alter function public.reject_metra_support_incident_audit_mutation()
   set search_path = '';
-
