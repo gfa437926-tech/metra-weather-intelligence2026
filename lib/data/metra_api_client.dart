@@ -5,16 +5,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MetraApiClient {
   MetraApiClient(
-    this._authClient, {
+    SupabaseClient authClient, {
     String? baseUrl,
     http.Client? httpClient,
+    String? Function()? accessTokenProvider,
   })  : _baseUrl = (baseUrl ?? const String.fromEnvironment('METRA_API_URL')).trim(),
-        _httpClient = httpClient ?? _sharedClient;
+        _httpClient = httpClient ?? _sharedClient,
+        _accessTokenProvider = accessTokenProvider ??
+            (() => authClient.auth.currentSession?.accessToken);
 
   static final http.Client _sharedClient = http.Client();
 
-  final SupabaseClient _authClient;
   final String _baseUrl;
+  final String? Function() _accessTokenProvider;
   final http.Client _httpClient;
 
   Future<Map<String, dynamic>> get(
@@ -40,7 +43,7 @@ class MetraApiClient {
       );
     }
 
-    final token = _authClient.auth.currentSession?.accessToken;
+    final token = _accessTokenProvider();
     if (token == null || token.isEmpty) {
       throw const MetraApiException(
         statusCode: 401,
@@ -147,7 +150,7 @@ Uri buildMetraApiUri(
     return decoded == '.' ||
         decoded == '..' ||
         decoded.contains('/') ||
-        decoded.contains(r'\\');
+        decoded.contains('\\\\');
   });
   final route = Uri.tryParse(path);
   if (route == null ||
@@ -157,7 +160,7 @@ Uri buildMetraApiUri(
       route.hasFragment ||
       !path.startsWith('/') ||
       path.startsWith('//') ||
-      path.contains(r'\\') ||
+      path.contains('\\\\') ||
       path.contains('?') ||
       path.contains('#') ||
       hasUnsafeSegment) {
