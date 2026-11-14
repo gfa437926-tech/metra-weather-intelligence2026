@@ -3,7 +3,10 @@ using System.Text.Json.Serialization;
 namespace Metra.Api.Stations;
 
 public sealed record StationReviewQueueResponse(
-    [property: JsonPropertyName("stations")] IReadOnlyList<StationReviewItem> Stations);
+    [property: JsonPropertyName("stations")] IReadOnlyList<StationReviewItem> Stations,
+    [property: JsonPropertyName("total")] long Total,
+    [property: JsonPropertyName("page")] int Page,
+    [property: JsonPropertyName("page_size")] int PageSize);
 
 public sealed record StationReviewItem(
     [property: JsonPropertyName("id")] Guid Id,
