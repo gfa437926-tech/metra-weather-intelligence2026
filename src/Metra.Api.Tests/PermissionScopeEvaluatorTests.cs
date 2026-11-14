@@ -1,3 +1,4 @@
+using Xunit;
 using Metra.Api.Identity;
 
 namespace Metra.Api.Tests;
