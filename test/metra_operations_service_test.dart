@@ -205,4 +205,78 @@ void main() {
     expect(result['result_status'], 'created');
     transport.close();
   });
+
+  test('fetchAllPages stops safely when a later page is empty despite a stale total', () async {
+    final pages = <String>[];
+    final transport = MockClient((request) async {
+      final page = request.url.queryParameters['page']!;
+      pages.add(page);
+      if (page == '1') {
+        return http.Response(jsonEncode({
+          'items': [{'id': 'only-record'}],
+          'total': 3,
+        }), 200);
+      }
+      return http.Response(jsonEncode({'items': [], 'total': 3}), 200);
+    });
+
+    final items = await service(transport).fetchAllPages(
+      '/api/v1/observations/mine',
+      pageSize: 1,
+    );
+
+    expect(items.map((item) => item['id']), ['only-record']);
+    expect(pages, ['1', '2']);
+    transport.close();
+  });
+
+  test('covers scoped queue and alert list routes with their response keys', () async {
+    final paths = <String>[];
+    final transport = MockClient((request) async {
+      paths.add(request.url.path);
+      final isStationQueue = request.url.path == '/api/v1/stations/review-queue' ||
+          request.url.path == '/api/v1/observations/stations';
+      return http.Response(jsonEncode({
+        isStationQueue ? 'stations' : 'items': [],
+        'total': 0,
+      }), 200);
+    });
+    final api = service(transport);
+
+    await api.fetchRegistrationApprovals();
+    await api.fetchObservationStations();
+    await api.fetchOwnObservations();
+    await api.fetchObservationReviewQueue();
+    await api.fetchStationReviewQueue();
+    await api.fetchAlerts();
+
+    expect(paths, [
+      '/api/v1/registration/approvals',
+      '/api/v1/observations/stations',
+      '/api/v1/observations/mine',
+      '/api/v1/observations/review-queue',
+      '/api/v1/stations/review-queue',
+      '/api/v1/alerts',
+    ]);
+    transport.close();
+  });
+
+  test('rejects unsafe registration decision identifiers before transport', () async {
+    var requests = 0;
+    final transport = MockClient((_) async {
+      requests++;
+      return http.Response('{}', 200);
+    });
+    final api = service(transport);
+
+    for (final id in ['', '  ', '../other', 'request?next=admin', 'request#fragment']) {
+      expect(
+        () => api.decideRegistration(id, {'decision': 'approved', 'reason': 'verified'}),
+        throwsArgumentError,
+      );
+    }
+    expect(requests, 0);
+    transport.close();
+  });
+
 }
