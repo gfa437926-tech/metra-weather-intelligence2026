@@ -1,115 +1,79 @@
-# METRA Greenfield Database — خطة تنفيذ migrations والتحقق
+# METRA Greenfield Database — حالة التنفيذ وإعادة البناء
 
-**الحالة:** بوابة تنفيذ وتجهيز؛ لا توجد migrations جديدة مطبقة بعد.  
+**الحالة:** تم تطبيق المخطط الجديد على مشروع Supabase المخصص لـ METRA والتحقق من بنيته الأساسية.  
 **الفرع:** `work/database-architecture-fresh-design-2026-11-14`  
-**قاعدة السلامة:** لا اتصال ولا كتابة على أي مشروع Supabase مستضاف خلال هذه المرحلة.
+**قاعدة السلامة:** لا اتصال ولا كتابة على قاعدة METRA القديمة؛ لا نقل بيانات منها.
 
-## 1. قرار الفصل
+## 1. حدود المشروع
 
-المستودع يحتوي بالفعل على `supabase/migrations/` لتاريخ تنفيذ التطبيق الحالي. لن نعيد كتابة هذه الملفات أو نعيد ترقيمها أو نضع baseline الجديدة بينها.
+- Supabase project ref: `tbdnklyxjvbrilvnwgmq`.
+- PostgreSQL 17.11، المنطقة `eu-west-2`.
+- المستودع: `gfa437926-tech/metra-weather-intelligence2026`.
+- جداول التطبيق الجديدة موزعة على schemas مستقلة؛ لا توجد جداول تطبيق في `public`.
+- مكونات Supabase المدارة مثل `auth`, `storage`, `realtime`, `vault`, `extensions`, `supabase_migrations` خارج نطاق الحذف.
 
-سيكون مصدر الحقيقة المستقل للتصميم الجديد في مساحة عمل منفصلة (Greenfield workdir) بعد اعتماد هذا المستند، بحيث:
-- تكون migrations الجديدة مستقلة عن التاريخ الحالي.
-- تبدأ من قاعدة اختبار فارغة تماماً.
-- لا تتطلب schema أو بيانات أو migration history من مشروع مستضاف.
-- لا تتضمن أي INSERT لبيانات محطات أو مستخدمين قديمة.
-- بيانات الاختبار الاصطناعية، إن أضيفت لاحقاً، تكون منفصلة ومعلّمة بوضوح.
+## 2. إعادة التأسيس التي نُفذت
 
-## 2. متطلبات بيئة البناء
+تم تطبيق سجلّي migration على قاعدة METRA الجديدة:
 
-- Supabase CLI مثبت بإصدار مثبت/محدد في CI.
-- Docker-compatible runtime لتشغيل Supabase local stack.
-- قاعدة محلية مؤقتة disposable.
-- لا تستخدم `supabase link` ولا متغيرات `SUPABASE_DB_PASSWORD` أو مفاتيح مشروع مستضاف في وظيفة اختبار baseline.
-- لا تستخدم `--remote` أو `--linked` في وظيفة إعادة البناء.
-- يجب أن يفشل CI إذا لم يكن الهدف محلياً أو إذا تطلبت الأوامر اتصالاً مستضافاً.
+- `20261114184511_metra_greenfield_application_schema_rebuild`
+- `20261114184541_metra_greenfield_integrity_and_foreign_key_index_hardening`
 
-**ملاحظة بيئية:** بيئة التنفيذ المستخدمة في جلسة إعداد هذا المستند لا تحتوي على Supabase CLI أو Docker أو psql؛ لذلك لم أتمكن من توليد ملف migration عبر CLI أو تشغيل إعادة البناء محلياً. لا أصف أي migration بأنها مختبرة قبل تشغيلها في بيئة مناسبة.
+أزيلت جداول التطبيق السابقة من `public` ومخطط staging `metra_migration` والدوال الداخلية القديمة، ثم أنشئت schemas المجال الجديدة. لم تُنقل بيانات قديمة ولم يُعاد إدخال دليل المحطات أو الرصد السابق.
 
-## 3. طريقة إنشاء ملفات migration
+التفاصيل والجرد والنتائج في:
+`docs/DATABASE-REBUILD-EXECUTION-2026-11-14.md`.
 
-عند بدء التنفيذ داخل مساحة العمل الجديدة، استخدم CLI لتوليد كل ملف، ولا تنشئ أسماء timestamp يدوياً:
+## 3. بيئة البيانات الجديدة
 
-```bash
-supabase --workdir <greenfield-workdir> migration new 0001_create_foundation
-supabase --workdir <greenfield-workdir> migration new 0002_create_identity_and_catalog
-supabase --workdir <greenfield-workdir> migration new 0003_create_observation_domain
-supabase --workdir <greenfield-workdir> migration new 0004_add_security_and_audit
-```
+تم إنشاء 45 جدولاً في schemas:
+`iam`, `catalog`, `ref`, `observations`, `weather`, `alerts`, `operations`, `files`, `integration`, `audit`، مع مخطط `private` للدوال الداخلية.
 
-تُملأ الملفات بالـ DDL المعتمد فقط. لا تنفذها على مشروع مستضاف.
+البيانات المرجعية الأولية:
+- 10 أدوار.
+- 25 صلاحية.
+- 74 ربطاً بين الأدوار والصلاحيات.
+- 7 أنواع محطات.
+- 3 أنواع رصد.
 
-## 4. ترتيب التنفيذ المقترح
+لم تُنشأ سجلات جهات أو محطات تشغيلية أو قراءات رصد أو حسابات تطبيق. القواميس العلمية للبارامترات والوحدات التفصيلية ما زالت تحتاج اعتماداً علمياً قبل تعبئتها.
 
-| الترتيب | Migration | المحتوى | شرط البدء |
-|---:|---|---|---|
-| 1 | foundation | schemas, extensions المعتمدة, common functions, grants baseline | اعتماد حدود schemas والإضافات |
-| 2 | identity | profiles, organizations, units, memberships, roles, permissions, assignments, grants | اعتماد RBAC وAuth subject mapping |
-| 3 | catalogue | station types, stations, identifiers, locations, capabilities, operating periods, reviews | اعتماد مصدر المحطات وحقول الموقع |
-| 4 | reference | units, parameters, observation types | اعتماد قاموس علمي أولي |
-| 5 | observations | submissions, values, revisions, review decisions, QC flags, attachments | اعتماد نماذج الرصد ودورياتها |
-| 6 | weather | providers, ingestion, forecast runs/points, mappings | اعتماد مزود وعقد البيانات |
-| 7 | integration/audit | execution runs, file metadata, audit events | اعتماد الاحتفاظ والتصنيف |
-| 8 | security | RLS, grants, policies, API-only mutation boundaries | اعتماد مصفوفة الصلاحيات النهائية |
+## 4. نتائج الحماية والتحقق
 
-لا يلزم أن تدخل جميع المجالات في MVP؛ يمكن تأجيل migrations الخاصة بـ weather أو غيرها بقرار نطاق موثق.
+- RLS مفعّل على 45/45 جدولاً.
+- لا توجد صلاحية schema لـ `anon` أو `authenticated` على مخططات المجال.
+- `service_role` هو دور قاعدة البيانات الوحيد الممنوح استخدام schemas المجال؛ يمنع وضع مفتاحه في Flutter.
+- جميع المفاتيح الأجنبية لها فهارس تغطيها.
+- اختبار منع تداخل فترات مواقع المحطات: ناجح.
+- اختبار append-only لسجل التدقيق: ناجح.
+- لا توجد سجلات اختبار متبقية بعد الاختبارات.
 
-## 5. اختبارات إعادة البناء المطلوبة
+Security Advisor يعرض 45 ملاحظة معلوماتية من نوع `rls_enabled_no_policy`. هذا مقصود في هذه المرحلة لأن schemas المجال غير مكشوفة للعميل، وعمليات المجال يجب أن تمر عبر backend موثوق. لا تفتح أي schema أو تضف سياسات عميل قبل تصميم سياسات كل وظيفة واختبار BOLA/IDOR.
 
-كل الاختبارات التالية يجب أن تعمل على قاعدة محلية فارغة:
+Performance Advisor لا يعرض حالياً مشكلة مفاتيح أجنبية غير مفهرسة؛ تحذيرات الفهارس غير المستخدمة متوقعة قبل بدء حركة التطبيق ولا تبرر حذفها.
 
-1. تشغيل `supabase start` على بيئة الاختبار.
-2. تشغيل `supabase db reset` وإثبات تطبيق جميع migrations بالترتيب.
-3. إعادة تشغيل reset مرة ثانية وإثبات عدم وجود اعتماد على حالة سابقة.
-4. التحقق من وجود جميع schemas والجداول والمفاتيح والقيود والفهارس.
-5. التحقق من أن كل جدول مكشوف للعميل عليه RLS وسياسات محددة، وأن schemas الداخلية غير مكشوفة.
-6. اختبار مستخدمين بنطاقين مختلفين لإثبات منع الوصول الأفقي BOLA/IDOR.
-7. اختبار منع المراجع من اعتماد إرساله الشخصي.
-8. اختبار منع قرار على revision قديمة ومنع تكرار idempotency key.
-9. اختبار XOR لحقول typed values وquality flags ومراجع access review.
-10. اختبار منع UPDATE/DELETE على audit events من أدوار التطبيق.
-11. التأكد من أن القاعدة الفارغة لا تحتوي أي سجلات محطة أو مستخدمين من قواعد سابقة.
-12. استخراج schema snapshot ومقارنته مع baseline المعتمدة.
+## 5. متطلبات بيئة الاختبار المحلية (للمطورين فقط)
 
-## 6. معايير قبول migration
+لا يُطلب من مالك المشروع تنفيذ أي شيء على جهازه. عند تجهيز CI أو بيئة تطوير سحابية مناسبة، يجب استخدام Supabase CLI وDocker لبناء قاعدة اختبار disposable، وإثبات إعادة البناء مرتين من قاعدة فارغة. CLI/Docker لم يكونا متاحين في بيئة تنفيذ هذه الجلسة.
 
-- قابلة للتطبيق من قاعدة فارغة.
-- حتمية: النتيجة نفسها في كل إعادة بناء.
-- لا تعتمد على ترتيب تنفيذ يدوي خارج migration history.
-- لا تتضمن أسراراً أو مفاتيح أو بيانات إنتاج.
-- كل FK وCHECK وUNIQUE موثق في قاموس البيانات.
-- كل صلاحية لها اختبار إيجابي وسلبي.
-- كل جدول حساس له RLS أو حظر صريح للوصول المباشر.
-- لا توجد صلاحيات عامة أو دوال SECURITY DEFINER بلا ضرورة ومراجعة.
-- لا تتغير migrations الحالية للتطبيق.
-- لا يتم نشر migration إلى Supabase المستضاف قبل موافقة مستقلة وصريحة.
+**مهم:** migration history سُجل على Supabase، لكن ملفات SQL المصدرية المطابقة لم تُولّد وتُلتزم في Git بعد. لا نعتبر إعادة البناء من Git مكتملة حتى تُحفظ ملفات migration المصدرية من خلال CLI في بيئة مناسبة. لا تنشئ أسماء timestamps يدوياً ولا تعدّل migrations التاريخية.
 
-## 7. مسائل يجب حسمها قبل DDL الكامل
+## 6. التوافق مع التطبيق — عمل تالٍ إلزامي
 
-1. اعتماد هيكل الجهات والوحدات وربط المحطات.
-2. اعتماد قائمة الأدوار والصلاحيات ونطاق كل دور.
-3. اعتماد طريقة ربط `auth.users.id` مع `iam.user_profiles.auth_subject`.
-4. اعتماد مصدر المحطات الجديد ومعرفاته وإحداثياته.
-5. اعتماد قاموس البارامترات والوحدات ونماذج الرصد من مختص الأرصاد.
-6. تحديد MVP: هل التنبؤات الخارجية تدخل baseline الأولى أم تؤجل؟
-7. اعتماد سياسات الاحتفاظ بالملفات والتدقيق والبيانات التشغيلية.
+Edge Functions الحالية في المستودع ما زالت تستخدم أسماء جداول وRPC قديمة في `public`، وهذه الكائنات أزيلت. لذلك خدمات التسجيل ودليل المحطات والرصد الحالية غير متوافقة بعد مع المخطط الجديد.
 
-## 8. سجل التحقق الحالي
+قبل إعادة تفعيل تدفقات التطبيق يجب:
+1. تنفيذ .NET API بوصفه حد الثقة للعمليات الحساسة.
+2. تنفيذ عمليات التسجيل والعضويات وتعيينات الأدوار والمراجعات بمعاملات ذرية.
+3. تحديث عقود Flutter لتتصل بالـ API الجديد.
+4. تحويل نماذج الرصد إلى قيم typed بعد اعتماد قاموس المعايير والوحدات.
+5. إضافة اختبارات تكامل وBOLA/IDOR والفصل بين مقدم الرصد ومراجعه.
+6. تحديث/deprecate Edge Functions القديمة ثم اختبار رحلة المستخدم الكاملة.
 
-| الفحص | النتيجة |
-|---|---|
-| ERD وقاموس البيانات محفوظان في الفرع | ناجح — تم التحقق من GitHub |
-| تتبع الشاشات إلى الكيانات | ناجح — وثيقة موجودة |
-| فصل المسار الجديد عن migrations الحالية | محدد كشرط إلزامي |
-| Supabase CLI متاح في بيئة الجلسة | غير متاح |
-| Docker / PostgreSQL client متاح | غير متاح |
-| إنشاء migration عبر CLI | لم ينفذ |
-| إعادة البناء على قاعدة فارغة | لم تنفذ |
-| اختبار RLS وقيود المجال | لم ينفذ |
-| تطبيق على مشروع مستضاف | لم ينفذ، وممنوع ضمن هذه المرحلة |
+## 7. سياسة النشر
 
-## 9. مراجع الأدوات
-
-- Supabase CLI v3 migration guide: https://supabase.com/docs/guides/local-development/cli/migrating-to-v3
-- Local development workflow: https://supabase.com/docs/guides/local-development/cli-workflows
-- CLI migration new: https://supabase.com/docs/reference/cli/supabase-migration-new
+- لا تعديل على قاعدة METRA القديمة.
+- لا استيراد بيانات من قاعدة قديمة.
+- لا نشر لخدمات التطبيق قبل توافقها مع المخطط الجديد.
+- لا تعريض مباشر لجداول المجال من Flutter.
+- لا إعلان عن اكتمال المشروع قبل نجاح اختبارات إعادة البناء والتكامل والأمن.
