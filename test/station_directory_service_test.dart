@@ -27,11 +27,7 @@ void main() {
     final requests = <http.Request>[];
     final client = MockClient((request) async {
       requests.add(request);
-      expect(request.headers['authorization'], 'Bearer test-access-token');
-      expect(request.headers['accept'], 'application/json');
       final page = request.url.queryParameters['page'];
-      expect(request.url.path, '/api/v1/stations');
-      expect(request.url.queryParameters['page_size'], '200');
       if (page == '1') {
         return http.Response(jsonEncode({
           'stations': [station('one001')],
@@ -60,6 +56,12 @@ void main() {
     expect(result.map((item) => item.id), ['one001', 'two002']);
     expect(requests, hasLength(2));
     expect(requests.map((r) => r.url.queryParameters['page']), ['1', '2']);
+    for (final request in requests) {
+      expect(request.headers['authorization'], 'Bearer test-access-token');
+      expect(request.headers['accept'], 'application/json');
+      expect(request.url.path, '/api/v1/stations');
+      expect(request.url.queryParameters['page_size'], '200');
+    }
     client.close();
   });
 
@@ -81,7 +83,7 @@ void main() {
     final result = await service.fetchStations();
 
     expect(result, isEmpty);
-    expect(() => (result as List).add('not-a-station'), throwsUnsupportedError);
+    expect(result.clear, throwsUnsupportedError);
     client.close();
   });
 
@@ -183,7 +185,7 @@ void main() {
   test('parseStationRows returns an immutable station list', () {
     final parsed = parseStationRows([station('one001')]);
     expect(parsed, hasLength(1));
-    expect(() => (parsed as List).add('invalid'), throwsUnsupportedError);
+    expect(parsed.clear, throwsUnsupportedError);
   });
 
 }
