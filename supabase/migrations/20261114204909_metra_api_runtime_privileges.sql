@@ -181,4 +181,3 @@ create policy metra_api_runtime_insert on audit.events
   for insert to metra_api_runtime with check (true);
 
 commit;
-
