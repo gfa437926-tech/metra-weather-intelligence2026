@@ -1,7 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../data/metra_api_client.dart';
 
 class ObservationsPage extends StatefulWidget {
   const ObservationsPage({super.key, required this.client});
@@ -13,232 +13,303 @@ class ObservationsPage extends StatefulWidget {
 
 class _ObservationsPageState extends State<ObservationsPage> {
   late Future<Map<String, dynamic>> future;
+  final Map<String, TextEditingController> valueControllers = {};
+  final Map<String, bool?> booleanValues = {};
   String? selectedStationId;
-  String observationType = 'daily';
+  String? selectedTypeCode;
+  DateTime observedAt = DateTime.now();
   bool busy = false;
-  String? _pendingIdempotencyKey;
-  String? _pendingRequestFingerprint;
-  String? _pendingObservedAt;
-
-  final temperature = TextEditingController();
-  final humidity = TextEditingController();
-  final windSpeed = TextEditingController();
-  final pressure = TextEditingController();
-  final precipitation = TextEditingController();
-  final description = TextEditingController();
+  String? idempotencyKey;
+  String? error;
 
   @override
   void initState() {
     super.initState();
+    idempotencyKey = _newIdempotencyKey();
     future = loadData();
   }
 
   @override
   void dispose() {
-    temperature.dispose();
-    humidity.dispose();
-    windSpeed.dispose();
-    pressure.dispose();
-    precipitation.dispose();
-    description.dispose();
+    for (final controller in valueControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  String _newIdempotencyKey() {
+    final userId = widget.client?.auth.currentUser?.id ?? 'user';
+    return '$userId-${DateTime.now().microsecondsSinceEpoch}';
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPaged(
+    MetraApiClient api,
+    String path, {
+    String listKey = 'items',
+    int pageSize = 200,
+  }) async {
+    var page = 1;
+    var total = 0;
+    final items = <Map<String, dynamic>>[];
+    do {
+      final response = await api.get(
+        path,
+        query: {'page': '$page', 'page_size': '$pageSize'},
+      );
+      final rows = response[listKey];
+      if (rows is! List) throw Exception('استجابة القائمة غير صالحة.');
+      items.addAll(rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)));
+      total = (response['total'] as num?)?.toInt() ?? items.length;
+      if (rows.isEmpty) break;
+      page++;
+    } while (items.length < total);
+    return List<Map<String, dynamic>>.unmodifiable(items);
   }
 
   Future<Map<String, dynamic>> loadData() async {
     final client = widget.client;
-    if (client == null) return <String, dynamic>{'own': [], 'review': [], 'stations': []};
-    final response = await client.functions.invoke('observations', body: const {'action': 'list'});
-    if (response.status != 200 || response.data is! Map) {
-      throw Exception(_errorMessage(response.data, 'تعذر تحميل سجل الرصد.'));
+    if (client == null) {
+      throw Exception('يلزم إعداد المصادقة وخدمة METRA API.');
     }
-    return Map<String, dynamic>.from(response.data as Map);
-  }
-
-  String _errorMessage(dynamic data, String fallback) {
-    if (data is Map && data['error'] != null) {
-      const labels = {
-        'account_not_active': 'الحساب غير معتمد أو غير نشط.',
-        'permission_denied': 'لا تملك الصلاحية المطلوبة.',
-        'station_assignment_check_failed': 'تعذر التحقق من تكليف المحطة.',
-        'observation_list_failed': 'تعذر تحميل سجل الرصد.',
-        'observation_submission_unconfirmed': 'لم يؤكد الخادم حفظ الرصد. أعد المحاولة دون تغيير البيانات.',
-      };
-      return labels[data['error'].toString()] ?? fallback;
-    }
-    return fallback;
-  }
-
-  double? _readNumber(TextEditingController controller, String label, double min, double max) {
-    final value = controller.text.trim();
-    if (value.isEmpty) return null;
-    final parsed = double.tryParse(value);
-    if (parsed == null || !parsed.isFinite || parsed < min || parsed > max) {
-      throw FormatException('$label يجب أن يكون بين $min و $max.');
-    }
-    return parsed;
-  }
-
-  Future<void> _saveObservation({required bool submit}) async {
-    if (busy) return;
-    final stationId = selectedStationId;
-    if (stationId == null) {
-      _toast('اختر محطة رصد أولاً.');
-      return;
-    }
-    Map<String, dynamic> values = {};
+    final api = MetraApiClient(client);
+    final stations = await _loadPaged(
+      api,
+      '/api/v1/observations/stations',
+      listKey: 'stations',
+    );
+    final own = await _loadPaged(api, '/api/v1/observations/mine');
+    List<Map<String, dynamic>> review = [];
     try {
-      final t = _readNumber(temperature, 'درجة الحرارة', -90, 65);
-      final h = _readNumber(humidity, 'الرطوبة', 0, 100);
-      final w = _readNumber(windSpeed, 'سرعة الرياح', 0, 400);
-      final p = _readNumber(pressure, 'الضغط الجوي', 800, 1100);
-      final rain = _readNumber(precipitation, 'الأمطار', 0, 2000);
-      if (t != null) values['temperature_c'] = t;
-      if (h != null) values['humidity_percent'] = h;
-      if (w != null) values['wind_speed_kmh'] = w;
-      if (p != null) values['pressure_hpa'] = p;
-      if (rain != null) values['precipitation_mm'] = rain;
-      final note = description.text.trim();
-      if (note.isNotEmpty) values['description'] = note;
-      final hasMeasurement = values.keys.any((key) => key != 'description');
-      if (observationType != 'phenomenon' && !hasMeasurement) {
-        _toast('أدخل قراءة رقمية واحدة على الأقل.');
-        return;
-      }
-      if (values.isEmpty) {
-        _toast('أدخل قراءة واحدة على الأقل أو وصف الظاهرة.');
-        return;
-      }
-      if (observationType == 'phenomenon' && note.isEmpty) {
-        _toast('أدخل وصف الظاهرة الجوية.');
-        return;
-      }
-    } on FormatException catch (e) {
-      _toast(e.message);
-      return;
+      review = await _loadPaged(
+        api,
+        '/api/v1/observations/review-queue',
+      );
+    } on MetraApiException catch (exception) {
+      if (exception.statusCode != 403) rethrow;
     }
 
-    final requestFingerprint = jsonEncode({
-      'station_id': stationId,
-      'observation_type': observationType,
-      'payload': values,
-      'submit': submit,
+    final typeResponse = await api.get('/api/v1/reference/observation-types');
+    final parameterResponse = await api.get('/api/v1/reference/parameters');
+    final types = (typeResponse['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+    final parameters = (parameterResponse['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+
+    _ensureControllers(parameters);
+    return {
+      'stations': stations,
+      'own': own,
+      'review': review,
+      'types': types,
+      'parameters': parameters,
+    };
+  }
+
+  void _ensureControllers(List<Map<String, dynamic>> parameters) {
+    final codes = parameters
+        .map((item) => item['parameter_code']?.toString() ?? '')
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    for (final code in valueControllers.keys.toList()) {
+      if (!codes.contains(code)) {
+        valueControllers.remove(code)?.dispose();
+        booleanValues.remove(code);
+      }
+    }
+    for (final code in codes) {
+      valueControllers.putIfAbsent(code, TextEditingController.new);
+    }
+  }
+
+  Future<void> _chooseObservedAt() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: observedAt,
+      firstDate: DateTime(1970),
+      lastDate: DateTime.now(),
+      helpText: 'تاريخ الرصد',
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(observedAt),
+      helpText: 'وقت الرصد',
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      observedAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
     });
-    if (_pendingIdempotencyKey == null ||
-        _pendingRequestFingerprint != requestFingerprint) {
-      final userId = widget.client?.auth.currentUser?.id ?? 'user';
-      _pendingIdempotencyKey = '$userId-${DateTime.now().microsecondsSinceEpoch}';
-      _pendingRequestFingerprint = requestFingerprint;
-      _pendingObservedAt = DateTime.now().toUtc().toIso8601String();
-    }
-    final idempotencyKey = _pendingIdempotencyKey!;
-    final observedAt = _pendingObservedAt!;
+  }
 
-    setState(() => busy = true);
+  Future<void> _saveObservation({
+    required bool submit,
+    required List<Map<String, dynamic>> parameters,
+  }) async {
+    if (busy || widget.client == null) return;
+    if (selectedStationId == null || selectedTypeCode == null) {
+      _toast('اختر المحطة ونوع الرصد أولاً.');
+      return;
+    }
+    if (parameters.isEmpty) {
+      _toast('لا يمكن إدخال الرصد قبل اعتماد معايير القياس ووحداتها.');
+      return;
+    }
+
+    final values = <Map<String, dynamic>>[];
+    for (final parameter in parameters) {
+      final code = parameter['parameter_code']?.toString() ?? '';
+      final kind = parameter['value_kind']?.toString() ?? '';
+      if (code.isEmpty) continue;
+      if (kind == 'boolean') {
+        final value = booleanValues[code];
+        if (value != null) {
+          values.add({
+            'parameter_code': code,
+            'value_kind': kind,
+            'value_boolean': value,
+            'sequence_number': 1,
+          });
+        }
+        continue;
+      }
+
+      final raw = valueControllers[code]?.text.trim() ?? '';
+      if (raw.isEmpty) continue;
+      if (kind == 'decimal') {
+        final value = double.tryParse(raw);
+        if (value == null || !value.isFinite) {
+          _toast('القيمة المدخلة في «${parameter['name_ar']}» ليست رقماً صالحاً.');
+          return;
+        }
+        values.add({
+          'parameter_code': code,
+          'value_kind': kind,
+          'value_decimal': value,
+          'sequence_number': 1,
+        });
+      } else if (kind == 'integer') {
+        final value = int.tryParse(raw);
+        if (value == null) {
+          _toast('القيمة المدخلة في «${parameter['name_ar']}» يجب أن تكون عدداً صحيحاً.');
+          return;
+        }
+        values.add({
+          'parameter_code': code,
+          'value_kind': kind,
+          'value_integer': value,
+          'sequence_number': 1,
+        });
+      } else if (kind == 'text') {
+        values.add({
+          'parameter_code': code,
+          'value_kind': kind,
+          'value_text': raw,
+          'sequence_number': 1,
+        });
+      }
+    }
+
+    if (values.isEmpty) {
+      _toast('أدخل قيمة واحدة على الأقل من المعايير المعتمدة.');
+      return;
+    }
+
+    setState(() {
+      busy = true;
+      error = null;
+    });
     try {
-      final response = await widget.client!.functions.invoke('observations', body: {
-        'action': 'submit',
-        'station_id': stationId,
-        'observation_type': observationType,
-        'observed_at': observedAt,
-        'idempotency_key': idempotencyKey,
-        'payload': values,
-        'submit': submit,
-      });
-      if (response.status != 200 || response.data is! Map ||
-          response.data['result'] is! Map) {
-        throw Exception(_errorMessage(response.data, 'تعذر حفظ الرصد.'));
+      final result = await MetraApiClient(widget.client!).post(
+        '/api/v1/observations',
+        body: {
+          'station_id': selectedStationId,
+          'observation_type': selectedTypeCode,
+          'observed_at': observedAt.toUtc().toIso8601String(),
+          'timezone_name': null,
+          'idempotency_key': idempotencyKey,
+          'payload': values,
+          'submit': submit,
+        },
+      );
+      final id = result['id']?.toString() ?? '';
+      final status = result['status']?.toString() ?? '';
+      if (id.isEmpty || !const {'draft', 'submitted'}.contains(status)) {
+        throw Exception('لم يؤكد الخادم حفظ سجل الرصد.');
       }
-      final result = Map<String, dynamic>.from(response.data['result'] as Map);
-      final expectedStatus = submit ? 'submitted' : 'draft';
-      final replayed = result['replayed'] == true;
-      final validReplayStatus = const {'draft', 'submitted', 'approved', 'returned'}
-          .contains(result['status']);
-      if ((result['id']?.toString().trim().isEmpty ?? true) ||
-          result['replayed'] is! bool ||
-          (replayed ? !validReplayStatus : result['status'] != expectedStatus)) {
-        throw Exception('لم يؤكد الخادم حفظ الرصد المطلوب. أعد المحاولة قبل تغيير البيانات.');
+      idempotencyKey = _newIdempotencyKey();
+      for (final controller in valueControllers.values) {
+        controller.clear();
       }
-      _pendingIdempotencyKey = null;
-      _pendingRequestFingerprint = null;
-      _pendingObservedAt = null;
+      booleanValues.clear();
       if (!mounted) return;
       _toast(result['replayed'] == true
-          ? 'تم التعرف على العملية السابقة دون إنشاء نسخة مكررة.'
-          : submit ? 'تم إرسال الرصد للمراجعة.' : 'تم حفظ المسودة.');
-      temperature.clear();
-      humidity.clear();
-      windSpeed.clear();
-      pressure.clear();
-      precipitation.clear();
-      description.clear();
+          ? 'تم التعرف على العملية السابقة دون إنشاء سجل مكرر.'
+          : submit
+              ? 'تم إرسال الرصد للمراجعة.'
+              : 'تم حفظ مسودة الرصد.');
       setState(() => future = loadData());
-    } catch (e) {
-      if (mounted) _toast(e.toString().replaceFirst('Exception: ', ''));
+    } catch (exception) {
+      if (mounted) _toast(exception.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
-  Future<String?> _askNote({required bool requiredNote}) async {
+  Future<String?> _askReason() async {
     final controller = TextEditingController();
-    final value = await showDialog<String>(
+    final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Text(requiredNote ? 'سبب إعادة الرصد للتصحيح' : 'ملاحظة المراجع (اختياري)'),
+          title: const Text('سبب قرار المراجعة'),
           content: TextField(
             controller: controller,
             maxLines: 3,
             maxLength: 2000,
             decoration: const InputDecoration(
-              hintText: 'اكتب الملاحظة...',
+              hintText: 'اكتب سبب القرار (3 أحرف على الأقل)',
               border: OutlineInputBorder(),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
             FilledButton(
               onPressed: () {
-                final text = controller.text.trim();
-                if (requiredNote && text.isEmpty) return;
-                Navigator.pop(dialogContext, text);
+                if (controller.text.trim().length < 3) return;
+                Navigator.pop(dialogContext, controller.text.trim());
               },
-              child: const Text('متابعة'),
+              child: const Text('تأكيد'),
             ),
           ],
         ),
       ),
     );
     controller.dispose();
-    return value;
+    return result;
   }
 
   Future<void> _decide(Map<String, dynamic> item, String decision) async {
-    final note = await _askNote(requiredNote: decision == 'return_for_correction');
-    if (note == null) return;
+    final reason = await _askReason();
+    if (reason == null || !mounted || widget.client == null || busy) return;
     setState(() => busy = true);
     try {
-      final response = await widget.client!.functions.invoke('observations', body: {
-        'action': 'decide',
-        'station_id': item['station_id'],
-        'observation_id': item['id'],
-        'decision': decision,
-        'note': note,
-      });
-      if (response.status != 200 || response.data is! Map || response.data['result'] is! Map) {
-        throw Exception(_errorMessage(response.data, 'تعذر تنفيذ قرار المراجعة.'));
-      }
-      final result = Map<String, dynamic>.from(response.data['result'] as Map);
-      final expectedStatus = decision == 'approve' ? 'approved' : 'returned';
-      if (result['id'] != item['id'] || result['status'] != expectedStatus) {
-        throw Exception('لم يؤكد الخادم حفظ قرار المراجعة المطلوب. حدّث السجل قبل المتابعة.');
-      }
+      await MetraApiClient(widget.client!).post(
+        '/api/v1/observations/${item['id']}/decisions',
+        body: {'decision': decision, 'reason': reason},
+      );
       if (!mounted) return;
-      _toast(decision == 'approve' ? 'تم اعتماد الرصد.' : 'أعيد الرصد للتصحيح.');
+      _toast(decision == 'approved' ? 'تم اعتماد الرصد.' : 'أعيد الرصد للتصحيح.');
       setState(() => future = loadData());
-    } catch (e) {
-      if (mounted) _toast(e.toString().replaceFirst('Exception: ', ''));
+    } catch (exception) {
+      if (mounted) _toast(exception.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -250,79 +321,109 @@ class _ObservationsPageState extends State<ObservationsPage> {
   }
 
   String _status(String? status) => switch (status) {
-    'draft' => 'مسودة',
-    'submitted' => 'بانتظار المراجعة',
-    'approved' => 'معتمد',
-    'returned' => 'معاد للتصحيح',
-    _ => 'غير معروف',
-  };
+        'draft' => 'مسودة',
+        'submitted' => 'بانتظار المراجعة',
+        'under_review' => 'قيد المراجعة',
+        'approved' => 'معتمد',
+        'returned' => 'معاد للتصحيح',
+        'rejected' => 'مرفوض',
+        _ => 'غير معروف',
+      };
 
-  String _type(String? type) => switch (type) {
-    'daily' => 'رصد يومي',
-    'hourly' => 'رصد ساعي',
-    'phenomenon' => 'ظاهرة جوية',
-    _ => 'رصد',
-  };
+  String _type(String? type, List<Map<String, dynamic>> types) {
+    for (final item in types) {
+      if (item['type_code'] == type) return item['name_ar']?.toString() ?? 'رصد';
+    }
+    return type ?? 'رصد';
+  }
+
+  String _valueText(Map<String, dynamic> value) {
+    final kind = value['value_kind'];
+    final raw = switch (kind) {
+      'decimal' => value['value_decimal'],
+      'integer' => value['value_integer'],
+      'text' => value['value_text'],
+      'boolean' => value['value_boolean'] == true ? 'نعم' : 'لا',
+      _ => null,
+    };
+    final unit = value['unit_symbol']?.toString();
+    return '${value['name_ar'] ?? value['parameter_code']}: $raw${unit == null || unit.isEmpty ? '' : ' $unit'}';
+  }
 
   Widget _sectionTitle(String title, String subtitle) => Padding(
-    padding: const EdgeInsets.only(bottom: 10, top: 18),
-    child: Row(children: [
-      Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF102448)))),
-      Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
-    ]),
-  );
+        padding: const EdgeInsets.only(bottom: 10, top: 18),
+        child: Row(children: [
+          Expanded(
+            child: Text(title, style: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF102448))),
+          ),
+          Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
+        ]),
+      );
 
-  Widget _observationCard(Map<String, dynamic> item, {bool review = false}) {
-    final station = item['station'] is Map ? Map<String, dynamic>.from(item['station'] as Map) : <String, dynamic>{};
-    final payload = item['payload'] is Map ? Map<String, dynamic>.from(item['payload'] as Map) : <String, dynamic>{};
-    final canApprove = item['can_approve'] == true;
-    final canReturn = item['can_return'] == true;
+  Widget _observationCard(
+    Map<String, dynamic> item, {
+    required bool review,
+    required List<Map<String, dynamic>> types,
+  }) {
+    final values = (item['values'] as List? ?? const [])
+        .whereType<Map>()
+        .map((value) => Map<String, dynamic>.from(value))
+        .toList();
     final observedAt = DateTime.tryParse(item['observed_at']?.toString() ?? '')?.toLocal();
-    final values = <String>[
-      if (payload['temperature_c'] != null) 'الحرارة ${payload['temperature_c']}°',
-      if (payload['humidity_percent'] != null) 'الرطوبة ${payload['humidity_percent']}%',
-      if (payload['wind_speed_kmh'] != null) 'الرياح ${payload['wind_speed_kmh']} كم/س',
-      if (payload['pressure_hpa'] != null) 'الضغط ${payload['pressure_hpa']} hPa',
-      if (payload['precipitation_mm'] != null) 'الأمطار ${payload['precipitation_mm']} مم',
-    ];
     return Card(
       color: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE5EAF2))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE5EAF2)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const Icon(Icons.sensors, color: Color(0xFF1769D2)),
             const SizedBox(width: 8),
-            Expanded(child: Text(station['name']?.toString() ?? 'محطة', style: const TextStyle(fontWeight: FontWeight.bold))),
-            Chip(label: Text(_status(item['status']?.toString()), style: const TextStyle(fontSize: 10))),
+            Expanded(child: Text(
+              item['station_name']?.toString() ?? 'محطة',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            )),
+            Chip(label: Text(_status(item['submission_state']?.toString()),
+              style: const TextStyle(fontSize: 10))),
           ]),
-          Text(_type(item['observation_type']?.toString()), style: const TextStyle(color: Colors.blueGrey, fontSize: 12)),
-          if (observedAt != null) Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: Text('وقت الرصد: ${observedAt.year}-${observedAt.month.toString().padLeft(2, '0')}-${observedAt.day.toString().padLeft(2, '0')} ${observedAt.hour.toString().padLeft(2, '0')}:${observedAt.minute.toString().padLeft(2, '0')}', style: const TextStyle(color: Colors.blueGrey, fontSize: 11)),
+          Text(
+            '${_type(item['observation_type']?.toString(), types)} • ${item['station_code'] ?? ''}',
+            style: const TextStyle(color: Colors.blueGrey, fontSize: 12),
           ),
-          if (values.isNotEmpty) Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Wrap(spacing: 8, runSpacing: 6, children: values.map((v) => Chip(label: Text(v, style: const TextStyle(fontSize: 11)))).toList()),
-          ),
-          if (payload['description'] != null) Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(payload['description'].toString(), style: const TextStyle(fontSize: 12)),
-          ),
-          if (item['review_note'] != null && item['review_note'].toString().isNotEmpty)
-            Padding(padding: const EdgeInsets.only(top: 8), child: Text('ملاحظة: ${item['review_note']}', style: const TextStyle(color: Colors.deepOrange, fontSize: 12))),
-          if (review && (canApprove || canReturn)) ...[
+          if (observedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                'وقت الرصد: ${observedAt.year}-${observedAt.month.toString().padLeft(2, '0')}-${observedAt.day.toString().padLeft(2, '0')} ${observedAt.hour.toString().padLeft(2, '0')}:${observedAt.minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(color: Colors.blueGrey, fontSize: 11),
+              ),
+            ),
+          if (values.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: values.map((value) => Chip(
+                  label: Text(_valueText(value), style: const TextStyle(fontSize: 11)),
+                )).toList(),
+              ),
+            ),
+          if (review) ...[
             const SizedBox(height: 10),
             Wrap(spacing: 8, children: [
-              if (canApprove) FilledButton.icon(
-                onPressed: busy ? null : () => _decide(item, 'approve'),
+              FilledButton.icon(
+                onPressed: busy ? null : () => _decide(item, 'approved'),
                 icon: const Icon(Icons.verified_outlined, size: 17),
                 label: const Text('اعتماد'),
               ),
-              if (canReturn) OutlinedButton.icon(
-                onPressed: busy ? null : () => _decide(item, 'return_for_correction'),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () => _decide(item, 'returned'),
                 icon: const Icon(Icons.assignment_return_outlined, size: 17),
                 label: const Text('إعادة للتصحيح'),
               ),
@@ -333,133 +434,211 @@ class _ObservationsPageState extends State<ObservationsPage> {
     );
   }
 
-  Widget _numberField(TextEditingController controller, String label, String suffix) => SizedBox(
-    width: 150,
-    child: TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-      decoration: InputDecoration(labelText: label, suffixText: suffix, border: const OutlineInputBorder(), isDense: true),
-    ),
-  );
+  Widget _parameterField(Map<String, dynamic> parameter) {
+    final code = parameter['parameter_code']?.toString() ?? '';
+    final kind = parameter['value_kind']?.toString() ?? '';
+    final name = parameter['name_ar']?.toString() ?? code;
+    final unit = parameter['unit_symbol']?.toString();
+    final precision = parameter['precision_scale'];
+    final hint = precision == null ? null : 'الدقة: $precision منازل عشرية';
 
-  @override
-  Widget build(BuildContext context) {
-    if (widget.client == null) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          appBar: AppBar(title: const Text('الرصد التشغيلي')),
-          body: const Center(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('خدمة الرصد غير مهيأة. شغّل التطبيق بإعدادات Supabase.'),
-          )),
-        ),
+    if (kind == 'boolean') {
+      return SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(name),
+        value: booleanValues[code] ?? false,
+        onChanged: busy ? null : (value) => setState(() => booleanValues[code] = value),
       );
     }
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('الرصد التشغيلي'),
-          actions: [IconButton(
-            tooltip: 'تحديث',
-            onPressed: busy ? null : () => setState(() => future = loadData()),
-            icon: const Icon(Icons.refresh),
-          )],
-        ),
-        body: FutureBuilder<Map<String, dynamic>>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-            if (snapshot.hasError) return Center(child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.cloud_off, color: Colors.blueGrey, size: 36),
-                const SizedBox(height: 10),
-                Text(snapshot.error.toString().replaceFirst('Exception: ', ''), textAlign: TextAlign.center),
-                TextButton(onPressed: () => setState(() => future = loadData()), child: const Text('إعادة المحاولة')),
-              ]),
-            ));
-            final data = snapshot.data ?? <String, dynamic>{};
-            final stations = (data['stations'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-            final own = (data['own'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-            final review = (data['review'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-            selectedStationId ??= stations.isNotEmpty ? stations.first['id']?.toString() : null;
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: const Color(0xFFEAF2FF), borderRadius: BorderRadius.circular(16)),
-                  child: const Text('أدخل قراءات المحطة ثم احفظها كمسودة أو أرسلها للمراجعة. لا تُعتمد القراءات إلا بقرار مراجع مخوّل.', style: TextStyle(fontSize: 12, color: Color(0xFF234A7C))),
-                ),
-                if (stations.isNotEmpty) ...[
-                  _sectionTitle('إدخال رصد جديد', 'قراءات موثقة'),
-                  DropdownButtonFormField<String>(
-                    value: selectedStationId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'محطة الرصد', border: OutlineInputBorder()),
-                    items: stations.map((s) => DropdownMenuItem<String>(
-                      value: s['id'].toString(),
-                      child: Text('${s['name_ar'] ?? 'محطة'} • ${s['local_station_code'] ?? ''}', overflow: TextOverflow.ellipsis),
-                    )).toList(),
-                    onChanged: busy ? null : (value) => setState(() => selectedStationId = value),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: observationType,
-                    decoration: const InputDecoration(labelText: 'نوع الرصد', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'daily', child: Text('رصد يومي')),
-                      DropdownMenuItem(value: 'hourly', child: Text('رصد ساعي')),
-                      DropdownMenuItem(value: 'phenomenon', child: Text('ظاهرة جوية')),
-                    ],
-                    onChanged: busy ? null : (value) => setState(() => observationType = value ?? 'daily'),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    _numberField(temperature, 'درجة الحرارة', '°C'),
-                    _numberField(humidity, 'الرطوبة', '%'),
-                    _numberField(windSpeed, 'سرعة الرياح', 'كم/س'),
-                    _numberField(pressure, 'الضغط', 'hPa'),
-                    _numberField(precipitation, 'الأمطار', 'مم'),
-                  ]),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: description,
-                    maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'الوصف / ملاحظات الرصد', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(spacing: 8, children: [
-                    OutlinedButton.icon(
-                      onPressed: busy ? null : () => _saveObservation(submit: false),
-                      icon: const Icon(Icons.save_outlined),
-                      label: const Text('حفظ مسودة'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: busy ? null : () => _saveObservation(submit: true),
-                      icon: const Icon(Icons.send_outlined),
-                      label: const Text('إرسال للمراجعة'),
-                    ),
-                    if (busy) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                  ]),
-                ] else
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 18),
-                    child: Text('لا توجد محطة معتمدة ونشطة ومكلف بها حسابك لإدخال الرصد.', style: TextStyle(color: Colors.blueGrey)),
-                  ),
-                _sectionTitle('طلبات المراجعة', '${review.length}'),
-                if (review.isEmpty) const Text('لا توجد قراءات بانتظار المراجعة ضمن صلاحياتك.', style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
-                ...review.map((item) => _observationCard(item, review: true)),
-                _sectionTitle('سجل رصدك', '${own.length}'),
-                if (own.isEmpty) const Text('لم تسجل أي قراءات بعد.', style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
-                ...own.map((item) => _observationCard(item)),
-              ],
-            );
-          },
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: valueControllers[code],
+        keyboardType: kind == 'text'
+            ? TextInputType.text
+            : TextInputType.numberWithOptions(decimal: kind == 'decimal', signed: true),
+        maxLines: kind == 'text' ? 3 : 1,
+        decoration: InputDecoration(
+          labelText: name,
+          suffixText: unit,
+          helperText: hint,
+          border: const OutlineInputBorder(),
         ),
       ),
     );
   }
+
+  FutureBuilder<Map<String, dynamic>> _buildBody() => FutureBuilder<Map<String, dynamic>>(
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.cloud_off, color: Colors.blueGrey, size: 36),
+                const SizedBox(height: 10),
+                Text(snapshot.error.toString().replaceFirst('Exception: ', ''),
+                  textAlign: TextAlign.center),
+                TextButton(
+                  onPressed: () => setState(() => future = loadData()),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ]),
+            ));
+          }
+
+          final data = snapshot.data ?? <String, dynamic>{};
+          final stations = (data['stations'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final own = (data['own'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final review = (data['review'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final types = (data['types'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final parameters = (data['parameters'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+
+          selectedStationId ??= stations.isEmpty ? null : stations.first['id']?.toString();
+          selectedTypeCode ??= types.isEmpty ? null : types.first['type_code']?.toString();
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF2FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'تُبنى حقول الرصد من القاموس العلمي المعتمد في قاعدة البيانات. لا تُستخدم حدود أو وحدات قياس مفترضة داخل التطبيق.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF234A7C)),
+                ),
+              ),
+              if (stations.isNotEmpty && types.isNotEmpty) ...[
+                _sectionTitle('إدخال رصد جديد', 'معايير معتمدة فقط'),
+                DropdownButtonFormField<String>(
+                  value: selectedStationId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'محطة الرصد', border: OutlineInputBorder()),
+                  items: stations.map((station) => DropdownMenuItem<String>(
+                    value: station['id']?.toString(),
+                    child: Text(
+                      '${station['name_ar'] ?? 'محطة'} • ${station['local_station_code'] ?? ''}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )).toList(),
+                  onChanged: busy ? null : (value) => setState(() => selectedStationId = value),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedTypeCode,
+                  decoration: const InputDecoration(
+                    labelText: 'نوع الرصد', border: OutlineInputBorder()),
+                  items: types.map((type) => DropdownMenuItem<String>(
+                    value: type['type_code']?.toString(),
+                    child: Text(type['name_ar']?.toString() ?? type['type_code'].toString()),
+                  )).toList(),
+                  onChanged: busy ? null : (value) => setState(() => selectedTypeCode = value),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : _chooseObservedAt,
+                  icon: const Icon(Icons.schedule),
+                  label: Text('وقت الرصد: ${observedAt.toLocal()}'),
+                ),
+                const SizedBox(height: 10),
+                if (parameters.isEmpty)
+                  const _Notice(
+                    message: 'قاموس المعايير والوحدات العلمية فارغ حالياً. تم تعطيل إرسال القياسات حتى تُضاف التعريفات المعتمدة.',
+                    warning: true,
+                  )
+                else ...[
+                  _sectionTitle('القيم المرصودة', '${parameters.length} معيار'),
+                  ...parameters.map(_parameterField),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, children: [
+                    OutlinedButton.icon(
+                      onPressed: busy ? null : () => _saveObservation(
+                        submit: false, parameters: parameters),
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('حفظ مسودة'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => _saveObservation(
+                        submit: true, parameters: parameters),
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('إرسال للمراجعة'),
+                    ),
+                    if (busy)
+                      const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ]),
+                ],
+              ] else
+                const _Notice(
+                  message: 'لا توجد محطة مكلف بها الحساب أو لا توجد أنواع رصد نشطة متاحة. لن تظهر حقول إدخال غير مرتبطة ببيانات معتمدة.',
+                  warning: true,
+                ),
+              _sectionTitle('طلبات المراجعة', '${review.length}'),
+              if (review.isEmpty)
+                const Text('لا توجد قراءات بانتظار المراجعة ضمن صلاحياتك.',
+                  style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
+              ...review.map((item) => _observationCard(item, review: true, types: types)),
+              _sectionTitle('سجل رصدك', '${own.length}'),
+              if (own.isEmpty)
+                const Text('لم تسجل أي قراءات بعد.',
+                  style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
+              ...own.map((item) => _observationCard(item, review: false, types: types)),
+            ],
+          );
+        },
+      );
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('الرصد التشغيلي'),
+            actions: [
+              IconButton(
+                tooltip: 'تحديث',
+                onPressed: busy ? null : () => setState(() => future = loadData()),
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          body: widget.client == null
+              ? const Center(child: Text('يلزم إعداد اتصال METRA API.'))
+              : _buildBody(),
+        ),
+      );
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.message, required this.warning});
+  final String message;
+  final bool warning;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: warning ? const Color(0xFFFFF4DE) : const Color(0xFFEAF2FF),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(message, style: TextStyle(
+          color: warning ? const Color(0xFF875B08) : const Color(0xFF234A7C),
+          fontSize: 12,
+          height: 1.5,
+        )),
+      );
 }
