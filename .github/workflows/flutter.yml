@@ -49,11 +49,38 @@ jobs:
         run: flutter test
       - name: Build web release
         run: flutter build web --release
-      - name: Upload web release
+      - name: Build Android APK
+        run: flutter build apk --release
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release
+      - name: Upload web and Android releases
         uses: actions/upload-artifact@v4
         with:
-          name: metra-web-release
-          path: build/web
+          name: metra-web-android-release
+          path: |
+            build/web
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Build iOS without signing
+        run: flutter build ios --release --no-codesign
+      - name: Upload unsigned iOS app
+        uses: actions/upload-artifact@v4
+        with:
+          name: metra-ios-unsigned
+          path: build/ios/iphoneos/Runner.app
           if-no-files-found: error
           retention-days: 14
 
