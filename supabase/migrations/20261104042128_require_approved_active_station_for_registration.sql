@@ -1,7 +1,3 @@
--- Prevent registration requests from being created against stations that
--- cannot enter the two-stage review queue yet. The UI mirrors this rule,
--- but the database remains the authoritative enforcement point.
-
 create or replace function public.submit_metra_registration(
   p_auth_user_id uuid,
   p_first_name text,
