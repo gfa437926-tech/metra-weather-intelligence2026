@@ -526,6 +526,84 @@ app.MapPost("/api/v1/observations", async (
 })
 .RequireAuthorization();
 
+
+app.MapGet("/api/v1/observations/review-queue", async (
+    HttpRequest request,
+    ClaimsPrincipal principal,
+    IObservationService observations,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    if (!int.TryParse(request.Query["page"], out var page)) page = 1;
+    if (!int.TryParse(request.Query["page_size"], out var pageSize)) pageSize = 50;
+    if (page < 1 || pageSize is < 1 or > 200)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["pagination"] = ["page must be positive and page_size must be between 1 and 200."]
+        });
+    }
+    try
+    {
+        return Results.Ok(await observations.GetReviewQueueAsync(
+            userId, page, pageSize, cancellationToken));
+    }
+    catch (ObservationAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Observation review service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Observation review service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
+app.MapPost("/api/v1/observations/{submissionId:guid}/decisions", async (
+    Guid submissionId,
+    ObservationReviewDecisionRequest request,
+    ClaimsPrincipal principal,
+    IObservationService observations,
+    CancellationToken cancellationToken) =>
+{
+    var subject = principal.FindFirstValue("sub");
+    if (!Guid.TryParse(subject, out var userId)) return Results.Unauthorized();
+    try
+    {
+        return Results.Ok(await observations.DecideAsync(
+            userId, submissionId, request, cancellationToken));
+    }
+    catch (ObservationAccessDeniedException)
+    {
+        return Results.Forbid();
+    }
+    catch (ObservationValidationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["decision"] = [exception.Message]
+        });
+    }
+    catch (ObservationConflictException exception)
+    {
+        return Results.Problem(title: exception.Message, statusCode: 409);
+    }
+    catch (DatabaseNotConfiguredException)
+    {
+        return Results.Problem(title: "Observation review service unavailable", statusCode: 503);
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Problem(title: "Observation review service unavailable", statusCode: 503);
+    }
+})
+.RequireAuthorization();
+
 app.Run();
 
 public partial class Program { }
