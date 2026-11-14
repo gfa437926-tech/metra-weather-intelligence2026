@@ -34,7 +34,31 @@ public sealed record ObservationListItem(
     [property: JsonPropertyName("observed_at")] DateTimeOffset ObservedAt,
     [property: JsonPropertyName("submission_state")] string SubmissionState,
     [property: JsonPropertyName("revision_number")] int RevisionNumber,
-    [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt);
+    [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt)
+{
+    [JsonPropertyName("values")]
+    public IReadOnlyList<ObservationValueResponse> Values { get; init; } = [];
+}
+
+public sealed record ObservationValueResponse(
+    [property: JsonPropertyName("parameter_code")] string ParameterCode,
+    [property: JsonPropertyName("name_ar")] string NameAr,
+    [property: JsonPropertyName("value_kind")] string ValueKind,
+    [property: JsonPropertyName("value_decimal")] decimal? ValueDecimal,
+    [property: JsonPropertyName("value_integer")] long? ValueInteger,
+    [property: JsonPropertyName("value_text")] string? ValueText,
+    [property: JsonPropertyName("value_boolean")] bool? ValueBoolean,
+    [property: JsonPropertyName("unit_symbol")] string? UnitSymbol)
+{
+    public string DisplayValue => ValueKind switch
+    {
+        "decimal" => ValueDecimal?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+        "integer" => ValueInteger?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+        "text" => ValueText ?? string.Empty,
+        "boolean" => ValueBoolean?.ToString() ?? string.Empty,
+        _ => string.Empty
+    };
+}
 
 public sealed record ObservationListResponse(
     [property: JsonPropertyName("items")] IReadOnlyList<ObservationListItem> Items,
