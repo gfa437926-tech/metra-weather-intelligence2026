@@ -197,3 +197,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 ## Backend ownership boundary
 
 Flutter business workflows are intended to call the .NET API with a verified Supabase access token; .NET owns domain authorization and persistence. The current station-directory adapter still invokes the legacy Edge Function directly, whose public-table dependencies are absent from the live schema. New business-critical Flutter features must not deepen that Edge Function dependency. Replace it with a versioned .NET endpoint after the approved schema and least-privilege runtime contract are ready.
+
+
+## Android debug APK CI result — 2026-11-15
+
+- Run [#43721795004](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721795004) completed **success** on code head `6062bb9e91f4a0e2b8ea3c4e24968e0adec09f91`.
+- The temporary Android platform scaffold generated successfully, `flutter build apk --debug` succeeded, and the `metra-android-debug-validation` artifact uploaded successfully.
+- The same run also passed archive verification, Deno checks/tests, Flutter analyze/tests, web release build and `metra-web-release` upload.
+- Artifacts are available from the linked Actions run. The APK is debug-signed/validation-only; it is not a production Play Store AAB. Native folders are not yet committed to the repository.
