@@ -168,3 +168,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - The current .NET API foundation is identity/liveness only; it has no database connection or business endpoints. The service-role identity bypasses RLS; the existing `metra_api_runtime` role is not yet usable as the API identity.
 - Rewrote README to distinguish implemented UI from unavailable integrations and to document current database, runtime-identity, migration and native packaging gates.
 - No database writes, Edge Function deployments, secret changes, PR merges or legacy database access were performed.
+
+
+## Exact-head CI verification after viewport and archive checks (2026-11-15)
+
+- GitHub Actions run [#43721267054](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721267054) completed with conclusion **success** on code head `65a5f3499f3edda5ffb6784cd7178536d21fdbaf`.
+- Passed: recovered migration archive verification, all Deno Edge Function type checks/tests, `flutter analyze`, `flutter test` (including the three corrected long-page filter tests), `flutter build web --release`, and web artifact upload.
+- Latest PR head `2556e3d1451f030213fc8d78305e19966c0e712a` at the time of this update differed from the tested code head only by `supabase/live-schema-history/MANIFEST.md`; all 86 archived SQL files were verified to have exact Git blob SHA matches with the source archive.
+- This validates the UI/source checks and web artifact only. It does not resolve the live Edge Function/schema mismatch, service-role runtime boundary, missing station data, native Android/iOS packaging or operational service gates.
