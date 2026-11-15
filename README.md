@@ -107,7 +107,7 @@ GitHub Actions checks:
 4. `flutter pub get`, `flutter analyze` and `flutter test`.
 5. `flutter build web --release` and web artifact upload.
 
-The previous Flutter CI run on PR #2 reported **65 tests passed and 3 widget tests failed** because three long workspace filter buttons were below the default test viewport. The tests now use the existing tall-viewport helper; assertions were retained. The fix commit is `3a47c1ade10dcaa65e6af63c44fcfd5ee9566896`. GitHub has not yet attached a new CI run to the latest PR head, so the fix is **not yet CI-verified**.
+The previous Flutter CI run reported **65 tests passed and 3 widget tests failed** because three long workspace filter buttons were below the default test viewport. The tests now use the existing tall-viewport helper; assertions were retained. GitHub Actions run [#43721267054](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721267054) completed **successfully** on code head `65a5f3499f3edda5ffb6784cd7178536d21fdbaf`: archive verification, Deno checks/tests, `flutter analyze`, `flutter test`, `flutter build web --release`, and web artifact upload all passed. The latest PR head `2556e3d1451f030213fc8d78305e19966c0e712a` differs from that tested head only by the added migration archive manifest; all 86 copied SQL files were separately verified to have exact matching Git blob SHAs against the source archive.
 
 A green source CI run does not prove live database compatibility, a real authenticated user journey, hosted website deployment or mobile store readiness.
 
