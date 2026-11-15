@@ -176,3 +176,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Passed: recovered migration archive verification, all Deno Edge Function type checks/tests, `flutter analyze`, `flutter test` (including the three corrected long-page filter tests), `flutter build web --release`, and web artifact upload.
 - Latest PR head `2556e3d1451f030213fc8d78305e19966c0e712a` at the time of this update differed from the tested code head only by `supabase/live-schema-history/MANIFEST.md`; all 86 archived SQL files were verified to have exact Git blob SHA matches with the source archive.
 - This validates the UI/source checks and web artifact only. It does not resolve the live Edge Function/schema mismatch, service-role runtime boundary, missing station data, native Android/iOS packaging or operational service gates.
+
+
+## Latest CI confirmation — 2026-11-15
+
+- Run [#43721504691](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721504691) completed **success** on `5c0eee1726ec9cd98b93d14c581a505ba8818b32`.
+- Archive verification, Deno type checks/tests, Flutter dependency resolution, analyze, all Flutter widget tests, web release build and artifact upload passed.
+- The current PR head `36ea4edc55af9149c223d54607f8b7f18e8feec9` at the time of the run summary contains only documentation additions/links after the tested code head; application and test source are unchanged.
+- This is a verified Flutter web CI artifact, not a deployed website, native APK/AAB/IPA, or proof of live database integration.
