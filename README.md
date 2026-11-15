@@ -121,3 +121,11 @@ The repository does not yet contain `android/` or `ios/` platform projects. Curr
 - [PR #1 — .NET 10 API foundation](https://github.com/gfa437926-tech/metra-weather-intelligence2026/pull/1): open, Draft, unmerged.
 
 No PR was merged, no deployment was performed, and no hosted database, role, grant, policy, secret or Edge Function was changed during the 2026-11-15 inspection and source-recovery work.
+
+### Detailed live-schema review documents
+
+- [Read-only Supabase schema baseline](docs/architecture/METRA-SUPABASE-READONLY-SCHEMA-BASELINE-2026-11-15.md)
+- [Live physical table/column dictionary](docs/architecture/METRA-LIVE-SUPABASE-PHYSICAL-DICTIONARY-2026-11-15.md)
+- [Runtime identity security review](docs/security/METRA-SUPABASE-RUNTIME-IDENTITY-REVIEW-2026-11-15.md)
+- [.NET API/schema compatibility review](docs/architecture/METRA-SUPABASE-API-SCHEMA-COMPATIBILITY-REVIEW-2026-11-15.md)
+- [Deployed Edge Function compatibility review](docs/architecture/METRA-SUPABASE-EDGE-FUNCTION-COMPATIBILITY-REVIEW-2026-11-15.md)
