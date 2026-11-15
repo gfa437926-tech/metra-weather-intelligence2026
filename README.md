@@ -106,6 +106,7 @@ GitHub Actions checks:
 3. Deno validation, permission and batching tests.
 4. `flutter pub get`, `flutter analyze` and `flutter test`.
 5. `flutter build web --release` and web artifact upload.
+6. Temporary Android scaffold generation, debug APK build and `metra-android-debug-validation` artifact upload.
 
 The previous Flutter CI run reported **65 tests passed and 3 widget tests failed** because three long workspace filter buttons were below the default test viewport. The tests now use the existing tall-viewport helper; assertions were retained. GitHub Actions run [#43721504691](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721504691) completed **successfully** on code head `5c0eee1726ec9cd98b93d14c581a505ba8818b32`: archive verification, all Deno checks/tests, `flutter analyze`, `flutter test`, `flutter build web --release`, and web artifact upload all passed. The latest PR head `36ea4edc55af9149c223d54607f8b7f18e8feec9` differs from that tested head only by documentation additions/links (scientific ERD, workspace API contract, release gates); application code and test sources are unchanged. All 86 copied SQL files were separately verified to have exact matching Git blob SHAs against the source archive.
 
@@ -135,3 +136,5 @@ No PR was merged, no deployment was performed, and no hosted database, role, gra
 - [End-to-end implementation and release gates](docs/delivery/METRA-2027-END-TO-END-IMPLEMENTATION-AND-RELEASE-GATES.md)
 
 **Backend target:** Flutter business workflows must ultimately call the .NET API with the user's Supabase access token; .NET validates the JWT and enforces authority/station scope. The current Flutter station-directory adapter still invokes the legacy `station-directory` Edge Function directly. That Edge Function is schema-incompatible and must be replaced by a versioned .NET endpoint before the station directory is considered operational. Do not add new business-critical Flutter-to-Edge-Function dependencies as a shortcut.
+
+The Android debug build was added to CI run [#43721795004](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721795004); the archive check, Deno checks, Flutter analyze/tests and web build have passed in that run, while the Android APK build is still in progress at the time of this update.
