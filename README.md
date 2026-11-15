@@ -2,6 +2,10 @@
 
 Flutter/Dart weather platform with Arabic RTL interface.
 
+## Backend API (.NET 10 / C#)
+
+The independent ASP.NET Core API foundation is in [backend/](backend/README.md). It currently provides Supabase Auth JWT validation, a protected identity endpoint, baseline HTTP security controls, and automated smoke tests. It intentionally has no database connection or business-write endpoints yet; see [the implementation and security boundary report](docs/ASP_NET_CORE_API_FOUNDATION_2026-11-10.md).
+
 ## Run locally
 ```bash
 flutter pub get
@@ -66,17 +70,17 @@ The Saudi National Center for Meteorology (NCM) documents a direct API integrati
 The new METRA database now contains registration submission and two-stage decision entry points restricted to the server runtime, with database-side validation tracked as migrations. The security advisor currently reports no security lint findings. Existing station and legacy-source records were not rewritten or deleted. The legacy database and legacy repository are outside the scope of all changes. Do not run destructive migrations or updates against either.
 
 ## CI
-
 GitHub Actions runs the following checks on pushes and pull requests targeting `main`:
 
-1. Type-checks the station directory, registration, registration approvals, observations, and station review Edge Functions with Deno.
-2. Tests registration approval response validation and bounded query batching.
-3. Tests station-directory permission rules.
-4. Tests operational observation payload and transaction-result validation.
-5. Tests station catalogue review validation.
-6. Runs `flutter pub get`, `flutter analyze`, and `flutter test`.
-7. Builds the production web release with `flutter build web --release`.
-8. Uploads the generated `build/web` directory as the `metra-web-release` artifact (14-day retention).
+1. Restores, builds, and tests the ASP.NET Core .NET 10 API.
+2. Type-checks the station directory, registration, registration approvals, observations, and station review Edge Functions with Deno.
+3. Tests registration approval response validation and bounded query batching.
+4. Tests station-directory permission rules.
+5. Tests operational observation payload and transaction-result validation.
+6. Tests station catalogue review validation.
+7. Runs `flutter pub get`, `flutter analyze`, and `flutter test`.
+8. Builds the production web release with `flutter build web --release`.
+9. Uploads the generated `build/web` directory as the `metra-web-release` artifact (14-day retention).
 
 A successful CI run verifies source checks and produces a web artifact. It does not by itself publish a hosted website or verify a live authenticated user journey.
 
