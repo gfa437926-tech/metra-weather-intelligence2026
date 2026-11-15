@@ -157,3 +157,14 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Flutter analyze had passed in the failing run; Deno type checks and all Deno tests had passed. Flutter test suite had 65 passing / 3 failing tests before this fix.
 - Exact-head CI has not yet been reported for the fix commit. The latest commit is not marked validated until the Flutter test and web release build run successfully.
 - No production service, database, schema, migration, secret, legacy repository or main branch was modified. PR #2 remains Draft and unmerged.
+
+
+## Live database compatibility and source-history review (2026-11-15)
+
+- The configured Supabase project is not empty: 46 application tables exist across ten normalized schemas and 86 migration records are applied. The current `catalog.stations` table has zero rows; no legacy station list was imported.
+- All 86 applied SQL statements have been recovered read-only into `supabase/live-schema-history/`. This is a non-executable archive, not an active migration directory.
+- The active migration directory contains 52 files: 51 version IDs are in the live history, 45 of those shared-version files are not byte-identical to the recovered SQL, one active file is not in the live applied history, and 35 live versions are absent from the active directory. A clean curated replay is still required.
+- The deployed station-directory, registration, registration-approval, observation and station-review Edge Functions all verify JWTs, but still call old public tables/RPCs absent from the current normalized database. They are not considered operational until remapped and tested.
+- The current .NET API foundation is identity/liveness only; it has no database connection or business endpoints. The service-role identity bypasses RLS; the existing `metra_api_runtime` role is not yet usable as the API identity.
+- Rewrote README to distinguish implemented UI from unavailable integrations and to document current database, runtime-identity, migration and native packaging gates.
+- No database writes, Edge Function deployments, secret changes, PR merges or legacy database access were performed.
