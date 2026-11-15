@@ -2,7 +2,7 @@
 
 - Source repository: `gfa437926-tech/metra2027`
 - Source branch: `work/metra-all-workspaces-ui-2026-11-15`
-- Captured from source commit: `2dd3f97acaf4b288517f1ca6a029ba737c7e0c18`
+- Captured from source commit: `2dd3f97acaf4b288517d1022222ec3f92545e6a6`
 - Target repository: `gfa437926-tech/metra-weather-intelligence2026`
 - Target branch: `feat/flutter-complete-interface-suite`
 - Files: 86
