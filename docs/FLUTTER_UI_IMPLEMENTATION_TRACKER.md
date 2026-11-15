@@ -192,3 +192,8 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - The generated Android folder is CI-only and is not committed as a permanent platform project.
 - The APK is a debug-validation artifact, not a release-signed Play Store package. Final application-ID confirmation, permanent Android/iOS project scaffolding, keystore/provisioning, signed AAB and iOS archive remain release gates.
 - Exact-head Android build result is pending.
+
+
+## Backend ownership boundary
+
+Flutter business workflows are intended to call the .NET API with a verified Supabase access token; .NET owns domain authorization and persistence. The current station-directory adapter still invokes the legacy Edge Function directly, whose public-table dependencies are absent from the live schema. New business-critical Flutter features must not deepen that Edge Function dependency. Replace it with a versioned .NET endpoint after the approved schema and least-privilege runtime contract are ready.
