@@ -133,3 +133,5 @@ No PR was merged, no deployment was performed, and no hosted database, role, gra
 - [Scientific platform ERD and column dictionary proposal](docs/architecture/METRA-NEW-SCIENTIFIC-DATA-MODEL-ERD-DICTIONARY-2026-11-15.md)
 - [Scientific workspace API contracts](docs/architecture/METRA-SCIENTIFIC-WORKSPACES-API-CONTRACT-2026-11-15.md)
 - [End-to-end implementation and release gates](docs/delivery/METRA-2027-END-TO-END-IMPLEMENTATION-AND-RELEASE-GATES.md)
+
+**Backend target:** Flutter business workflows must ultimately call the .NET API with the user's Supabase access token; .NET validates the JWT and enforces authority/station scope. The current Flutter station-directory adapter still invokes the legacy `station-directory` Edge Function directly. That Edge Function is schema-incompatible and must be replaced by a versioned .NET endpoint before the station directory is considered operational. Do not add new business-critical Flutter-to-Edge-Function dependencies as a shortcut.
