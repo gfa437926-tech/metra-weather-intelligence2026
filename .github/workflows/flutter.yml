@@ -58,3 +58,17 @@ jobs:
           path: build/web
           if-no-files-found: error
           retention-days: 14
+      - name: Generate temporary Android platform scaffold
+        run: |
+          mkdir -p build/native_scaffold
+          flutter create --platforms=android --org=com.metra --project-name=weatherintelligence build/native_scaffold
+          cp -R build/native_scaffold/android ./android
+      - name: Build Android debug validation APK
+        run: flutter build apk --debug
+      - name: Upload Android debug validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: metra-android-debug-validation
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
