@@ -129,3 +129,7 @@ No PR was merged, no deployment was performed, and no hosted database, role, gra
 - [Runtime identity security review](docs/security/METRA-SUPABASE-RUNTIME-IDENTITY-REVIEW-2026-11-15.md)
 - [.NET API/schema compatibility review](docs/architecture/METRA-SUPABASE-API-SCHEMA-COMPATIBILITY-REVIEW-2026-11-15.md)
 - [Deployed Edge Function compatibility review](docs/architecture/METRA-SUPABASE-EDGE-FUNCTION-COMPATIBILITY-REVIEW-2026-11-15.md)
+
+- [Scientific platform ERD and column dictionary proposal](docs/architecture/METRA-NEW-SCIENTIFIC-DATA-MODEL-ERD-DICTIONARY-2026-11-15.md)
+- [Scientific workspace API contracts](docs/architecture/METRA-SCIENTIFIC-WORKSPACES-API-CONTRACT-2026-11-15.md)
+- [End-to-end implementation and release gates](docs/delivery/METRA-2027-END-TO-END-IMPLEMENTATION-AND-RELEASE-GATES.md)
