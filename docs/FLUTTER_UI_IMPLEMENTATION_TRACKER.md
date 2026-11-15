@@ -184,3 +184,11 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - Archive verification, Deno type checks/tests, Flutter dependency resolution, analyze, all Flutter widget tests, web release build and artifact upload passed.
 - The current PR head `36ea4edc55af9149c223d54607f8b7f18e8feec9` at the time of the run summary contains only documentation additions/links after the tested code head; application and test source are unchanged.
 - This is a verified Flutter web CI artifact, not a deployed website, native APK/AAB/IPA, or proof of live database integration.
+
+
+## Android validation build added (2026-11-15)
+
+- Flutter CI now generates a temporary Android platform scaffold with provisional application ID `com.metra.weatherintelligence`, builds a debug APK, and uploads `metra-android-debug-validation`.
+- The generated Android folder is CI-only and is not committed as a permanent platform project.
+- The APK is a debug-validation artifact, not a release-signed Play Store package. Final application-ID confirmation, permanent Android/iOS project scaffolding, keystore/provisioning, signed AAB and iOS archive remain release gates.
+- Exact-head Android build result is pending.
