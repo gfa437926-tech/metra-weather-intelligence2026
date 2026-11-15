@@ -113,7 +113,7 @@ A green source CI run does not prove live database compatibility, a real authent
 
 ## Native mobile packaging gate
 
-The repository does not yet contain `android/` or `ios/` platform projects. Current CI validates Flutter source and the web release only; it does not produce an APK/AAB or iOS archive. Native scaffolding, an approved reverse-domain application identifier, signing/provisioning and platform-specific builds remain release gates. No package identifier, certificate or signing secret has been invented or committed.
+The repository does not yet commit `android/` or `ios/` platform projects. CI now generates a temporary Android scaffold using the provisional identifier `com.metra.weatherintelligence`, builds a debug-validation APK and uploads it as `metra-android-debug-validation`. This is for device smoke testing only; it is not a Play Store-signed release. iOS build/archive is not yet configured. Permanent platform scaffolding, confirmation of the final application identifier, release keystore/provisioning, signed AAB and iOS archive remain release gates. No certificate or signing secret has been invented or committed.
 
 ## Current pull requests
 
