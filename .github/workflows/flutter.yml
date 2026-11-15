@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify recovered live Supabase migration archive
+        run: python3 scripts/verify_live_schema_history.py
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
