@@ -106,7 +106,7 @@ GitHub Actions checks:
 3. Deno validation, permission and batching tests.
 4. `flutter pub get`, `flutter analyze` and `flutter test`.
 5. `flutter build web --release` and web artifact upload.
-6. Temporary Android scaffold generation, debug APK build and `metra-android-debug-validation` artifact upload.
+6. Temporary Android/iOS scaffold generation, Android debug APK build, and upload of `metra-android-debug-validation` and `metra-native-platform-scaffold`.
 
 The previous Flutter CI run reported **65 tests passed and 3 widget tests failed** because three long workspace filter buttons were below the default test viewport. The tests now use the existing tall-viewport helper; assertions were retained. GitHub Actions run [#43721504691](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43721504691) completed **successfully** on code head `5c0eee1726ec9cd98b93d14c581a505ba8818b32`: archive verification, all Deno checks/tests, `flutter analyze`, `flutter test`, `flutter build web --release`, and web artifact upload all passed. The latest PR head `36ea4edc55af9149c223d54607f8b7f18e8feec9` differs from that tested head only by documentation additions/links (scientific ERD, workspace API contract, release gates); application code and test sources are unchanged. All 86 copied SQL files were separately verified to have exact matching Git blob SHAs against the source archive.
 
@@ -114,7 +114,7 @@ A green source CI run does not prove live database compatibility, a real authent
 
 ## Native mobile packaging gate
 
-The repository does not yet commit `android/` or `ios/` platform projects. CI now generates a temporary Android scaffold using the provisional identifier `com.metra.weatherintelligence`, builds a debug-validation APK and uploads it as `metra-android-debug-validation`. This is for device smoke testing only; it is not a Play Store-signed release. iOS build/archive is not yet configured. Permanent platform scaffolding, confirmation of the final application identifier, release keystore/provisioning, signed AAB and iOS archive remain release gates. No certificate or signing secret has been invented or committed.
+The repository does not yet commit `android/` or `ios/` platform projects. CI now generates temporary Android and iOS scaffolds using the provisional identifier `com.metra.weatherintelligence`, builds a debug-validation Android APK and uploads `metra-android-debug-validation` plus `metra-native-platform-scaffold` (the generated `android/` and `ios/` project folders). The APK is for device smoke testing only; it is not a Play Store-signed release. The iOS scaffold is generated but not yet built or signed. Permanent platform scaffolding, confirmation of the final application identifier, release keystore/provisioning, signed AAB and iOS archive remain release gates. No certificate or signing secret has been invented or committed.
 
 ## Current pull requests
 
