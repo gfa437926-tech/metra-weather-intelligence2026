@@ -205,3 +205,8 @@ Flutter business workflows are intended to call the .NET API with a verified Sup
 - The temporary Android platform scaffold generated successfully, `flutter build apk --debug` succeeded, and the `metra-android-debug-validation` artifact uploaded successfully.
 - The same run also passed archive verification, Deno checks/tests, Flutter analyze/tests, web release build and `metra-web-release` upload.
 - Artifacts are available from the linked Actions run. The APK is debug-signed/validation-only; it is not a production Play Store AAB. Native folders are not yet committed to the repository.
+
+
+## Android/iOS scaffold artifact
+
+The Flutter workflow now generates both Android and iOS platform folders in its temporary CI workspace using provisional bundle/application ID `com.metra.weatherintelligence`. It builds the Android debug APK and uploads a separate `metra-native-platform-scaffold` artifact containing the generated `android/` and `ios/` folders. The iOS scaffold is generated but is not yet compiled, signed or archived. These folders are not committed to the repository pending final application-ID approval.
