@@ -146,3 +146,14 @@ This task remains **in progress**. The first-pass interfaces are not equivalent 
 - All workflow steps succeeded: Supabase Edge Function type checks; registration approval validation and batching tests; observation permission/payload tests; station review validation; Flutter dependency resolution, `flutter analyze`, `flutter test`, `flutter build web --release`, and `metra-web-release` artifact upload.
 - Latest branch head is `2dc7ca6c788ef7b3977a64927311f797b76e5def` (documentation-only changes after the tested code head). Exact-head workflow [#43030499169](https://github.com/gfa437926-tech/metra-weather-intelligence2026/actions/runs/43030499169) is pending/in progress; do not mark that head verified until completion.
 - PR #2 remains open Draft and unmerged. No native Android/iOS build is included; platform scaffolding and approved application identifier/signing remain explicit release gates.
+
+
+## CI follow-up — long workspace filter tests (2026-11-15)
+
+- Inspected the failed Flutter CI run for the prior PR head: 65 tests passed and 3 widget tests failed in electronic audit, alerts, and quality-control/climate-archive workspaces.
+- Root cause: the three tests used the default 800×600 test viewport and tapped the "تطبيق المرشحات" control after it had rendered below the viewport. The tests were not scrolling the long page before interaction.
+- Reused the existing `useTallViewport(tester)` helper in all three affected tests. No assertions were removed or weakened; the intended filter-summary assertions remain.
+- Fix commit: `3a47c1ade10dcaa65e6af63c44fcfd5ee9566896`.
+- Flutter analyze had passed in the failing run; Deno type checks and all Deno tests had passed. Flutter test suite had 65 passing / 3 failing tests before this fix.
+- Exact-head CI has not yet been reported for the fix commit. The latest commit is not marked validated until the Flutter test and web release build run successfully.
+- No production service, database, schema, migration, secret, legacy repository or main branch was modified. PR #2 remains Draft and unmerged.
