@@ -61,8 +61,9 @@ jobs:
       - name: Generate temporary Android platform scaffold
         run: |
           mkdir -p build/native_scaffold
-          flutter create --platforms=android --org=com.metra --project-name=weatherintelligence build/native_scaffold
+          flutter create --platforms=android,ios --org=com.metra --project-name=weatherintelligence build/native_scaffold
           cp -R build/native_scaffold/android ./android
+          cp -R build/native_scaffold/ios ./ios
       - name: Build Android debug validation APK
         run: flutter build apk --debug
       - name: Upload Android debug validation APK
@@ -70,5 +71,14 @@ jobs:
         with:
           name: metra-android-debug-validation
           path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload generated native platform scaffold
+        uses: actions/upload-artifact@v4
+        with:
+          name: metra-native-platform-scaffold
+          path: |
+            android/
+            ios/
           if-no-files-found: error
           retention-days: 14
