@@ -1,120 +1,123 @@
 # METRA Weather Intelligence
 
-Flutter/Dart weather platform with Arabic RTL interface.
+Flutter/Dart meteorological platform with an Arabic RTL interface. Flutter is the active client scope; Angular is deferred. The repository is independent of the legacy METRA application and must not import its station catalogue or operational records.
 
 ## Run locally
+
 ```bash
 flutter pub get
 flutter run --dart-define=SUPABASE_URL=https://tbdnklyxjvbrilvnwgmq.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 ```
 
-Use only the Supabase publishable key in client applications. Never include a Supabase secret or service-role key in Flutter or source control.
+Use only the Supabase publishable key in client applications. Never include a Supabase secret, service-role key, JWT signing secret or database password in Flutter, source control, web build arguments or client-visible configuration.
 
 ## Web release
+
 ```bash
 flutter build web --release --dart-define=SUPABASE_URL=https://tbdnklyxjvbrilvnwgmq.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 ```
-The web build is generated in `build/web`. GitHub Actions uploads a CI artifact named `metra-web-release` after analysis and tests pass. The artifact is a build output, not an automatically hosted public website.
 
-## Supabase station directory
-- Supabase initialization, email/password sign-in, and account creation are enabled when compile-time configuration is provided.
-- Authenticated users without a METRA account are routed to the registration form; pending/rejected accounts cannot enter the application shell.
-- Registration roles are read from the active, requestable role catalogue. Station choices are marked with their stored approval status.
-- Registration is submitted through the JWT-protected `registration` Edge Function. The function derives the applicant ID from the verified JWT and invokes a server-only RPC using the service-role client.
-- The `registration-approvals` Edge Function exposes only actionable review items allowed by active direct approval grants and approved station assignments. The function derives the reviewer ID from the verified JWT and delegates to the private two-stage approval transaction.
-- The `observations` Edge Function provides station-scoped observation drafts, submission, review queues, approval, and return-for-correction. It verifies the caller JWT, active account, current station assignment and exact observation permission before exposing data or invoking server-only database transactions.
-- The registration RPC wrappers are executable only by `service_role`, not `anon` or `authenticated`. The submission transaction pins the accepted terms version, uses database time, rejects non-requestable roles and demo/invalid-authority stations, and delegates to the private idempotent registration transaction. The approval Edge Function verifies the reviewer JWT before invoking the server-only decision RPC; the private transaction rechecks active account, direct grants, station assignment, and independent two-stage review.
-- Station data is fetched through the `station-directory` Edge Function.
-- The function verifies the user's JWT and requires `metra_account_states.account_state = active`.
-- It returns non-demo station catalogue records, their current valid coordinates, and the catalogue elevation field `elevation_m`.
-- Direct client access to protected tables remains denied by RLS.
-- The function uses the server-side `SUPABASE_SERVICE_ROLE_KEY`; it is never sent to Flutter.
-- Station type, approval state and operational state are displayed distinctly.
+The web build is generated in `build/web`. GitHub Actions uploads a CI artifact named `metra-web-release` after source checks and tests pass. The artifact is a build output, not an automatically hosted public website.
 
-Deploy with Supabase CLI:
-```bash
-supabase functions deploy station-directory --project-ref tbdnklyxjvbrilvnwgmq
-supabase functions deploy registration --project-ref tbdnklyxjvbrilvnwgmq
-supabase functions deploy registration-approvals --project-ref tbdnklyxjvbrilvnwgmq
-supabase functions deploy observations --project-ref tbdnklyxjvbrilvnwgmq
-supabase functions deploy station-review --project-ref tbdnklyxjvbrilvnwgmq
-```
-Keep JWT verification enabled for all five functions. The registration SQL entry point and server-side terms/time validation are tracked in `supabase/migrations/20261104014631_registration_authenticated_entrypoint.sql` and `supabase/migrations/20261104014827_registration_server_timestamp_and_terms_guard.sql`,  `supabase/migrations/20261104015029_authenticated_registration_decision_entrypoint.sql`, and `supabase/migrations/20261104015823_restrict_registration_rpc_to_server_runtime.sql`.
+## Flutter interface coverage
 
-## Account and approval bootstrap prerequisites
-- The inspected database currently has 62 non-demo station records, all pending/unverified, 50 coordinate-history rows, zero active METRA accounts, and zero submitted registration requests.
-- The registration form can create a pending request, but a request cannot advance until its selected station is approved and operationally active.
-- Station-stage reviewers require an active account, the direct `registrations.station.approve` grant, and an approved assignment to the requested station. System-stage reviewers require the separate `registrations.system.approve` grant and must be different from the station-stage reviewer.
-- No initial administrator or approval grants are fabricated by the application. Provision the first authorized administrator and station reviewers through a controlled administrative procedure before production onboarding. Never grant broad permissions to arbitrary accounts.
+The mobile shell uses five primary destinations: home, map, stations, observations, and work centre. The work centre groups the wider operational modules:
+
+- Forecast-centre comparison with station search, type, coordinate and elevation filters, and station detail views.
+- Detailed hourly, daily, 06/18 UTC synoptic, agricultural, rainfall, phenomena, soil-temperature and operational incident forms.
+- Forecaster preparation and bulletin draft/review/approval/correction interfaces.
+- Electronic audit, paper/mechanical recorder review and three-source comparison.
+- AI device library, training-set governance and model-version surfaces.
+- CLIMATOL, climate homogenization, climate archive, reports and quality-control queues.
+- AFTN composition, inbox/outbox and delivery/ACK views.
+- User, role and permission-domain workspaces, registration approvals and station review.
+- Alerts lifecycle and account/password-recovery surfaces.
+
+**Interface versus integration:** these screens do not imply live data. Station telemetry, official alerts, AFTN transmission, bulletin decoding, electronic audit reads, report aggregation/export, CLIMATOL execution, paper/recorder ingestion, AI training/inference and permission-grant management remain disconnected or approval-gated. The UI shows explicit unavailable states and does not fabricate station readings, alerts, users, climate products or approvals. Observation forms keep unsupported save/send operations disabled.
+
+See:
+- [Flutter interface coverage](docs/FLUTTER_INTERFACE_COVERAGE.md)
+- [Flutter implementation tracker](docs/FLUTTER_UI_IMPLEMENTATION_TRACKER.md)
+- [Forecast-centre UI and data contract](docs/FORECAST_CENTRE_UI_AND_DATA_CONTRACT.md)
+
+## Live Supabase project — verified status (2026-11-15)
+
+The configured project `tbdnklyxjvbrilvnwgmq` is **not empty**. A read-only inspection found PostgreSQL 17.11 with 46 application tables across 10 schemas: `iam`, `catalog`, `ref`, `files`, `observations`, `weather`, `alerts`, `operations`, `integration` and `audit`. All 46 inspected application tables have RLS enabled. The public schema has no application tables.
+
+The current catalogue has **zero rows in `catalog.stations`**. The UI must not repopulate it from the legacy station list. The only reference data observed included 7 station types, 3 observation types, 10 roles, 27 permissions and 78 role-permission links. No station records or operational observations were seeded by this work.
+
+### Supabase API and Edge Function compatibility
+
+Five Edge Functions are currently deployed as ACTIVE and have `verify_jwt=true` plus `auth.getUser` checks:
+- `station-directory`
+- `registration`
+- `registration-approvals`
+- `observations`
+- `station-review`
+
+However, all five still query old public-schema tables such as `station_catalogue`, `metra_account_states`, `metra_observations` and old registration/permission tables, and call RPCs that are absent from the live database. The live schema instead uses normalized `iam`, `catalog` and `observations` tables. These functions must **not** be treated as operational merely because they are deployed or JWT-verified. Do not redeploy them until their contracts are rebuilt and tested against the new model.
+
+All five current functions use the server-side `SUPABASE_SERVICE_ROLE_KEY` admin client and wildcard CORS. The service-role identity bypasses RLS. Restrict CORS to approved origins and move routine operations to a reviewed least-privilege runtime identity before production. Never send the service-role key to Flutter.
+
+The current .NET API foundation in [PR #1](https://github.com/gfa437926-tech/metra-weather-intelligence2026/pull/1) provides JWT validation, `GET /api/v1/me` and liveness only; it has no database connection or business endpoints yet. It remains Draft and unmerged.
+
+### Migration history and reproducibility
+
+Supabase reports **86 applied migration records**. All 86 SQL statements have been recovered read-only into `supabase/live-schema-history/` using their exact live version/name identifiers. This directory is an archive only; **do not apply it wholesale**.
+
+The active `supabase/migrations/` directory currently has 52 files:
+- 51 active version IDs also exist in the live migration history.
+- 45 of those 51 shared-version files are not byte-identical to the recovered live SQL; a version match does not prove content equivalence.
+- `20261110120000_honor_scheduled_permission_revocation.sql` is present in Git but absent from the live applied migration history.
+- The archive contains 35 additional live migration versions not represented in the active directory.
+
+The greenfield rebuild migration `20261114184511_metra_greenfield_application_schema_rebuild` explicitly drops the `metra_migration` schema with CASCADE. The current project no longer has that schema. The separate legacy database was not accessed by this work.
+
+A clean, curated migration sequence, SQL-content reconciliation, destructive-operation review and disposable-database replay are mandatory before schema certification or any new hosted DDL. The script `scripts/verify_live_schema_history.py` verifies archive inventory and version mapping only; it does not execute SQL or certify a replay.
+
+### Runtime identity and authorization
+
+- All 46 inspected application tables have RLS enabled.
+- The inspected `anon` and `authenticated` roles have no table CRUD grants or application-domain function EXECUTE grants.
+- Supabase `service_role` has `BYPASSRLS=true` and broad table access.
+- The `metra_api_runtime` role is currently `NOLOGIN`, `NOBYPASSRLS`, and has no application-function EXECUTE grants. It is not yet a working API identity.
+- Hosted Data API exposed-schema settings still require confirmation.
+
+Before production, implement a least-privilege runtime identity or a narrowly bounded server-side RPC gateway, bind actor identity to the validated JWT subject, and test cross-authority/station denials under the actual runtime identity. Do not grant the runtime role service-role membership or BYPASSRLS as a shortcut.
 
 ## Data integrity and current integrations
-- The home screen current conditions and hourly forecast use Open-Meteo for Damascus (33.5138, 36.2765; `Asia/Damascus`). These are model/provider forecast values, not METRA station telemetry.
-- Station catalogue records and coordinates are read from the new Supabase project through the authenticated Edge Function.
-- The map uses OpenStreetMap tiles. Overlapping identical coordinates are grouped; selecting a marker opens every station record at that location, including classic, automatic and unclassified stations. Invalid or expired coordinates are not plotted.
-- Current coordinate history is paginated and validated; an invalid newest coordinate does not hide an older valid coordinate.
-- Operational observation entry and review are available through the authenticated observations service. These are manually entered station readings; no automatic station telemetry is claimed.
-- Official weather alerts and radar/precipitation/temperature/wind map layers are not yet connected; the UI reports this rather than inventing data.
-- Station approval and operational statuses are displayed from stored values. Pending/unverified stations are not presented as operational.
 
-## Official Saudi weather data integration status
-The Saudi National Center for Meteorology (NCM) documents a direct API integration service for real-time weather information, forecasts and early warnings. Access is subscription-based and requires an approved integration request and credentials. The NCM API documentation also describes station observations, WMS/WFS-compatible areal data, and official notification endpoints. METRA does not currently have verified NCM integration credentials configured, so these services are intentionally not called and no official-alert feed is represented as live.
-- NCM API documentation: https://api-doc.ncm.gov.sa/
-- NCM direct API integration: https://www.ncm.gov.sa/en/services/our-services/direct-api-integration
-- NCM official developer guide: https://www.ncm.gov.sa/Ar/EService/Documents/developers/EWS%20APIs%20Technical%20Guide%20V.1.9.pdf
+- Home-screen conditions and hourly forecast use Open-Meteo model/provider values for Damascus (33.5138, 36.2765; `Asia/Damascus`). These are not METRA station telemetry.
+- The map uses OpenStreetMap tiles. No station markers are fabricated when the approved catalogue is empty.
+- Automatic precipitation, wind, pressure, humidity and visibility telemetry is not connected.
+- Official weather alerts and radar/precipitation/temperature/wind map layers are not connected.
+- AFTN transmission and final protocol framing are disabled pending a reviewed gateway.
+- Bulletin decoding remains a raw-message preview only.
+- CLIMATOL calculations, homogenization, corrected-series persistence and climate reports remain disabled pending approved scientific definitions and service contracts.
+- Paper/mechanical recorder OCR, image extraction, confidence scoring and human approval workflows remain UI-only.
+- AI training, evaluation, model registry and inference are not connected.
+- No old station list or old operational data has been imported into the current build.
 
-## Database safety
-The new METRA database now contains registration submission and two-stage decision entry points restricted to the server runtime, with database-side validation tracked as migrations. The security advisor currently reports no security lint findings. Existing station and legacy-source records were not rewritten or deleted. The legacy database and legacy repository are outside the scope of all changes. Do not run destructive migrations or updates against either.
+## CI and current verification status
 
-## CI
+GitHub Actions checks:
+1. Recovered live migration archive inventory.
+2. Deno type checks for the five Edge Functions.
+3. Deno validation, permission and batching tests.
+4. `flutter pub get`, `flutter analyze` and `flutter test`.
+5. `flutter build web --release` and web artifact upload.
 
-GitHub Actions runs the following checks on pushes and pull requests targeting `main`:
+The previous Flutter CI run on PR #2 reported **65 tests passed and 3 widget tests failed** because three long workspace filter buttons were below the default test viewport. The tests now use the existing tall-viewport helper; assertions were retained. The fix commit is `3a47c1ade10dcaa65e6af63c44fcfd5ee9566896`. GitHub has not yet attached a new CI run to the latest PR head, so the fix is **not yet CI-verified**.
 
-1. Type-checks the station directory, registration, registration approvals, observations, and station review Edge Functions with Deno.
-2. Tests registration approval response validation and bounded query batching.
-3. Tests station-directory permission rules.
-4. Tests operational observation payload and transaction-result validation.
-5. Tests station catalogue review validation.
-6. Runs `flutter pub get`, `flutter analyze`, and `flutter test`.
-7. Builds the production web release with `flutter build web --release`.
-8. Uploads the generated `build/web` directory as the `metra-web-release` artifact (14-day retention).
+A green source CI run does not prove live database compatibility, a real authenticated user journey, hosted website deployment or mobile store readiness.
 
-A successful CI run verifies source checks and produces a web artifact. It does not by itself publish a hosted website or verify a live authenticated user journey.
+## Native mobile packaging gate
 
-## Station catalogue review
+The repository does not yet contain `android/` or `ios/` platform projects. Current CI validates Flutter source and the web release only; it does not produce an APK/AAB or iOS archive. Native scaffolding, an approved reverse-domain application identifier, signing/provisioning and platform-specific builds remain release gates. No package identifier, certificate or signing secret has been invented or committed.
 
-The station review transaction is applied to the METRA Supabase database under migration `20261104110000_secure_station_catalogue_review`. The public RPC is executable only by `service_role`; the Edge Function verifies the caller JWT, active METRA account, and explicit time-bounded review grant. Decisions are `approved`, `rejected`, or `changes_requested`, each with a reason of at least five characters.
+## Current pull requests
 
-Catalogue approval is intentionally separate from operational verification/activation. Do not grant `stations.catalogue.review` until an authorized real reviewer has been identified and provisioned through the controlled identity process.
+- [PR #2 — Flutter operational workspace](https://github.com/gfa437926-tech/metra-weather-intelligence2026/pull/2): open, Draft, unmerged.
+- [PR #1 — .NET 10 API foundation](https://github.com/gfa437926-tech/metra-weather-intelligence2026/pull/1): open, Draft, unmerged.
 
-
-## Flutter operational workspace — UI implementation
-
-The Flutter application uses a compact mobile navigation bar (home, map, stations, observations, work center). The work centre groups the METRA operational interfaces so the primary navigation does not become overcrowded.
-
-The current Flutter UI branch adds:
-- Forecast-centre station directory loading from the protected Edge Function, coordinate-bound filters, documented elevation filters, station type/search filters, station detail sheets, and explicit placeholders for rainfall, wind, pressure, temperature, humidity, visibility and bulletin detail. **Automatic live telemetry and bulletin ingestion are not connected.**
-- Detailed source-catalogue observation forms for standard hourly, daily 24-hour, separate 06:00/18:00 UTC synoptic reports, agricultural, rainfall, phenomena, soil temperature, equipment faults, telecommunications faults, and IT incidents. Source-required fields and UTC-only labels are represented; unsupported submission remains disabled.
-- Forecaster product preparation with UTC issue/validity windows and structured temperature, rainfall/probability, wind speed/direction/gust, visibility, cloud and phenomenon fields; local UTC, non-negative, probability and cross-field checks only.
-- Bulletin workspace with draft composition, review queue, approved queue, correction queue, UTC observation time and **raw-message preview only**. No decoded observation fields are claimed until the approved parser is connected.
-- Electronic audit search/filter shell with station, actor, object, correlation and UTC filters plus a read-only event-detail layout; the server ledger read service is not connected.
-- Paper and mechanical recorder audit workspace for original paper logs and Thermograph/Hygrograph/Barograph/Pluviograph traces, three-source comparison (paper/mechanical/electronic), confidence/review placeholders, and human approval roles.
-- AI device library, training-set governance, model-version and audit-report workspaces.
-- Climate homogenization workspace for time series, breakpoints, reference-station comparison, separate corrected series, climate normals, trends and geographic reporting.
-- AFTN workspace with compose, outbox, inbox, delivery/ACK tracking views, address/date-time/priority checks and a **local composition preview**. Actual transmission and final protocol framing remain disabled pending specification review and a reviewed gateway.
-- CLIMATOL/climate analysis setup with a scientific-approval gate.
-- Daily/monthly/annual report tabs with station/period/element/aggregation/export filters; report generation/export remains disabled until approved aggregation and data contracts exist.
-- User account, role and permission-domain workspaces; descriptive role names are not grantable permission codes.
-- Dedicated alert lifecycle, quality-control queue and climate-archive search screens with explicit no-source states.
-- Account password-recovery UI and access to existing station-review and two-stage registration-approval screens.
-
-**Integration truth:** this is an interface implementation, not a claim that every module is operational. Live station telemetry, official alerts, AFTN transport, climate series/CLIMATOL execution, audit-log reads, report aggregation, and permission-grant management still require reviewed service contracts and authorized sources. Screens show explicit disconnected/approval states rather than invented operational values. No database, schema, migration, secret, or legacy resource was changed.
-
-### Native mobile packaging gate
-
-The current repository tree does not yet contain `android/` or `ios/` platform projects. The current CI validates Flutter analysis/tests and the web release; it does not produce an Android APK/AAB or an iOS archive. Native scaffolding, an approved reverse-domain application identifier, signing/provisioning and platform-specific builds remain release gates. No package identifier, certificate or signing secret was invented or committed.
-
-### Interface and integration documentation
-
-- [Flutter interface coverage matrix](docs/FLUTTER_INTERFACE_COVERAGE.md)
-- [Forecast-centre UI and proposed data contract](docs/FORECAST_CENTRE_UI_AND_DATA_CONTRACT.md)
-- [Flutter implementation tracker](docs/FLUTTER_UI_IMPLEMENTATION_TRACKER.md)
+No PR was merged, no deployment was performed, and no hosted database, role, grant, policy, secret or Edge Function was changed during the 2026-11-15 inspection and source-recovery work.
