@@ -163,6 +163,7 @@ void main() {
   });
 
   testWidgets('electronic audit exposes advanced read-only filters and event details', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: ElectronicAuditPage()));
     expect(find.text('التدقيق الإلكتروني'), findsOneWidget);
     expect(find.text('معرّف الارتباط'), findsWidgets);
@@ -203,6 +204,7 @@ void main() {
   });
 
   testWidgets('alerts workspace exposes official alert filters and lifecycle tabs', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: AlertsWorkspacePage()));
     expect(find.text('التنبيهات الجوية'), findsOneWidget);
     expect(find.text('مصدر التحذيرات الرسمية'), findsOneWidget);
@@ -216,6 +218,7 @@ void main() {
   });
 
   testWidgets('quality control and climate archive expose filters and raw-data boundaries', (tester) async {
+    useTallViewport(tester);
     await tester.pumpWidget(const MaterialApp(home: QualityControlWorkspacePage()));
     expect(find.text('ضبط جودة البيانات'), findsOneWidget);
     expect(find.text('مجموعة القواعد'), findsOneWidget);
